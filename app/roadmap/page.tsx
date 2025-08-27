@@ -40,7 +40,7 @@ export default function RoadmapPage() {
             CAPlayground app to work inside an app.
           </RoadmapItem>
           <RoadmapItem index={7} title="Continue with Improvements" status={<Badge variant="outline">Not Started</Badge>}>
-            Continue with improvements and features to perfect CAPlayground.
+            Make dominic84p dev bro
           </RoadmapItem>
         </div>
       </section>
