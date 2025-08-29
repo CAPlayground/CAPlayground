@@ -2,13 +2,15 @@
 
 import { Card } from "@/components/ui/card";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode, MouseEvent as ReactMouseEvent } from "react";
 import { useEditor } from "./editor-context";
 import type { AnyLayer, GroupLayer, ShapeLayer } from "@/lib/ca/types";
 
 export function CanvasPreview() {
   const ref = useRef<HTMLDivElement | null>(null);
-  const { doc } = useEditor();
+  const { doc, updateLayer, updateLayerTransient, selectLayer } = useEditor();
   const [size, setSize] = useState({ w: 600, h: 400 });
+  const draggingRef = useRef<{ id: string; startClientX: number; startClientY: number; startX: number; startY: number } | null>(null);
 
   useEffect(() => {
     const el = ref.current;
@@ -35,8 +37,44 @@ export function CanvasPreview() {
 
   const layers = doc?.layers ?? [];
 
-  const renderLayer = (l: AnyLayer): React.ReactNode => {
-    const common: React.CSSProperties = {
+  const startDrag = (l: AnyLayer, e: ReactMouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    selectLayer(l.id);
+    draggingRef.current = {
+      id: l.id,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      startX: l.position.x,
+      startY: l.position.y,
+    };
+    // Disable text selection while dragging
+    document.body.style.userSelect = "none";
+
+    const onMove = (ev: MouseEvent) => {
+      const d = draggingRef.current;
+      if (!d) return;
+      const dx = (ev.clientX - d.startClientX) / scale;
+      const dy = (ev.clientY - d.startClientY) / scale;
+      updateLayerTransient(d.id, { position: { x: d.startX + dx, y: d.startY + dy } as any });
+    };
+    const onUp = (ev: MouseEvent) => {
+      const d = draggingRef.current;
+      if (d) {
+        const dx = (ev.clientX - d.startClientX) / scale;
+        const dy = (ev.clientY - d.startClientY) / scale;
+        updateLayer(d.id, { position: { x: d.startX + dx, y: d.startY + dy } as any });
+      }
+      draggingRef.current = null;
+      document.body.style.userSelect = "";
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
+  const renderLayer = (l: AnyLayer): ReactNode => {    const common: React.CSSProperties = {
       position: "absolute",
       left: l.position.x,
       top: l.position.y,
@@ -44,11 +82,16 @@ export function CanvasPreview() {
       height: l.size.h,
       transform: `rotate(${l.rotation ?? 0}deg)`,
       display: l.visible === false ? "none" : undefined,
+      cursor: "move",
     };
 
     if (l.type === "text") {
       return (
-        <div key={l.id} style={{ ...common, color: l.color, fontSize: l.fontSize, textAlign: l.align ?? "left" }}>
+        <div
+          key={l.id}
+          style={{ ...common, color: l.color, fontSize: l.fontSize, textAlign: l.align ?? "left" }}
+          onMouseDown={(e) => startDrag(l, e)}
+        >
           {l.text}
         </div>
       );
@@ -60,6 +103,8 @@ export function CanvasPreview() {
           src={l.src}
           alt={l.name}
           style={{ ...common, objectFit: (l as any).fit ?? ("cover" as any) }}
+          draggable={false}
+          onMouseDown={(e) => startDrag(l, e)}
         />
       );
     }
@@ -67,13 +112,13 @@ export function CanvasPreview() {
       const s = l as ShapeLayer;
       const borderRadius = s.shape === "circle" ? 9999 : (s.shape === "rounded-rect" ? (s.radius ?? 8) : 0);
       return (
-        <div key={l.id} style={{ ...common, background: s.fill, borderRadius }} />
+        <div key={l.id} style={{ ...common, background: s.fill, borderRadius }} onMouseDown={(e) => startDrag(l, e)} />
       );
     }
     // group
     const g = l as GroupLayer;
     return (
-      <div key={g.id} style={{ ...common, background: g.backgroundColor }}>
+      <div key={g.id} style={{ ...common, background: g.backgroundColor }} onMouseDown={(e) => startDrag(g, e)}>
         {g.children.map((c) => renderLayer(c))}
       </div>
     );

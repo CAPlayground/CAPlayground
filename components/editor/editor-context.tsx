@@ -20,6 +20,7 @@ export type EditorContextValue = {
   addImageLayer: (src?: string) => void;
   addShapeLayer: (shape?: ShapeLayer["shape"]) => void;
   updateLayer: (id: string, patch: Partial<AnyLayer>) => void;
+  updateLayerTransient: (id: string, patch: Partial<AnyLayer>) => void;
   selectLayer: (id: string | null) => void;
   deleteLayer: (id: string) => void;
   persist: () => void;
@@ -43,6 +44,7 @@ export function EditorProvider({
   const [doc, setDoc] = useState<ProjectDocument | null>(null);
   const pastRef = useRef<ProjectDocument[]>([]);
   const futureRef = useRef<ProjectDocument[]>([]);
+  const skipPersistRef = useRef(false);
 
   const pushHistory = useCallback((prev: ProjectDocument) => {
     pastRef.current.push(JSON.parse(JSON.stringify(prev)) as ProjectDocument);
@@ -72,7 +74,13 @@ export function EditorProvider({
   }, [doc, setStoredDoc]);
 
   useEffect(() => {
-    if (doc) setStoredDoc(doc);
+    if (!doc) return;
+    if (skipPersistRef.current) {
+     
+      skipPersistRef.current = false;
+      return;
+    }
+    setStoredDoc(doc);
   }, [doc, setStoredDoc]);
 
   const selectLayer = useCallback((id: string | null) => {
@@ -183,6 +191,18 @@ export function EditorProvider({
     });
   }, [updateInTree]);
 
+  const updateLayerTransient = useCallback((id: string, patch: Partial<AnyLayer>) => {
+    skipPersistRef.current = true;
+    setDoc((prev) => {
+      if (!prev) return prev;
+      
+      return {
+        ...prev,
+        layers: updateInTree(prev.layers, id, patch),
+      };
+    });
+  }, [updateInTree]);
+
   const deleteLayer = useCallback((id: string) => {
     setDoc((prev) => {
       if (!prev) return prev;
@@ -222,12 +242,13 @@ export function EditorProvider({
     addImageLayer,
     addShapeLayer,
     updateLayer,
+    updateLayerTransient,
     selectLayer,
     deleteLayer,
     persist,
     undo,
     redo,
-  }), [doc, addTextLayer, addImageLayer, addShapeLayer, updateLayer, selectLayer, deleteLayer, persist, undo, redo]);
+  }), [doc, addTextLayer, addImageLayer, addShapeLayer, updateLayer, updateLayerTransient, selectLayer, deleteLayer, persist, undo, redo]);
 
   return <EditorContext.Provider value={value}>{children}</EditorContext.Provider>;
 }
