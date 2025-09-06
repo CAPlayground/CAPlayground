@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -128,5 +129,62 @@
   }
   .font-helvetica-neue {
     font-family: "Helvetica Neue", Helvetica, Arial, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple Color Emoji", "Segoe UI Emoji";
+  }
+  .prose :where(img, video, iframe) {
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--radius-md);
+  }
+  .prose :where(iframe) {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+  }
+}
+
+@layer components {
+  .prose :where(h1) {
+    @apply text-3xl md:text-4xl font-bold tracking-tight mb-4;
+  }
+  .prose :where(h2) {
+    @apply text-2xl md:text-3xl font-semibold mt-8 mb-3;
+  }
+  .prose :where(h3) {
+    @apply text-xl md:text-2xl font-semibold mt-6 mb-2;
+  }
+  .prose :where(p) {
+    @apply text-base md:text-lg leading-7;
+  }
+  .prose :where(ul) {
+    @apply list-disc pl-6 my-4;
+  }
+  .prose :where(ol) {
+    @apply list-decimal pl-6 my-4;
+  }
+  .prose :where(li) {
+    @apply my-1;
+  }
+  .prose :where(a) {
+    @apply text-accent underline-offset-4 hover:underline;
+  }
+  .prose :where(blockquote) {
+    @apply border-l-2 pl-4 italic text-muted-foreground my-6;
+  }
+  .prose :where(hr) {
+    @apply my-8 border-border;
+  }
+  .prose :where(code) {
+    @apply rounded bg-muted px-1.5 py-0.5 text-[0.95em];
+  }
+  .prose :where(pre) {
+    @apply rounded-lg bg-muted p-4 overflow-x-auto; 
+  }
+  .prose :where(pre code) {
+    @apply bg-transparent p-0;
+  }
+  .prose :where(table) {
+    @apply w-full text-sm my-6 border-collapse;
+  }
+  .prose :where(th, td) {
+    @apply border border-border px-3 py-2;
   }
 }
