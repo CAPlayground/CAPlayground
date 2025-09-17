@@ -137,7 +137,7 @@ export function MenuBar({ projectId, showLeft = true, showRight = true, toggleLe
         }
       }
 
-      const blob = await packCA({
+      const caBlob = await packCA({
         project: {
           id: doc.meta.id,
           name: doc.meta.name,
@@ -151,17 +151,34 @@ export function MenuBar({ projectId, showLeft = true, showRight = true, toggleLe
         stateOverrides: (doc as any).stateOverrides,
         stateTransitions: (doc as any).stateTransitions,
       });
+      const caZip = new JSZip();
+      await caZip.loadAsync(caBlob);
+      const outputZip = new JSZip();
+      const folderName = `${nameSafe}.ca`;
+      for (const [relativePath, file] of Object.entries(caZip.files)) {
+        if (!file.dir) {
+          const content = await file.async('uint8array');
+          outputZip.file(`${folderName}/${relativePath}`, content);
+        }
+      }
+      
+      const finalZipBlob = await outputZip.generateAsync({ type: 'blob' });
 
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(finalZipBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${nameSafe}.ca`;
+      a.download = `${nameSafe}.zip`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
     } catch (e) {
       console.error('Export failed', e);
+      toast({
+        title: "Export failed",
+        description: "Failed to export .ca file. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
