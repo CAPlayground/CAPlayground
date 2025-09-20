@@ -18,10 +18,10 @@ export default function HomePage() {
             <div className="relative container mx-auto px-4 py-24 md:py-32">
               <div className="max-w-4xl mx-auto text-center space-y-8 animate-in fade-in-0 slide-in-from-bottom-6 duration-2000 ease-out">
                 {/* notification */}
-                <Link href="https://feat-state-transitions.caplayground.pages.dev/">
+                <Link href="/projects">
                   <div className="inline-flex items-center justify-center px-6 py-2.5 rounded-full bg-accent/10 backdrop-blur-sm border border-accent/20 mb-4 transition-all duration-200 hover:bg-accent/20 hover:border-accent/30 hover:shadow-sm cursor-pointer">
                     <MapIcon className="h-4 w-4 text-accent mr-2" aria-hidden="true" />
-                    <span className="text-accent font-sans font-medium text-sm">State Transitions are currently being developed! Help test it out</span>
+                    <span className="text-accent font-sans font-medium text-sm">Animations and State Transitions can be added to your project!</span>
                   </div>
                 </Link>
                 

@@ -5,8 +5,10 @@ import { useEditor } from "./editor-context";
 
 export function StatesPanel() {
   const { doc, setActiveState } = useEditor();
-  const states = doc?.states ?? [];
-  const active = doc?.activeState || 'Base State';
+  const key = doc?.activeCA ?? 'floating';
+  const current = doc?.docs?.[key];
+  const states = current?.states ?? [];
+  const active = current?.activeState || 'Base State';
 
   return (
     <Card className="p-3 h-full flex flex-col">

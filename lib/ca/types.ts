@@ -16,6 +16,8 @@ export type LayerBase = {
   size: Size;
   opacity?: number;
   rotation?: number;
+  rotationX?: number;
+  rotationY?: number;
   backgroundColor?: string;
   borderColor?: string;
   borderWidth?: number;
@@ -23,7 +25,7 @@ export type LayerBase = {
   visible?: boolean;
   animations?: {
     enabled?: boolean;
-    keyPath?: 'position' | 'position.x' | 'position.y';
+    keyPath?: 'position' | 'position.x' | 'position.y' | 'transform.rotation.x' | 'transform.rotation.y' | 'transform.rotation.z';
     autoreverses?: 0 | 1;
     values?: Array<Vec2 | number>;
     durationSeconds?: number;

@@ -4,26 +4,39 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus, Crosshair } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocalStorage } from "@/hooks/use-local-storage";
 import type { ReactNode, MouseEvent as ReactMouseEvent } from "react";
 import { useEditor } from "./editor-context";
 import type { AnyLayer, GroupLayer, ShapeLayer } from "@/lib/ca/types";
 
 export function CanvasPreview() {
   const ref = useRef<HTMLDivElement | null>(null);
-  const { doc, updateLayer, updateLayerTransient, selectLayer, copySelectedLayer, pasteFromClipboard, addImageLayerFromBlob, addImageLayerFromFile } = useEditor();
+  const { doc, updateLayer, updateLayerTransient, selectLayer, copySelectedLayer, pasteFromClipboard, addImageLayerFromBlob, addImageLayerFromFile, isAnimationPlaying, setIsAnimationPlaying, animatedLayers, setAnimatedLayers } = useEditor();
   const docRef = useRef<typeof doc>(doc);
   useEffect(() => { docRef.current = doc; }, [doc]);
   const [size, setSize] = useState({ w: 600, h: 400 });
   const [userScale, setUserScale] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
+  const [snapState, setSnapState] = useState<{ x: number | null; y: number | null }>({ x: null, y: null });
+  const [SNAP_THRESHOLD] = useLocalStorage<number>("caplay_settings_snap_threshold", 12);
+  const [snapEdgesEnabled] = useLocalStorage<boolean>("caplay_settings_snap_edges", true);
+  const [snapLayersEnabled] = useLocalStorage<boolean>("caplay_settings_snap_layers", true);
   const panDragRef = useRef<{
     startClientX: number;
     startClientY: number;
     startPanX: number;
     startPanY: number;
   } | null>(null);
-  const draggingRef = useRef<{ id: string; startClientX: number; startClientY: number; startX: number; startY: number } | null>(null);
+  const draggingRef = useRef<{
+    id: string;
+    startClientX: number;
+    startClientY: number;
+    startX: number;
+    startY: number;
+    w: number;
+    h: number;
+  } | null>(null);
 
   useEffect(() => {
     const el = ref.current;
@@ -207,8 +220,12 @@ export function CanvasPreview() {
         (target as any).size = { ...(target as any).size, w: v };
       } else if (kp === 'bounds.size.height' && typeof v === 'number') {
         (target as any).size = { ...(target as any).size, h: v };
-      } else if (kp === 'transform.rotation.z' && typeof v === 'number') {
+      } else if ((kp === 'transform.rotation' || kp === 'transform.rotation.z') && typeof v === 'number') {
         (target as any).rotation = v;
+      } else if (kp === 'transform.rotation.x' && typeof v === 'number') {
+        (target as any).rotationX = v as number;
+      } else if (kp === 'transform.rotation.y' && typeof v === 'number') {
+        (target as any).rotationY = v as number;
       } else if ((kp === 'opacity' || kp === 'cornerRadius' || kp === 'borderWidth' || kp === 'fontSize') && typeof v === 'number') {
         (target as any)[kp] = v as any;
       } else if ((kp === 'backgroundColor' || kp === 'borderColor' || kp === 'color') && typeof v === 'string') {
@@ -218,15 +235,20 @@ export function CanvasPreview() {
     return rootCopy;
   };
 
+  const currentKey = doc?.activeCA ?? 'floating';
+  const current = doc?.docs?.[currentKey];
+  const otherKey = currentKey === 'floating' ? 'background' : 'floating';
+  const other = doc?.docs?.[otherKey];
+
   const appliedLayers = useMemo(() => {
-    if (!doc) return [] as AnyLayer[];
-    return applyOverrides(doc.layers, doc.stateOverrides, doc.activeState);
-  }, [doc?.layers, doc?.stateOverrides, doc?.activeState]);
+    if (!current) return [] as AnyLayer[];
+    return applyOverrides(current.layers, current.stateOverrides, current.activeState);
+  }, [current?.layers, current?.stateOverrides, current?.activeState]);
 
   const [renderedLayers, setRenderedLayers] = useState<AnyLayer[]>(appliedLayers);
   useEffect(() => { setRenderedLayers(appliedLayers); }, []);
 
-  const prevStateRef = useRef<string | undefined>(doc?.activeState);
+  const prevStateRef = useRef<string | undefined>(current?.activeState);
   const animRef = useRef<number | null>(null);
 
   const indexById = (arr: AnyLayer[]) => {
@@ -256,15 +278,16 @@ export function CanvasPreview() {
     else if (keyPath === 'bounds.size.width') (l as any).size = { ...(l as any).size, w: v };
     else if (keyPath === 'bounds.size.height') (l as any).size = { ...(l as any).size, h: v };
     else if (keyPath === 'transform.rotation.z') (l as any).rotation = v as any;
+    else if (keyPath === 'transform.rotation.x') (l as any).rotationX = v as any;
+    else if (keyPath === 'transform.rotation.y') (l as any).rotationY = v as any;
     else if (keyPath === 'opacity') (l as any).opacity = v as any;
   };
 
-  const [isPlaying, setIsPlaying] = useState(false);
   const [timeSec, setTimeSec] = useState(0);
   const lastTsRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!isPlaying) { lastTsRef.current = null; return; }
+    if (!isAnimationPlaying) { lastTsRef.current = null; return; }
     let raf: number | null = null;
     const step = (ts: number) => {
       const last = lastTsRef.current;
@@ -277,7 +300,7 @@ export function CanvasPreview() {
     };
     raf = requestAnimationFrame(step);
     return () => { if (raf) cancelAnimationFrame(raf); };
-  }, [isPlaying]);
+  }, [isAnimationPlaying]);
 
   const evalLayerAnimation = (l: AnyLayer, t: number) => {
     const anim: any = (l as any).animations;
@@ -322,6 +345,21 @@ export function CanvasPreview() {
       const b = Number(values[seg + 1] ?? a);
       const ny = lerp(a, b, f);
       (l as any).position = { ...(l as any).position, y: ny };
+    } else if (keyPath === 'transform.rotation.z') {
+      const a = Number(values[seg] ?? (l as any).rotation ?? 0);
+      const b = Number(values[seg + 1] ?? a);
+      const nz = lerp(a, b, f);
+      (l as any).rotation = nz;
+    } else if (keyPath === 'transform.rotation.x') {
+      const a = Number(values[seg] ?? (l as any).rotationX ?? 0);
+      const b = Number(values[seg + 1] ?? a);
+      const nx = lerp(a, b, f);
+      (l as any).rotationX = nx;
+    } else if (keyPath === 'transform.rotation.y') {
+      const a = Number(values[seg] ?? (l as any).rotationY ?? 0);
+      const b = Number(values[seg + 1] ?? a);
+      const ny = lerp(a, b, f);
+      (l as any).rotationY = ny;
     }
   };
 
@@ -337,7 +375,8 @@ export function CanvasPreview() {
     };
     walk(frame);
     setRenderedLayers(frame);
-  }, [timeSec, appliedLayers]);
+    setAnimatedLayers(frame);
+  }, [timeSec, appliedLayers, setAnimatedLayers]);
 
   const hasAnyEnabledAnimation = useMemo(() => {
     const check = (arr: AnyLayer[]): boolean => {
@@ -350,23 +389,23 @@ export function CanvasPreview() {
       }
       return false;
     };
-    return check(doc?.layers || []);
-  }, [doc?.layers]);
+    return check(current?.layers || []);
+  }, [current?.layers]);
 
   useEffect(() => {
-    if (!hasAnyEnabledAnimation && isPlaying) setIsPlaying(false);
-  }, [hasAnyEnabledAnimation, isPlaying]);
+    if (!hasAnyEnabledAnimation && isAnimationPlaying) setIsAnimationPlaying(false);
+  }, [hasAnyEnabledAnimation, isAnimationPlaying]);
 
   useEffect(() => {
     const prevState = prevStateRef.current;
-    const nextState = doc?.activeState;
+    const nextState = current?.activeState;
     if (!doc) return;
     if (prevState === nextState) {
       setRenderedLayers(appliedLayers);
       return;
     }
 
-    const provided = (doc.stateTransitions || []).filter(t =>
+    const provided = (current?.stateTransitions || []).filter(t =>
       (t.fromState === prevState || t.fromState === '*') &&
       (t.toState === nextState || t.toState === '*')
     );
@@ -377,7 +416,7 @@ export function CanvasPreview() {
         if (!gens.length) gens.push({ elements: [] });
         gens[0].elements.push({ targetId, keyPath, animation: { duration } });
       };
-      const ovs = doc.stateOverrides || {};
+      const ovs = current?.stateOverrides || {};
       const toList = ovs[nextState || ''] || [];
       const fromList = ovs[prevState || ''] || [];
       const keys = [
@@ -474,7 +513,7 @@ export function CanvasPreview() {
       if (animRef.current) cancelAnimationFrame(animRef.current);
       animRef.current = null;
     };
-  }, [doc?.activeState, appliedLayers, doc?.stateTransitions]);
+  }, [current?.activeState, appliedLayers, current?.stateTransitions]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -522,6 +561,8 @@ export function CanvasPreview() {
       startClientY: e.clientY,
       startX: l.position.x,
       startY: l.position.y,
+      w: l.size.w,
+      h: l.size.h,
     };
     document.body.style.userSelect = "none";
 
@@ -530,17 +571,120 @@ export function CanvasPreview() {
       if (!d) return;
       const dx = (ev.clientX - d.startClientX) / scale;
       const dy = (ev.clientY - d.startClientY) / scale;
-      updateLayerTransient(d.id, { position: { x: d.startX + dx, y: d.startY + dy } as any });
+      let x = d.startX + dx;
+      let y = d.startY + dy;
+      const w = docRef.current?.meta.width ?? 0;
+      const h = docRef.current?.meta.height ?? 0;
+      if (w > 0 && h > 0 && (snapEdgesEnabled || snapLayersEnabled)) {
+        const th = SNAP_THRESHOLD;
+        const xPairs: Array<[number, number]> = [];
+        const yPairs: Array<[number, number]> = [];
+        if (snapEdgesEnabled) {
+          xPairs.push([0, 0], [(w - d.w) / 2, w / 2], [w - d.w, w]);
+          yPairs.push([0, 0], [(h - d.h) / 2, h / 2], [h - d.h, h]);
+        }
+        if (snapLayersEnabled) {
+          const others = (renderedLayers || []).filter((ol) => ol.id !== d.id);
+          for (const ol of others) {
+            const L = ol as any;
+            const lx = L.position?.x ?? 0;
+            const ly = L.position?.y ?? 0;
+            const lw = L.size?.w ?? 0;
+            const lh = L.size?.h ?? 0;
+            const left = lx;
+            const right = lx + lw;
+            const cx = lx + lw / 2;
+            const top = ly;
+            const bottom = ly + lh;
+            const cy = ly + lh / 2;
+            xPairs.push(
+              [left, left],
+              [right, right],
+              [right - d.w, right],
+              [left - d.w, left],
+              [cx - d.w / 2, cx],
+            );
+            yPairs.push(
+              [top, top],
+              [bottom, bottom],
+              [bottom - d.h, bottom],
+              [top - d.h, top],
+              [cy - d.h / 2, cy],
+            );
+          }
+        }
+        const nearestPair = (val: number, pairs: Array<[number, number]>) => {
+          let best = val;
+          let guide: number | null = null;
+          let bestDist = th + 1;
+          for (const [t, g] of pairs) {
+            const dist = Math.abs(val - t);
+            if (dist <= th && dist < bestDist) { best = t; bestDist = dist; guide = g; }
+          }
+          return { value: best, guide };
+        };
+        const nx = nearestPair(x, xPairs);
+        const ny = nearestPair(y, yPairs);
+        x = nx.value; y = ny.value;
+        setSnapState({ x: nx.guide, y: ny.guide });
+      } else {
+        setSnapState({ x: null, y: null });
+      }
+      updateLayerTransient(d.id, { position: { x, y } as any });
     };
+
     const onUp = (ev: MouseEvent) => {
       const d = draggingRef.current;
       if (d) {
         const dx = (ev.clientX - d.startClientX) / scale;
         const dy = (ev.clientY - d.startClientY) / scale;
-        updateLayer(d.id, { position: { x: d.startX + dx, y: d.startY + dy } as any });
+        let x = d.startX + dx;
+        let y = d.startY + dy;
+        const w = docRef.current?.meta.width ?? 0;
+        const h = docRef.current?.meta.height ?? 0;
+        if (w > 0 && h > 0 && (snapEdgesEnabled || snapLayersEnabled)) {
+          const th = SNAP_THRESHOLD;
+          const xPairs: Array<[number, number]> = [];
+          const yPairs: Array<[number, number]> = [];
+          if (snapEdgesEnabled) {
+            xPairs.push([0, 0], [(w - d.w) / 2, w / 2], [w - d.w, w]);
+            yPairs.push([0, 0], [(h - d.h) / 2, h / 2], [h - d.h, h]);
+          }
+          if (snapLayersEnabled) {
+            const others = (renderedLayers || []).filter((ol) => ol.id !== d.id);
+            for (const ol of others) {
+              const L = ol as any;
+              const lx = L.position?.x ?? 0;
+              const ly = L.position?.y ?? 0;
+              const lw = L.size?.w ?? 0;
+              const lh = L.size?.h ?? 0;
+              const left = lx;
+              const right = lx + lw;
+              const cx = lx + lw / 2;
+              const top = ly;
+              const bottom = ly + lh;
+              const cy = ly + lh / 2;
+              xPairs.push([left, left],[right, right],[right - d.w, right],[left - d.w, left],[cx - d.w / 2, cx]);
+              yPairs.push([top, top],[bottom, bottom],[bottom - d.h, bottom],[top - d.h, top],[cy - d.h / 2, cy]);
+            }
+          }
+          const nearest = (val: number, pairs: Array<[number, number]>) => {
+            let best = val;
+            let bestDist = th + 1;
+            for (const [t] of pairs) {
+              const dist = Math.abs(val - t);
+              if (dist <= th && dist < bestDist) { best = t; bestDist = dist; }
+            }
+            return best;
+          };
+          x = nearest(x, xPairs);
+          y = nearest(y, yPairs);
+        }
+        updateLayer(d.id, { position: { x, y } as any });
       }
       draggingRef.current = null;
       document.body.style.userSelect = "";
+      setSnapState({ x: null, y: null });
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
@@ -554,10 +698,13 @@ export function CanvasPreview() {
       top: l.position.y,
       width: l.size.w,
       height: l.size.h,
-      transform: `rotate(${l.rotation ?? 0}deg)`,
+      transform: `perspective(800px) rotateX(${(l as any).rotationX ?? 0}deg) rotateY(${(l as any).rotationY ?? 0}deg) rotate(${l.rotation ?? 0}deg)`,
+      transformOrigin: "50% 50%",
+      backfaceVisibility: "visible",
+      transformStyle: "preserve-3d",
       display: l.visible === false ? "none" : undefined,
       cursor: "move",
-    };
+  };
 
     if (l.type === "text") {
       return (
@@ -776,7 +923,10 @@ export function CanvasPreview() {
       top: l.position.y,
       width: l.size.w,
       height: l.size.h,
-      transform: `rotate(${l.rotation ?? 0}deg)`,
+      transform: `perspective(800px) rotateX(${(l as any).rotationX ?? 0}deg) rotateY(${(l as any).rotationY ?? 0}deg) rotate(${l.rotation ?? 0}deg)`,
+      transformOrigin: "50% 50%",
+      backfaceVisibility: "hidden",
+      transformStyle: "preserve-3d",
       outline: "1px solid rgba(59,130,246,0.9)",
       boxShadow: "0 0 0 2px rgba(59,130,246,0.2) inset",
       pointerEvents: "none",
@@ -830,6 +980,8 @@ export function CanvasPreview() {
       </div>
     );
   };
+
+  // showBoth removed: no overlay rendering of the non-active CA
 
   return (
     <Card
@@ -925,10 +1077,29 @@ export function CanvasPreview() {
           selectLayer(null);
         }}
       >
+        {/* overlay removed */}
         {renderedLayers.map((l) => renderLayer(l))}
         {(() => {
-          const sel = findById(renderedLayers, doc?.selectedId ?? null);
+          const sel = findById(renderedLayers, current?.selectedId ?? null);
           return sel ? renderSelectionOverlay(sel) : null;
+        })()}
+        {(() => {
+          const w = doc?.meta.width ?? 0;
+          const h = doc?.meta.height ?? 0;
+          if (!w || !h) return null;
+          const sx = snapState.x;
+          const sy = snapState.y;
+          if (sx == null && sy == null) return null;
+          const lineColor = 'rgba(59,130,246,0.9)';
+          const lineShadow = '0 0 0 1px rgba(59,130,246,0.25)';
+          const guides: React.ReactNode[] = [];
+          if (typeof sx === 'number') {
+            guides.push(<div key="v" style={{ position: 'absolute', left: sx, top: 0, bottom: 0, width: 2, background: lineColor, boxShadow: lineShadow, transform: 'translateX(-1px)', zIndex: 1000, pointerEvents: 'none' }} />);
+          }
+          if (typeof sy === 'number') {
+            guides.push(<div key="h" style={{ position: 'absolute', top: sy, left: 0, right: 0, height: 2, background: lineColor, boxShadow: lineShadow, transform: 'translateY(-1px)', zIndex: 1000, pointerEvents: 'none' }} />);
+          }
+          return <>{guides}</>;
         })()}
       </div>
 
@@ -997,9 +1168,9 @@ export function CanvasPreview() {
             type="button"
             size="sm"
             variant="secondary"
-            onClick={() => setIsPlaying((p) => !p)}
+            onClick={() => setIsAnimationPlaying((p: boolean) => !p)}
           >
-            {isPlaying ? 'Pause' : 'Play'}
+            {isAnimationPlaying ? 'Pause' : 'Play'}
           </Button>
           <Button
             type="button"

@@ -81,8 +81,11 @@ export function parseStateOverrides(xml: string): CAStateOverrides {
               val = vAttr;
             }
           }
-          if (typeof val === 'number' && keyPath === 'transform.rotation.z') {
-            val = (val * 180) / Math.PI;
+          if (typeof val === 'number') {
+            const kp = keyPath || '';
+            if (kp === 'transform.rotation.z' || kp === 'transform.rotation.x' || kp === 'transform.rotation.y') {
+              val = (val * 180) / Math.PI;
+            }
           }
           if (targetId && keyPath) arr.push({ targetId, keyPath, value: val });
         }
@@ -409,12 +412,12 @@ function serializeLayer(doc: XMLDocument, layer: AnyLayer, project?: CAProject):
     if (children.length) el.appendChild(sublayers);
   }
 
-  // Animations (position, position.x, position.y)
+  // Animations (position, position.x, position.y, transform.rotation.x, transform.rotation.y, transform.rotation.z)
   const anim = (layer as any).animations as
-    | { enabled?: boolean; keyPath?: 'position' | 'position.x' | 'position.y'; autoreverses?: 0 | 1; values?: Array<{ x: number; y: number } | number> }
+    | { enabled?: boolean; keyPath?: 'position' | 'position.x' | 'position.y' | 'transform.rotation.x' | 'transform.rotation.y' | 'transform.rotation.z'; autoreverses?: 0 | 1; values?: Array<{ x: number; y: number } | number>; durationSeconds?: number }
     | undefined;
   if (anim?.enabled && Array.isArray(anim.values) && anim.values.length > 0) {
-    const keyPath = (anim.keyPath ?? 'position') as 'position' | 'position.x' | 'position.y';
+    const keyPath = (anim.keyPath ?? 'position') as 'position' | 'position.x' | 'position.y' | 'transform.rotation.x' | 'transform.rotation.y' | 'transform.rotation.z';
     const animationsEl = doc.createElementNS(CAML_NS, 'animations');
     const a = doc.createElementNS(CAML_NS, 'animation');
     a.setAttribute('type', 'CAKeyframeAnimation');
@@ -456,6 +459,14 @@ function serializeLayer(doc: XMLDocument, layer: AnyLayer, project?: CAProject):
         const numEl = doc.createElementNS(CAML_NS, 'NSNumber');
         numEl.setAttribute('value', String(cy));
         valuesEl.appendChild(numEl);
+      }
+    } else if (keyPath === 'transform.rotation.x' || keyPath === 'transform.rotation.y' || keyPath === 'transform.rotation.z') {
+      for (const v of anim.values as Array<any>) {
+        const deg = Number(v);
+        const rad = (Number.isFinite(deg) ? deg : 0) * Math.PI / 180;
+        const realEl = doc.createElementNS(CAML_NS, 'real');
+        realEl.setAttribute('value', String(rad));
+        valuesEl.appendChild(realEl);
       }
     }
     a.appendChild(valuesEl);

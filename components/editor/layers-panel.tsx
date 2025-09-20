@@ -11,8 +11,10 @@ import type { AnyLayer, GroupLayer } from "@/lib/ca/types";
 export function LayersPanel() {
   const { doc, selectLayer, addTextLayer, addImageLayerFromFile, addShapeLayer, deleteLayer, duplicateLayer } = useEditor();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const layers = doc?.layers ?? [];
-  const selectedId = doc?.selectedId ?? null;
+  const key = doc?.activeCA ?? 'floating';
+  const current = doc?.docs?.[key];
+  const layers = current?.layers ?? [];
+  const selectedId = current?.selectedId ?? null;
 
   const renderItem = (l: AnyLayer, depth: number) => {
     const row = (

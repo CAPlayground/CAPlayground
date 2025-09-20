@@ -4,8 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import type { AnyLayer, CAProject, GroupLayer, ImageLayer, LayerBase, ShapeLayer, TextLayer } from "@/lib/ca/types";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 
-export type ProjectDocument = {
-  meta: Pick<CAProject, "id" | "name" | "width" | "height" | "background">;
+type CADoc = {
   layers: AnyLayer[];
   selectedId?: string | null;
   assets?: Record<string, { filename: string; dataURL: string }>;
@@ -15,12 +14,23 @@ export type ProjectDocument = {
   stateTransitions?: Array<{ fromState: string; toState: string; elements: Array<{ targetId: string; keyPath: string; animation?: any }>; }>;
 };
 
+export type ProjectDocument = {
+  meta: Pick<CAProject, "id" | "name" | "width" | "height" | "background">;
+  activeCA: 'background' | 'floating';
+  docs: {
+    background: CADoc;
+    floating: CADoc;
+  };
+};
+
 const STORAGE_PREFIX = "caplayground-project:";
 const genId = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 
 export type EditorContextValue = {
   doc: ProjectDocument | null;
   setDoc: React.Dispatch<React.SetStateAction<ProjectDocument | null>>;
+  activeCA: 'background' | 'floating';
+  setActiveCA: (v: 'background' | 'floating') => void;
   addTextLayer: () => void;
   addImageLayer: (src?: string) => void;
   addImageLayerFromFile: (file: File) => Promise<void>;
@@ -43,6 +53,10 @@ export type EditorContextValue = {
   setActiveState: (state: 'Base State' | 'Locked' | 'Unlock' | 'Sleep') => void;
   updateStateOverride: (targetId: string, keyPath: 'position.x' | 'position.y' | 'opacity', value: number) => void;
   updateStateOverrideTransient: (targetId: string, keyPath: 'position.x' | 'position.y' | 'opacity', value: number) => void;
+  isAnimationPlaying: boolean;
+  setIsAnimationPlaying: React.Dispatch<React.SetStateAction<boolean>>;
+  animatedLayers: AnyLayer[];
+  setAnimatedLayers: React.Dispatch<React.SetStateAction<AnyLayer[]>>;
 };
 
 const EditorContext = createContext<EditorContextValue | undefined>(undefined);
@@ -67,6 +81,12 @@ export function EditorProvider({
     data: AnyLayer[];
     assets?: Record<string, { filename: string; dataURL: string }>;
   } | null>(null);
+  
+  const [isAnimationPlaying, setIsAnimationPlaying] = useState(false);
+  const [animatedLayers, setAnimatedLayers] = useState<AnyLayer[]>([]);
+
+  const currentKey = doc?.activeCA ?? 'floating';
+  const currentDoc: CADoc | null = doc ? doc.docs[currentKey] : null;
 
   const pushHistory = useCallback((prev: ProjectDocument) => {
     pastRef.current.push(JSON.parse(JSON.stringify(prev)) as ProjectDocument);
@@ -109,14 +129,67 @@ export function EditorProvider({
     if (doc !== null) return;
     const fixedStates = ["Locked", "Unlock", "Sleep"] as const;
     if (storedDoc) {
-      const next: ProjectDocument = {
-        ...(storedDoc as any),
-        states: [...fixedStates],
-        activeState: (storedDoc as any).activeState || 'Base State',
-        stateOverrides: (storedDoc as any).stateOverrides || {},
-        stateTransitions: (storedDoc as any).stateTransitions || [],
-      } as ProjectDocument;
-      setDoc(next);
+      const anyDoc: any = storedDoc as any;
+      const isOldShape = Array.isArray((anyDoc as any).layers);
+      if (isOldShape) {
+        const migrated: ProjectDocument = {
+          meta: {
+            id: anyDoc.meta?.id ?? initialMeta.id,
+            name: anyDoc.meta?.name ?? initialMeta.name,
+            width: anyDoc.meta?.width ?? initialMeta.width,
+            height: anyDoc.meta?.height ?? initialMeta.height,
+            background: anyDoc.meta?.background ?? initialMeta.background ?? "#e5e7eb",
+          },
+          activeCA: 'floating',
+          docs: {
+            background: {
+              layers: [],
+              selectedId: null,
+              assets: {},
+              states: [...fixedStates],
+              activeState: 'Base State',
+              stateOverrides: {},
+              stateTransitions: [],
+            },
+            floating: {
+              layers: (anyDoc.layers as AnyLayer[]) || [],
+              selectedId: anyDoc.selectedId ?? null,
+              assets: anyDoc.assets || {},
+              states: [...fixedStates],
+              activeState: (anyDoc.activeState as any) || 'Base State',
+              stateOverrides: anyDoc.stateOverrides || {},
+              stateTransitions: anyDoc.stateTransitions || [],
+            },
+          },
+        };
+        setDoc(migrated);
+      } else {
+        const next: ProjectDocument = {
+          ...(storedDoc as ProjectDocument),
+          activeCA: (storedDoc as any).activeCA || 'floating',
+          docs: {
+            background: {
+              states: [...fixedStates],
+              activeState: ((storedDoc as any).docs?.background?.activeState as any) || 'Base State',
+              stateOverrides: (storedDoc as any).docs?.background?.stateOverrides || {},
+              stateTransitions: (storedDoc as any).docs?.background?.stateTransitions || [],
+              layers: (storedDoc as any).docs?.background?.layers || [],
+              selectedId: (storedDoc as any).docs?.background?.selectedId ?? null,
+              assets: (storedDoc as any).docs?.background?.assets || {},
+            },
+            floating: {
+              states: [...fixedStates],
+              activeState: ((storedDoc as any).docs?.floating?.activeState as any) || 'Base State',
+              stateOverrides: (storedDoc as any).docs?.floating?.stateOverrides || {},
+              stateTransitions: (storedDoc as any).docs?.floating?.stateTransitions || [],
+              layers: (storedDoc as any).docs?.floating?.layers || [],
+              selectedId: (storedDoc as any).docs?.floating?.selectedId ?? null,
+              assets: (storedDoc as any).docs?.floating?.assets || {},
+            },
+          },
+        } as ProjectDocument;
+        setDoc(next);
+      }
     } else {
       setDoc({
         meta: {
@@ -126,13 +199,27 @@ export function EditorProvider({
           height: initialMeta.height,
           background: initialMeta.background ?? "#e5e7eb",
         },
-        layers: [],
-        selectedId: null,
-        assets: {},
-        states: [...fixedStates],
-        activeState: 'Base State',
-        stateOverrides: {},
-        stateTransitions: [],
+        activeCA: 'floating',
+        docs: {
+          background: {
+            layers: [],
+            selectedId: null,
+            assets: {},
+            states: ["Locked", "Unlock", "Sleep"],
+            activeState: 'Base State',
+            stateOverrides: {},
+            stateTransitions: [],
+          },
+          floating: {
+            layers: [],
+            selectedId: null,
+            assets: {},
+            states: ["Locked", "Unlock", "Sleep"],
+            activeState: 'Base State',
+            stateOverrides: {},
+            stateTransitions: [],
+          },
+        },
       });
     }
   }, [doc, storedDoc, initialMeta.id]);
@@ -154,8 +241,10 @@ export function EditorProvider({
   const selectLayer = useCallback((id: string | null) => {
     setDoc((prev) => {
       if (!prev) return prev;
+      const key = prev.activeCA;
+      const nextDocs = { ...prev.docs, [key]: { ...prev.docs[key], selectedId: id } };
       pushHistory(prev);
-      return { ...prev, selectedId: id };
+      return { ...prev, docs: nextDocs } as ProjectDocument;
     });
   }, []);
 
@@ -180,7 +269,10 @@ export function EditorProvider({
         fontSize: 16,
         align: "left",
       };
-      return { ...prev, layers: [...prev.layers, layer], selectedId: layer.id };
+      const key = prev.activeCA;
+      const cur = prev.docs[key];
+      const next = { ...cur, layers: [...cur.layers, layer], selectedId: layer.id };
+      return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
   }, [addBase]);
 
@@ -201,9 +293,12 @@ export function EditorProvider({
         src: dataURL,
         fit: "fill",
       };
-      const assets = { ...(prev.assets || {}) };
+      const key = prev.activeCA;
+      const cur = prev.docs[key];
+      const assets = { ...(cur.assets || {}) };
       assets[layer.id] = { filename: sanitizeFilename(filename || `pasted-${Date.now()}.png`), dataURL };
-      return { ...prev, layers: [...prev.layers, layer], selectedId: layer.id, assets };
+      const next = { ...cur, layers: [...cur.layers, layer], selectedId: layer.id, assets };
+      return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
   }, [addBase]);
 
@@ -218,7 +313,9 @@ export function EditorProvider({
       if (!prev) return prev;
       pushHistory(prev);
       const filename = sanitizeFilename(file.name) || `image-${Date.now()}.png`;
-      const assets = { ...(prev.assets || {}) };
+      const key = prev.activeCA;
+      const cur = prev.docs[key];
+      const assets = { ...(cur.assets || {}) };
       assets[layerId] = { filename, dataURL };
       const updateRec = (layers: AnyLayer[]): AnyLayer[] =>
         layers.map((l) => {
@@ -230,7 +327,8 @@ export function EditorProvider({
           }
           return l;
         });
-      return { ...prev, assets, layers: updateRec(prev.layers) };
+      const next = { ...cur, assets, layers: updateRec(cur.layers) };
+      return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
   }, []);
 
@@ -245,7 +343,10 @@ export function EditorProvider({
         src: src ?? "https://placehold.co/200x120/png",
         fit: "fill",
       };
-      return { ...prev, layers: [...prev.layers, layer], selectedId: layer.id };
+      const key = prev.activeCA;
+      const cur = prev.docs[key];
+      const next = { ...cur, layers: [...cur.layers, layer], selectedId: layer.id };
+      return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
   }, [addBase]);
 
@@ -266,9 +367,12 @@ export function EditorProvider({
         src: dataURL,
         fit: "fill",
       };
-      const assets = { ...(prev.assets || {}) };
+      const key = prev.activeCA;
+      const cur = prev.docs[key];
+      const assets = { ...(cur.assets || {}) };
       assets[layer.id] = { filename: sanitizeFilename(file.name) || `image-${Date.now()}.png`, dataURL };
-      return { ...prev, layers: [...prev.layers, layer], selectedId: layer.id, assets };
+      const next = { ...cur, layers: [...cur.layers, layer], selectedId: layer.id, assets };
+      return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
   }, [addBase]);
 
@@ -295,7 +399,10 @@ export function EditorProvider({
         fill: "#60a5fa",
         radius: shape === "rounded-rect" ? 8 : undefined,
       };
-      return { ...prev, layers: [...prev.layers, layer], selectedId: layer.id };
+      const key = prev.activeCA;
+      const cur = prev.docs[key];
+      const next = { ...cur, layers: [...cur.layers, layer], selectedId: layer.id };
+      return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
   }, [addBase]);
 
@@ -335,10 +442,12 @@ export function EditorProvider({
   const updateLayer = useCallback((id: string, patch: Partial<AnyLayer>) => {
     setDoc((prev) => {
       if (!prev) return prev;
-      if (prev.activeState && prev.activeState !== 'Base State') {
+      const key = prev.activeCA;
+      const cur = prev.docs[key];
+      if (cur.activeState && cur.activeState !== 'Base State') {
         const p: any = patch;
-        const nextState = { ...(prev.stateOverrides || {}) } as Record<string, Array<{ targetId: string; keyPath: string; value: number | string }>>;
-        const list = [...(nextState[prev.activeState] || [])];
+        const nextState = { ...(cur.stateOverrides || {}) } as Record<string, Array<{ targetId: string; keyPath: string; value: number | string }>>;
+        const list = [...(nextState[cur.activeState] || [])];
         const upd = (keyPath: 'position.x' | 'position.y' | 'opacity' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z', value: number) => {
           const idx = list.findIndex((o) => o.targetId === id && o.keyPath === keyPath);
           if (idx >= 0) list[idx] = { ...list[idx], value };
@@ -350,15 +459,15 @@ export function EditorProvider({
         if (p.size && typeof p.size.h === 'number') upd('bounds.size.height', p.size.h);
         if (typeof p.rotation === 'number') upd('transform.rotation.z', p.rotation as number);
         if (typeof p.opacity === 'number') upd('opacity', p.opacity as number);
-        nextState[prev.activeState] = list;
+        nextState[cur.activeState] = list;
         pushHistory(prev);
-        return { ...prev, stateOverrides: nextState } as ProjectDocument;
+        const nextCur = { ...cur, stateOverrides: nextState } as CADoc;
+        return { ...prev, docs: { ...prev.docs, [key]: nextCur } } as ProjectDocument;
       }
       pushHistory(prev);
-      return {
-        ...prev,
-        layers: updateInTree(prev.layers, id, patch),
-      };
+      const nextLayers = updateInTree(cur.layers, id, patch);
+      const nextCur = { ...cur, layers: nextLayers };
+      return { ...prev, docs: { ...prev.docs, [key]: nextCur } } as ProjectDocument;
     });
   }, [updateInTree]);
 
@@ -366,10 +475,12 @@ export function EditorProvider({
     skipPersistRef.current = true;
     setDoc((prev) => {
       if (!prev) return prev;
-      if (prev.activeState && prev.activeState !== 'Base State') {
+      const key = prev.activeCA;
+      const cur = prev.docs[key];
+      if (cur.activeState && cur.activeState !== 'Base State') {
         const p: any = patch;
-        const nextState = { ...(prev.stateOverrides || {}) } as Record<string, Array<{ targetId: string; keyPath: string; value: number | string }>>;
-        const list = [...(nextState[prev.activeState] || [])];
+        const nextState = { ...(cur.stateOverrides || {}) } as Record<string, Array<{ targetId: string; keyPath: string; value: number | string }>>;
+        const list = [...(nextState[cur.activeState] || [])];
         const upd = (keyPath: 'position.x' | 'position.y' | 'opacity' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z', value: number) => {
           const idx = list.findIndex((o) => o.targetId === id && o.keyPath === keyPath);
           if (idx >= 0) list[idx] = { ...list[idx], value };
@@ -381,13 +492,13 @@ export function EditorProvider({
         if (p.size && typeof p.size.h === 'number') upd('bounds.size.height', p.size.h);
         if (typeof p.rotation === 'number') upd('transform.rotation.z', p.rotation as number);
         if (typeof p.opacity === 'number') upd('opacity', p.opacity as number);
-        nextState[prev.activeState] = list;
-        return { ...prev, stateOverrides: nextState } as ProjectDocument;
+        nextState[cur.activeState] = list;
+        const nextCur = { ...cur, stateOverrides: nextState } as CADoc;
+        return { ...prev, docs: { ...prev.docs, [key]: nextCur } } as ProjectDocument;
       }
-      return {
-        ...prev,
-        layers: updateInTree(prev.layers, id, patch),
-      };
+      const nextLayers = updateInTree(cur.layers, id, patch);
+      const nextCur = { ...cur, layers: nextLayers };
+      return { ...prev, docs: { ...prev.docs, [key]: nextCur } } as ProjectDocument;
     });
   }, [updateInTree]);
 
@@ -395,21 +506,25 @@ export function EditorProvider({
     setDoc((prev) => {
       if (!prev) return prev;
       pushHistory(prev);
-      const nextLayers = deleteInTree(prev.layers, id);
-      const nextSelected = prev.selectedId === id || (prev.selectedId ? !containsId(nextLayers, prev.selectedId) : false) ? null : prev.selectedId;
-      return { ...prev, layers: nextLayers, selectedId: nextSelected };
+      const key = prev.activeCA;
+      const cur = prev.docs[key];
+      const nextLayers = deleteInTree(cur.layers, id);
+      const nextSelected = cur.selectedId === id || (cur.selectedId ? !containsId(nextLayers, cur.selectedId) : false) ? null : cur.selectedId;
+      const nextCur = { ...cur, layers: nextLayers, selectedId: nextSelected };
+      return { ...prev, docs: { ...prev.docs, [key]: nextCur } } as ProjectDocument;
     });
   }, [deleteInTree, containsId]);
 
   const copySelectedLayer = useCallback(() => {
     setDoc((prev) => {
       if (!prev) return prev;
-      const sel = findById(prev.layers, prev.selectedId ?? null);
+      const cur = prev.docs[prev.activeCA];
+      const sel = findById(cur.layers, cur.selectedId ?? null);
       if (!sel) return prev;
       const images: Record<string, { filename: string; dataURL: string }> = {};
       const walk = (l: AnyLayer) => {
         if (l.type === 'image') {
-          const a = (prev.assets || {})[l.id];
+          const a = (cur.assets || {})[l.id];
           if (a) images[l.id] = { ...a };
         } else if (l.type === 'group') {
           (l as GroupLayer).children.forEach(walk);
@@ -427,6 +542,8 @@ export function EditorProvider({
   const pasteFromClipboard = useCallback((payload?: any) => {
     setDoc((prev) => {
       if (!prev) return prev;
+      const key = prev.activeCA;
+      const cur = prev.docs[key];
       const src = payload && payload.__caplay__ ? payload : clipboardRef.current;
       if (!src || src.type !== 'layers') return prev;
       const cloned: AnyLayer[] = (src.data || []).map(cloneLayerDeep);
@@ -444,28 +561,31 @@ export function EditorProvider({
         }
       };
       collectMap(src.data as AnyLayer[], cloned);
-      const assets = { ...(prev.assets || {}) };
+      const assets = { ...(cur.assets || {}) };
       const srcAssets = ((src as any).assets || {}) as Record<string, { filename: string; dataURL: string }>;
       for (const [oldId, asset] of Object.entries(srcAssets) as Array<[string, { filename: string; dataURL: string }]>) {
         const newId = idMap.get(oldId);
         if (newId) assets[newId] = { filename: asset.filename, dataURL: asset.dataURL };
       }
       pushHistory(prev);
-      return { ...prev, layers: [...prev.layers, ...cloned], selectedId: cloned[cloned.length - 1]?.id ?? prev.selectedId, assets };
+      const next = { ...cur, layers: [...cur.layers, ...cloned], selectedId: cloned[cloned.length - 1]?.id ?? cur.selectedId, assets };
+      return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
   }, [cloneLayerDeep, pushHistory]);
 
   const duplicateLayer = useCallback((id?: string) => {
     setDoc((prev) => {
       if (!prev) return prev;
-      const targetId = id || prev.selectedId || null;
+      const key = prev.activeCA;
+      const cur = prev.docs[key];
+      const targetId = id || cur.selectedId || null;
       if (!targetId) return prev;
-      const sel = findById(prev.layers, targetId);
+      const sel = findById(cur.layers, targetId);
       if (!sel) return prev;
       const images: Record<string, { filename: string; dataURL: string }> = {};
       const walk = (l: AnyLayer) => {
         if (l.type === 'image') {
-          const a = (prev.assets || {})[l.id];
+          const a = (cur.assets || {})[l.id];
           if (a) images[l.id] = { ...a };
         } else if (l.type === 'group') {
           (l as GroupLayer).children.forEach(walk);
@@ -473,7 +593,7 @@ export function EditorProvider({
       };
       walk(sel);
       const cloned = cloneLayerDeep(sel);
-      const assets = { ...(prev.assets || {}) };
+      const assets = { ...(cur.assets || {}) };
       const idMap = new Map<string, string>();
       const buildMap = (o: AnyLayer, c: AnyLayer) => {
         idMap.set((o as any).id, (c as any).id);
@@ -489,7 +609,8 @@ export function EditorProvider({
         if (newId) assets[newId] = { filename: asset.filename, dataURL: asset.dataURL };
       }
       pushHistory(prev);
-      return { ...prev, layers: [...prev.layers, cloned], selectedId: (cloned as any).id, assets };
+      const next = { ...cur, layers: [...cur.layers, cloned], selectedId: (cloned as any).id, assets };
+      return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
   }, [findById, cloneLayerDeep]);
 
@@ -530,23 +651,29 @@ export function EditorProvider({
   const setActiveState = useCallback((state: 'Base State' | 'Locked' | 'Unlock' | 'Sleep') => {
     setDoc((prev) => {
       if (!prev) return prev;
-      return { ...prev, activeState: state };
+      const key = prev.activeCA;
+      const cur = prev.docs[key];
+      const next = { ...cur, activeState: state };
+      return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
   }, []);
 
   const updateStateOverride = useCallback((targetId: string, keyPath: 'position.x' | 'position.y' | 'opacity', value: number) => {
     setDoc((prev) => {
       if (!prev) return prev;
-      const state = prev.activeState && prev.activeState !== 'Base State' ? prev.activeState : null;
+      const key = prev.activeCA;
+      const cur = prev.docs[key];
+      const state = cur.activeState && cur.activeState !== 'Base State' ? cur.activeState : null;
       if (!state) return prev;
-      const next = { ...(prev.stateOverrides || {}) } as Record<string, Array<{ targetId: string; keyPath: string; value: number | string }>>;
+      const next = { ...(cur.stateOverrides || {}) } as Record<string, Array<{ targetId: string; keyPath: string; value: number | string }>>;
       const list = [...(next[state] || [])];
       const idx = list.findIndex((o) => o.targetId === targetId && o.keyPath === keyPath);
       if (idx >= 0) list[idx] = { ...list[idx], value };
       else list.push({ targetId, keyPath, value });
       next[state] = list;
       pushHistory(prev);
-      return { ...prev, stateOverrides: next } as ProjectDocument;
+      const nextCur = { ...cur, stateOverrides: next } as CADoc;
+      return { ...prev, docs: { ...prev.docs, [key]: nextCur } } as ProjectDocument;
     });
   }, [pushHistory]);
 
@@ -554,21 +681,26 @@ export function EditorProvider({
     skipPersistRef.current = true;
     setDoc((prev) => {
       if (!prev) return prev;
-      const state = prev.activeState && prev.activeState !== 'Base State' ? prev.activeState : null;
+      const key = prev.activeCA;
+      const cur = prev.docs[key];
+      const state = cur.activeState && cur.activeState !== 'Base State' ? cur.activeState : null;
       if (!state) return prev;
-      const next = { ...(prev.stateOverrides || {}) } as Record<string, Array<{ targetId: string; keyPath: string; value: number | string }>>;
+      const next = { ...(cur.stateOverrides || {}) } as Record<string, Array<{ targetId: string; keyPath: string; value: number | string }>>;
       const list = [...(next[state] || [])];
       const idx = list.findIndex((o) => o.targetId === targetId && o.keyPath === keyPath);
       if (idx >= 0) list[idx] = { ...list[idx], value };
       else list.push({ targetId, keyPath, value });
       next[state] = list;
-      return { ...prev, stateOverrides: next } as ProjectDocument;
+      const nextCur = { ...cur, stateOverrides: next } as CADoc;
+      return { ...prev, docs: { ...prev.docs, [key]: nextCur } } as ProjectDocument;
     });
   }, []);
 
   const value = useMemo<EditorContextValue>(() => ({
     doc,
     setDoc,
+    activeCA: doc?.activeCA ?? 'floating',
+    setActiveCA: (v) => setDoc((prev) => prev ? ({ ...prev, activeCA: v }) : prev),
     addTextLayer,
     addImageLayer,
     addImageLayerFromFile,
@@ -591,7 +723,11 @@ export function EditorProvider({
     setActiveState,
     updateStateOverride,
     updateStateOverrideTransient,
-  }), [doc, addTextLayer, addImageLayer, addImageLayerFromFile, replaceImageForLayer, addShapeLayer, updateLayer, updateLayerTransient, selectLayer, deleteLayer, persist, undo, redo, addState, renameState, deleteState, setActiveState, updateStateOverride, updateStateOverrideTransient]);
+    isAnimationPlaying,
+    setIsAnimationPlaying,
+    animatedLayers,
+    setAnimatedLayers,
+  }), [doc, addTextLayer, addImageLayer, addImageLayerFromFile, replaceImageForLayer, addShapeLayer, updateLayer, updateLayerTransient, selectLayer, deleteLayer, persist, undo, redo, addState, renameState, deleteState, setActiveState, updateStateOverride, updateStateOverrideTransient, isAnimationPlaying, animatedLayers]);
 
   return <EditorContext.Provider value={value}>{children}</EditorContext.Provider>;
 }

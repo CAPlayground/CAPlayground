@@ -27,20 +27,20 @@ export default function RoadmapPage() {
           <RoadmapItem index={2} title="Projects and Base Editor" status={<Badge>Done: 24th August, 2025</Badge>}>
             Projects page, base editor, and create .ca files.
           </RoadmapItem>
-          <RoadmapItem index={3} title="Viewing and Editing Layers" status={<Badge variant="secondary">In Progress</Badge>}>
-            Viewing and Editing layers in a Core Animation file.
+          <RoadmapItem index={3} title="Viewing and Editing Layers" status={<Badge variant="secondary">Delayed, In progress</Badge>}>
+            Viewing and Editing layers of a imported Core Animation file.
           </RoadmapItem>
-          <RoadmapItem index={4} title="Core Animation Layer Properties" status={<Badge variant="secondary">In Progress</Badge>}>
+          <RoadmapItem index={4} title="Core Animation Layer Properties" status={<Badge>Done: 5th August, 2025</Badge>}>
             Adjusting position, bounds, opacity, rotation, and more of layers.
           </RoadmapItem>
-          <RoadmapItem index={5} title="Creating Animations, Viewing and Editing States" status={<Badge variant="outline">Not Started</Badge>}>
-            Creating state transitions and basic animations.
+          <RoadmapItem index={5} title="Creating Animations, Viewing and Editing States" status={<Badge>Done: 15th August, 2025</Badge>}>
+            Creating state transitions and keyframe animations.
           </RoadmapItem>
-          <RoadmapItem index={6} title="CAPlayground App" status={<Badge variant="outline">Not Started</Badge>}>
+          <RoadmapItem index={6} title="CAPlayground App" status={<Badge variant="outline">Starting Soon</Badge>}>
             CAPlayground app to work inside an app.
           </RoadmapItem>
           <RoadmapItem index={7} title="Continue with Improvements" status={<Badge variant="outline">Not Started</Badge>}>
-            Continue with improvements and features to perfect CAPlayground.
+            Continue with improvements and features to perfect CAPlayground. This includes more inspector functionality, animations, and layer types.
           </RoadmapItem>
         </div>
       </section>

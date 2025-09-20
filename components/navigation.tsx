@@ -12,6 +12,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
 
 export function Navigation() {
@@ -186,6 +188,7 @@ export function Navigation() {
                 Projects <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </Link>
+            
             <Button
               variant="ghost"
               size="icon"

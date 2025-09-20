@@ -14,7 +14,7 @@ import type { AnyLayer } from "@/lib/ca/types";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 export function Inspector() {
-  const { doc, updateLayer, replaceImageForLayer } = useEditor();
+  const { doc, updateLayer, updateLayerTransient, replaceImageForLayer, isAnimationPlaying, animatedLayers } = useEditor();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const round2 = (n: number) => Math.round(n * 100) / 100;
   const fmt2 = (n: number | undefined) => (typeof n === 'number' && Number.isFinite(n) ? round2(n).toFixed(2) : "");
@@ -30,7 +30,14 @@ export function Inspector() {
     }
     return undefined;
   };
-  const selectedBase = doc ? findById(doc.layers, doc.selectedId) : undefined;
+  const key = doc?.activeCA ?? 'floating';
+  const current = doc?.docs?.[key];
+  const selectedBase = current ? findById(current.layers, current.selectedId) : undefined;
+  
+  const selectedAnimated = useMemo(() => {
+    if (!isAnimationPlaying || !animatedLayers.length || !current?.selectedId) return null;
+    return findById(animatedLayers, current.selectedId);
+  }, [isAnimationPlaying, animatedLayers, current?.selectedId]);
 
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const selKey = selectedBase ? selectedBase.id : "__none__";
@@ -54,11 +61,14 @@ export function Inspector() {
     });
   };
   const selected = (() => {
-    if (!doc || !selectedBase) return selectedBase;
-    const state = doc.activeState;
+    if (!current || !selectedBase) return selectedBase;
+
+    if (selectedAnimated) return selectedAnimated;
+    
+    const state = current.activeState;
     if (!state || state === 'Base State') return selectedBase;
     const eff: AnyLayer = JSON.parse(JSON.stringify(selectedBase));
-    const ovs = (doc.stateOverrides || {})[state] || [];
+    const ovs = (current.stateOverrides || {})[state] || [];
     const me = ovs.filter(o => o.targetId === eff.id);
     for (const o of me) {
       const kp = (o.keyPath || '').toLowerCase();
@@ -74,6 +84,27 @@ export function Inspector() {
   })();
 
   const animEnabled: boolean = !!(selectedBase as any)?.animations?.enabled;
+  
+  const {
+    disablePosX,
+    disablePosY,
+    disableRotX,
+    disableRotY,
+    disableRotZ,
+  } = useMemo(() => {
+    const a: any = (selectedBase as any)?.animations || {};
+    const enabled = !!a.enabled;
+    const kp: string = a.keyPath || '';
+    const hasValues = Array.isArray(a.values) && a.values.length > 0;
+    const on = (cond: boolean) => enabled && hasValues && cond;
+    return {
+      disablePosX: on(kp === 'position' || kp === 'position.x'),
+      disablePosY: on(kp === 'position' || kp === 'position.y'),
+      disableRotX: on(kp === 'transform.rotation.x'),
+      disableRotY: on(kp === 'transform.rotation.y'),
+      disableRotZ: on(kp === 'transform.rotation.z'),
+    };
+  }, [selectedBase]);
 
   if (!selected) {
     return (
@@ -88,7 +119,7 @@ export function Inspector() {
     <Card className="p-3 h-full flex flex-col overflow-hidden">
       <div className="font-medium mb-2 shrink-0">Inspector</div>
       <div className="min-h-0 overflow-y-auto pr-1">
-      {doc?.activeState && doc.activeState !== 'Base State' && (
+      {current?.activeState && current.activeState !== 'Base State' && (
         <Alert className="text-xs">
           <AlertDescription>
             Note: Rotation and Bound state transitions don't work when tested. If you know a fix or it just works for you, please report in the CAPlayground Discord server.
@@ -100,13 +131,28 @@ export function Inspector() {
         <AccordionItem value="geom">
           <AccordionTrigger className="py-2 text-xs">Geometry</AccordionTrigger>
           <AccordionContent className="pb-2">
+            {(disablePosX || disablePosY || disableRotX || disableRotY || disableRotZ) && (
+              <Alert className="mb-3">
+                <AlertDescription className="text-xs">
+                  Position and rotation fields are disabled because this layer has keyframe animations enabled. The values shown update live during playback.
+                </AlertDescription>
+              </Alert>
+            )}
             <div className="grid grid-cols-2 gap-1.5">
         <div className="space-y-1">
           <Label htmlFor="pos-x">X</Label>
           <Input id="pos-x" type="number" step="0.01" value={getBuf('pos-x', fmt2(selected.position.x))}
+            disabled={disablePosX}
             onChange={(e) => {
               setBuf('pos-x', e.target.value);
+              const v = e.target.value.trim();
+              if (v === "") return;
+              const num = round2(Number(v));
+              if (Number.isFinite(num)) {
+                updateLayerTransient(selected.id, { position: { ...selected.position, x: num } as any });
+              }
             }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
             onBlur={(e) => {
               const v = e.target.value.trim();
               const num = v === "" ? 0 : round2(Number(v));
@@ -117,9 +163,17 @@ export function Inspector() {
         <div className="space-y-1">
           <Label htmlFor="pos-y">Y</Label>
           <Input id="pos-y" type="number" step="0.01" value={getBuf('pos-y', fmt2(selected.position.y))}
+            disabled={disablePosY}
             onChange={(e) => {
               setBuf('pos-y', e.target.value);
+              const v = e.target.value.trim();
+              if (v === "") return;
+              const num = round2(Number(v));
+              if (Number.isFinite(num)) {
+                updateLayerTransient(selected.id, { position: { ...selected.position, y: num } as any });
+              }
             }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
             onBlur={(e) => {
               const v = e.target.value.trim();
               const num = v === "" ? 0 : round2(Number(v));
@@ -130,7 +184,16 @@ export function Inspector() {
         <div className="space-y-1">
           <Label htmlFor="w">Width</Label>
           <Input id="w" type="number" step="0.01" value={getBuf('w', fmt2(selected.size.w))}
-            onChange={(e) => setBuf('w', e.target.value)}
+            onChange={(e) => {
+              setBuf('w', e.target.value);
+              const v = e.target.value.trim();
+              if (v === "") return;
+              const num = round2(Number(v));
+              if (Number.isFinite(num)) {
+                updateLayerTransient(selected.id, { size: { ...selected.size, w: num } as any });
+              }
+            }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
             onBlur={(e) => {
               const v = e.target.value.trim();
               const num = v === "" ? 50 : round2(Number(v));
@@ -141,7 +204,16 @@ export function Inspector() {
         <div className="space-y-1">
           <Label htmlFor="h">Height</Label>
           <Input id="h" type="number" step="0.01" value={getBuf('h', fmt2(selected.size.h))}
-            onChange={(e) => setBuf('h', e.target.value)}
+            onChange={(e) => {
+              setBuf('h', e.target.value);
+              const v = e.target.value.trim();
+              if (v === "") return;
+              const num = round2(Number(v));
+              if (Number.isFinite(num)) {
+                updateLayerTransient(selected.id, { size: { ...selected.size, h: num } as any });
+              }
+            }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
             onBlur={(e) => {
               const v = e.target.value.trim();
               const num = v === "" ? 50 : round2(Number(v));
@@ -150,20 +222,81 @@ export function Inspector() {
             }} />
         </div>
         <div className="space-y-1 col-span-2">
-          <Label htmlFor="rotation">Rotation (deg)</Label>
-          <Input
-            id="rotation"
-            type="number"
-            step="1"
-            value={getBuf('rotation', fmt0(selected.rotation))}
-            onChange={(e) => setBuf('rotation', e.target.value)}
-            onBlur={(e) => {
-              const v = e.target.value.trim();
-              const num = v === "" ? 0 : Math.round(Number(v));
-              updateLayer(selected.id, { rotation: num as any });
-              clearBuf('rotation');
-            }}
-          />
+          <Label>Rotation (deg)</Label>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="space-y-1">
+              <Label htmlFor="rotation-x" className="text-xs">X</Label>
+              <Input
+                id="rotation-x"
+                type="number"
+                step="1"
+                value={getBuf('rotationX', fmt0((selected as any).rotationX))}
+                disabled={disableRotX}
+                onChange={(e) => {
+                  setBuf('rotationX', e.target.value);
+                  const v = e.target.value.trim();
+                  if (v === "") return;
+                  const num = Math.round(Number(v));
+                  if (Number.isFinite(num)) updateLayerTransient(selected.id, { rotationX: num as any } as any);
+                }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  const num = v === "" ? 0 : Math.round(Number(v));
+                  updateLayer(selected.id, { rotationX: num as any } as any);
+                  clearBuf('rotationX');
+                }}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="rotation-y" className="text-xs">Y</Label>
+              <Input
+                id="rotation-y"
+                type="number"
+                step="1"
+                value={getBuf('rotationY', fmt0((selected as any).rotationY))}
+                disabled={disableRotY}
+                onChange={(e) => {
+                  setBuf('rotationY', e.target.value);
+                  const v = e.target.value.trim();
+                  if (v === "") return;
+                  const num = Math.round(Number(v));
+                  if (Number.isFinite(num)) updateLayerTransient(selected.id, { rotationY: num as any } as any);
+                }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  const num = v === "" ? 0 : Math.round(Number(v));
+                  updateLayer(selected.id, { rotationY: num as any } as any);
+                  clearBuf('rotationY');
+                }}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="rotation-z" className="text-xs">Z</Label>
+              <Input
+                id="rotation-z"
+                type="number"
+                step="1"
+                value={getBuf('rotation', fmt0(selected.rotation))}
+                disabled={disableRotZ}
+                onChange={(e) => {
+                  setBuf('rotation', e.target.value);
+                  const v = e.target.value.trim();
+                  if (v === "") return;
+                  const num = Math.round(Number(v));
+                  if (Number.isFinite(num)) updateLayerTransient(selected.id, { rotation: num as any });
+                }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  const num = v === "" ? 0 : Math.round(Number(v));
+                  updateLayer(selected.id, { rotation: num as any });
+                  clearBuf('rotation');
+                }}
+              />
+            </div>
+          </div>
         </div>
             </div>
           </AccordionContent>
@@ -206,7 +339,14 @@ export function Inspector() {
               type="number"
               step="1"
               value={getBuf('cornerRadius', fmt0((selected as any).cornerRadius ?? (selected as any).radius))}
-              onChange={(e) => setBuf('cornerRadius', e.target.value)}
+              onChange={(e) => {
+                setBuf('cornerRadius', e.target.value);
+                const v = e.target.value.trim();
+                if (v === "") return;
+                const num = Math.round(Number(v));
+                if (Number.isFinite(num)) updateLayerTransient(selected.id, { cornerRadius: num as any } as any);
+              }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
               onBlur={(e) => {
                 const v = e.target.value.trim();
                 const num = v === "" ? 0 : Math.round(Number(v));
@@ -383,7 +523,7 @@ export function Inspector() {
                     value={((selectedBase as any)?.animations?.keyPath ?? 'position') as any}
                     onValueChange={(v) => {
                       const current = (selectedBase as any)?.animations || {};
-                      const kp = v as 'position' | 'position.x' | 'position.y';
+                      const kp = v as 'position' | 'position.x' | 'position.y' | 'transform.rotation.x' | 'transform.rotation.y' | 'transform.rotation.z';
                       const prevVals = (current.values || []) as Array<{ x: number; y: number } | number>;
                       let values: Array<{ x: number; y: number } | number> = [];
                       if (kp === 'position') {
@@ -397,9 +537,13 @@ export function Inspector() {
                         values = prevVals.map((pv: any) => typeof pv === 'number' ? pv : Number(pv?.x ?? (selectedBase as any).position?.x ?? 0));
                       } else if (kp === 'position.y') {
                         values = prevVals.map((pv: any) => typeof pv === 'number' ? pv : Number(pv?.y ?? (selectedBase as any).position?.y ?? 0));
+                      } else if (kp === 'transform.rotation.z' || kp === 'transform.rotation.x' || kp === 'transform.rotation.y') {
+                        const fallback = (kp === 'transform.rotation.z') ? Number((selectedBase as any)?.rotation ?? 0) : 0;
+                        values = prevVals.map((pv: any) => typeof pv === 'number' ? pv : fallback);
                       }
                       updateLayer(selectedBase!.id, { animations: { ...current, keyPath: kp, values } } as any);
                     }}
+                    disabled={!animEnabled}
                   >
                     <SelectTrigger className="h-8 text-xs">
                       <SelectValue placeholder="Select key path" />
@@ -408,6 +552,9 @@ export function Inspector() {
                       <SelectItem value="position">position</SelectItem>
                       <SelectItem value="position.x">position.x</SelectItem>
                       <SelectItem value="position.y">position.y</SelectItem>
+                      <SelectItem value="transform.rotation.x">transform.rotation.x</SelectItem>
+                      <SelectItem value="transform.rotation.y">transform.rotation.y</SelectItem>
+                      <SelectItem value="transform.rotation.z">transform.rotation.z</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -450,14 +597,21 @@ export function Inspector() {
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label>Values (CGPoint)</Label>
+                  <Label>
+                    {(() => {
+                      const kp = ((selectedBase as any)?.animations?.keyPath ?? 'position') as string;
+                      if (kp.startsWith('transform.rotation')) return 'Values (Degrees)';
+                      if (kp === 'position') return 'Values (CGPoint)';
+                      return 'Values (Number)';
+                    })()}
+                  </Label>
                   <Button
                     type="button"
                     size="sm"
                     variant="secondary"
                     onClick={() => {
                       const current = (selectedBase as any)?.animations || {};
-                      const kp = (current.keyPath ?? 'position') as 'position' | 'position.x' | 'position.y';
+                      const kp = (current.keyPath ?? 'position') as 'position' | 'position.x' | 'position.y' | 'transform.rotation.x' | 'transform.rotation.y' | 'transform.rotation.z';
                       const values = [...(current.values || [])] as any[];
                       if (kp === 'position') {
                         values.push({ x: (selectedBase as any).position?.x ?? 0, y: (selectedBase as any).position?.y ?? 0 });
@@ -465,6 +619,10 @@ export function Inspector() {
                         values.push((selectedBase as any).position?.x ?? 0);
                       } else if (kp === 'position.y') {
                         values.push((selectedBase as any).position?.y ?? 0);
+                      } else if (kp === 'transform.rotation.z') {
+                        values.push(Number((selectedBase as any)?.rotation ?? 0));
+                      } else if (kp === 'transform.rotation.x' || kp === 'transform.rotation.y') {
+                        values.push(0);
                       }
                       updateLayer(selectedBase!.id, { animations: { ...current, values } } as any);
                     }}
@@ -475,7 +633,7 @@ export function Inspector() {
                 </div>
                 <div className={`space-y-2 ${animEnabled ? '' : 'opacity-50'}`}>
                   {(() => {
-                    const kp = ((selectedBase as any)?.animations?.keyPath ?? 'position') as 'position' | 'position.x' | 'position.y';
+                    const kp = ((selectedBase as any)?.animations?.keyPath ?? 'position') as 'position' | 'position.x' | 'position.y' | 'transform.rotation.x' | 'transform.rotation.y' | 'transform.rotation.z';
                     const values = (((selectedBase as any)?.animations?.values || []) as Array<any>);
                     if (kp === 'position') {
                       return (
@@ -544,7 +702,7 @@ export function Inspector() {
                         {values.map((val, idx) => (
                           <div key={idx} className="grid grid-cols-2 gap-2 items-end">
                             <div className="space-y-1">
-                              <Label className="text-xs">{kp === 'position.x' ? 'X' : 'Y'}</Label>
+                              <Label className="text-xs">{kp === 'position.x' ? 'X' : kp === 'position.y' ? 'Y' : 'Degrees'}</Label>
                               <Input
                                 type="number"
                                 step="1"
