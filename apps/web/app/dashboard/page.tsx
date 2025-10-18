@@ -1,39 +1,21 @@
 "use client"
 
-import { useEffect, useState, Suspense } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { ArrowLeft, Cloud } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { getSupabaseBrowserClient } from "@/lib/supabase"
 import { SubmitWallpaperDialog } from "@/app/wallpapers/SubmitWallpaperDialog"
 
-function DashboardContent() {
+export default function DashboardPage() {
   const supabase = getSupabaseBrowserClient()
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [displayName, setDisplayName] = useState<string>("")
   const [username, setUsername] = useState<string>("")
   const [loading, setLoading] = useState(false)
   const [isSubmitDialogOpen, setIsSubmitDialogOpen] = useState(false)
-  const [hasGoogleLinked, setHasGoogleLinked] = useState(false)
-  const [checkingGoogle, setCheckingGoogle] = useState(true)
-  const [driveConnected, setDriveConnected] = useState(false)
-  const [deleteAllOpen, setDeleteAllOpen] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-
-  useEffect(() => {
-    const driveConnected = searchParams?.get('drive_connected');
-    const error = searchParams?.get('error');
-    
-    if (driveConnected === 'true') {
-      alert('Google Drive connected successfully! You can now upload projects.');
-    } else if (error) {
-      alert(`Drive connection error: ${error}`);
-    }
-  }, [searchParams]);
 
   useEffect(() => {
     let mounted = true
@@ -55,21 +37,6 @@ function DashboardContent() {
           .maybeSingle()
         if (mounted && profile?.username) setUsername(profile.username as string)
       } catch {}
-      
-      try {
-        const { data: identities } = await supabase.auth.getUserIdentities()
-        if (mounted && identities?.identities) {
-          const hasGoogle = identities.identities.some((identity: any) => identity.provider === 'google')
-          setHasGoogleLinked(hasGoogle)
-        }
-        
-        const hasDriveToken = meta.google_drive_access_token
-        if (mounted) setDriveConnected(!!hasDriveToken)
-      } catch (e) {
-        console.error('Failed to check Google identity:', e)
-      } finally {
-        if (mounted) setCheckingGoogle(false)
-      }
     }
     load()
     return () => { mounted = false }
@@ -82,37 +49,6 @@ function DashboardContent() {
       router.replace("/")
     } finally {
       setLoading(false)
-    }
-  }
-
-  async function handleDeleteAllCloudProjects() {
-    setDeleting(true)
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-
-      const response = await fetch('/api/drive/delete-folder', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        }
-      })
-      
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to delete cloud projects')
-      }
-
-      localStorage.removeItem('caplayground-sync')
-
-      setDeleteAllOpen(false)
-      alert('All cloud projects deleted successfully!')
-      
-    } catch (error: any) {
-      alert(`Failed to delete: ${error.message}`)
-    } finally {
-      setDeleting(false)
     }
   }
 
@@ -129,88 +65,8 @@ function DashboardContent() {
 
       <div className="w-full max-w-5xl">
         <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight">Welcome back{displayName ? `, ${displayName}` : ""}!</h1>
-        <p className="mt-6 text-muted-foreground text-lg">Manage your cloud projects and account settings.</p>
+        <p className="mt-6 text-muted-foreground text-lg">More coming soon.</p>
         <div className="mt-8 space-y-6">
-          {/* Cloud Projects */}
-          <Card className="border-border/80">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                Cloud Projects
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Sync and manage your projects in the cloud with Google Drive.
-              </p>
-              {checkingGoogle ? (
-                <p className="text-sm text-muted-foreground">Checking connection...</p>
-              ) : driveConnected ? (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 px-4 py-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
-                    <Cloud className="h-5 w-5 text-green-600 dark:text-green-500" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-green-900 dark:text-green-100">
-                        Google Drive Linked
-                      </p>
-                      <p className="text-xs text-green-700 dark:text-green-300">
-                        Your projects can be synced to the cloud
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Link href="/projects" className="flex-1">
-                      <Button variant="outline" className="w-full">
-                        Manage Projects
-                      </Button>
-                    </Link>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setDeleteAllOpen(true)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      Delete All
-                    </Button>
-                  </div>
-                </div>
-              ) : hasGoogleLinked ? (
-                <div className="space-y-3">
-                  <Button onClick={async () => {
-                    try {
-                      const response = await fetch('/api/drive/auth');
-                      const data = await response.json();
-                      if (data.authUrl) {
-                        window.location.href = data.authUrl;
-                      } else if (data.error) {
-                        alert(`Error: ${data.error}`);
-                      }
-                    } catch (error) {
-                      console.error('Failed to connect Drive:', error);
-                    }
-                  }}>
-                    <Cloud className="h-4 w-4 mr-2" />
-                    Connect Google Drive
-                  </Button>
-                  <p className="text-sm text-muted-foreground">
-                    Once connected, you can sync projects directly from the projects page.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <Button disabled className="opacity-50 cursor-not-allowed">
-                    <Cloud className="h-4 w-4 mr-2" />
-                    Connect Google Drive
-                  </Button>
-                  <p className="text-sm text-muted-foreground">
-                    ⚠️ You need to link your Google account first to use this feature.{" "}
-                    <Link href="/account" className="text-accent hover:underline font-medium">
-                      Go to Account Settings
-                    </Link>{" "}
-                    to link Google.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
           {/* Submit Wallpaper (hidden) */}
           <div className="hidden">
             <Card className="border-border/80">
@@ -264,51 +120,6 @@ function DashboardContent() {
         username={username || displayName || "Anonymous"}
         isSignedIn={true}
       />
-
-      {/* Delete All Cloud Projects Dialog */}
-      <Dialog open={deleteAllOpen} onOpenChange={setDeleteAllOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete All Cloud Projects</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <p className="text-sm text-muted-foreground">
-              This will permanently delete the entire CAPlayground folder and all projects from your Google Drive.
-            </p>
-            <div className="rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 p-3">
-              <p className="text-xs text-red-800 dark:text-red-300">
-                <strong>⚠️ Warning:</strong> This action cannot be undone. All cloud projects will be permanently deleted from Drive. Projects on your device will not be affected.
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteAllOpen(false)} disabled={deleting}>
-              Cancel
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleDeleteAllCloudProjects}
-              disabled={deleting}
-            >
-              {deleting ? 'Deleting...' : 'Delete All'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </main>
-  )
-}
-
-export default function DashboardPage() {
-  return (
-    <Suspense fallback={
-      <main className="min-h-screen px-4 py-20 flex items-start justify-center">
-        <div className="w-full max-w-5xl">
-          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight">Loading...</h1>
-        </div>
-      </main>
-    }>
-      <DashboardContent />
-    </Suspense>
   )
 }
