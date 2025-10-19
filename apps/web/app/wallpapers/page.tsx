@@ -10,8 +10,97 @@ const WALLPAPERS_JSON_URL =
 // 30 min
 export const revalidate = 1800
 
-export const metadata: Metadata = {
-  title: "CAPlayground - Wallpapers",
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: { id?: string }
+}): Promise<Metadata> {
+  const wallpaperId = searchParams.id
+
+  if (wallpaperId) {
+    try {
+      // Fetch wallpaper data
+      const wallpapersRes = await fetch(WALLPAPERS_JSON_URL, {
+        next: { revalidate },
+        headers: { Accept: "application/json" },
+      })
+      
+      if (wallpapersRes.ok) {
+        const data = (await wallpapersRes.json()) as WallpapersResponse
+        const wallpaper = data.wallpapers.find(w => w.id === wallpaperId)
+        
+        if (wallpaper) {
+          // Fetch download stats
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+          const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+          let downloads = 0
+          
+          if (supabaseUrl && supabaseAnonKey) {
+            try {
+              const statsRes = await fetch(
+                `${supabaseUrl}/rest/v1/wallpaper_stats?id=eq.${wallpaperId}&select=downloads`,
+                {
+                  headers: {
+                    "apikey": supabaseAnonKey,
+                    "Authorization": `Bearer ${supabaseAnonKey}`,
+                  },
+                  cache: 'no-store',
+                }
+              )
+              
+              if (statsRes.ok) {
+                const stats = await statsRes.json()
+                if (stats && stats.length > 0) {
+                  downloads = stats[0].downloads || 0
+                }
+              }
+            } catch (err) {
+              console.error('Failed to fetch download stats for metadata:', err)
+            }
+          }
+          
+          const downloadText = downloads === 1 ? '1 download' : `${downloads} downloads`
+          const description = `${downloadText} • by ${wallpaper.creator}`
+          const previewUrl = `${data.base_url}${wallpaper.preview}`
+          
+          return {
+            title: `CAPlayground Community - ${wallpaper.name}`,
+            description,
+            openGraph: {
+              title: `CAPlayground Community - ${wallpaper.name}`,
+              description,
+              type: "website",
+              images: [
+                {
+                  url: previewUrl,
+                  alt: `${wallpaper.name} preview`,
+                },
+              ],
+            },
+            twitter: {
+              card: "summary_large_image",
+              title: `CAPlayground Community - ${wallpaper.name}`,
+              description,
+              images: [previewUrl],
+            },
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to generate wallpaper metadata:', err)
+    }
+  }
+
+  // Default metadata for wallpapers page
+  return {
+    title: "CAPlayground - Wallpapers",
+    description: "Browse wallpapers made by the CAPlayground community",
+    openGraph: {
+      title: "CAPlayground - Wallpapers",
+      description: "Browse wallpapers made by the CAPlayground community",
+      type: "website",
+    },
+  }
 }
 
 interface WallpaperItem {
