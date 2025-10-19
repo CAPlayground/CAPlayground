@@ -22,7 +22,7 @@ import type { CAAsset } from "@/lib/ca/types"
 import { ensureUniqueProjectName, createProject, listProjects, putBlobFile, putTextFile } from "@/lib/storage"
 
 interface WallpaperItem {
-  id: string
+  id: string | number
   name: string
   creator: string
   description: string
@@ -167,7 +167,7 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
   const handleOpenInEditor = async (item: WallpaperItem) => {
     try {
       setImportingWallpaper(item.name)
-      trackDownload(item.id, item.name)
+      trackDownload(String(item.id), item.name)
       
       const fileUrl = `${data.base_url}${item.file}`
       
@@ -263,13 +263,12 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
     <div className="space-y-6">
       <div className="max-w-xl mx-auto w-full space-y-3">
         <div className="flex gap-3">
-          <div className="flex-1 bg-background border rounded-md shadow-sm p-0">
-            <Input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search wallpapers by name, creator, or description..."
-            />
-          </div>
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search wallpapers by name, creator, or description..."
+            className="flex-1"
+          />
           <Select value={sortBy} onValueChange={(value: 'default' | 'downloads') => setSortBy(value)}>
             <SelectTrigger className="w-[180px] bg-background border shadow-sm">
               <SelectValue placeholder="Sort by" />
@@ -298,15 +297,15 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
           return (
             <Card 
               key={`${item.name}-${item.file}`} 
-              className="overflow-hidden cursor-pointer transition-transform hover:scale-[1.02]"
+              className="overflow-hidden cursor-pointer transition-transform hover:scale-[1.02] p-0"
               onClick={() => {
                 setExpandedWallpaper(item)
                 const params = new URLSearchParams(window.location.search)
-                params.set('id', item.id)
+                params.set('id', String(item.id))
                 router.push(`/wallpapers?${params.toString()}`, { scroll: false })
               }}
             >
-              <div className="pt-0 px-5">
+              <CardContent className="p-4">
                 <div className="mb-3 overflow-hidden rounded-md border bg-background">
                   <AspectRatio ratio={1} className="flex items-center justify-center">
                     {isVideo(previewUrl) ? (
@@ -324,22 +323,18 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
                     )}
                   </AspectRatio>
                 </div>
-              </div>
 
-              <CardHeader>
-                <CardTitle className="line-clamp-1">{item.name}</CardTitle>
-                <CardDescription className="line-clamp-2">
+                <h3 className="font-medium line-clamp-1 mb-1">{item.name}</h3>
+                <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
                   by {item.creator} (submitted on {item.from})
-                </CardDescription>
+                </p>
                 {downloadStats[item.id] > 0 && (
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
                     <Download className="h-3.5 w-3.5" />
                     <span>{downloadStats[item.id]}</span>
                     <span>{downloadStats[item.id] === 1 ? 'Download' : 'Downloads'}</span>
                   </div>
                 )}
-              </CardHeader>
-              <CardContent>
                 <p className="text-sm text-muted-foreground line-clamp-3 mb-4">{item.description}</p>
                 <div className="flex flex-col gap-2">
                   <Button 
@@ -359,7 +354,7 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
                       className="w-full"
                       onClick={(e) => {
                         e.stopPropagation()
-                        trackDownload(item.id, item.name)
+                        trackDownload(String(item.id), item.name)
                         window.location.href = `pocketposter://download?url=${fileUrl}`
                       }}
                     >
@@ -371,7 +366,7 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
                       className="w-full"
                       onClick={(e) => {
                         e.stopPropagation()
-                        trackDownload(item.id, item.name)
+                        trackDownload(String(item.id), item.name)
                         window.open(fileUrl, '_blank')
                       }}
                     >
@@ -472,7 +467,7 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
                         variant="outline" 
                         className="flex-1"
                         onClick={() => {
-                          trackDownload(expandedWallpaper.id, expandedWallpaper.name)
+                          trackDownload(String(expandedWallpaper.id), expandedWallpaper.name)
                           window.location.href = `pocketposter://download?url=${fileUrl}`
                         }}
                       >
@@ -483,7 +478,7 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
                         variant="outline" 
                         className="flex-1"
                         onClick={() => {
-                          trackDownload(expandedWallpaper.id, expandedWallpaper.name)
+                          trackDownload(String(expandedWallpaper.id), expandedWallpaper.name)
                           window.open(fileUrl, '_blank')
                         }}
                       >

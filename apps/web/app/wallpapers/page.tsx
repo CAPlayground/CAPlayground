@@ -28,7 +28,7 @@ export async function generateMetadata({
       
       if (wallpapersRes.ok) {
         const data = (await wallpapersRes.json()) as WallpapersResponse
-        const wallpaper = data.wallpapers.find(w => w.id === wallpaperId)
+        const wallpaper = data.wallpapers.find(w => String(w.id) === wallpaperId)
         
         if (wallpaper) {
           // Fetch download stats
@@ -105,7 +105,7 @@ export async function generateMetadata({
 }
 
 interface WallpaperItem {
-  id: string
+  id: string | number
   name: string
   creator: string
   description: string
