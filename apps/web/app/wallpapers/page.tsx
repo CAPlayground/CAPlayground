@@ -9,6 +9,7 @@ const WALLPAPERS_JSON_URL =
 
 // 30 min
 export const revalidate = 1800
+export const runtime = 'edge'
 
 export async function generateMetadata({
   searchParams,
