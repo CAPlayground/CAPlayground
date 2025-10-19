@@ -84,20 +84,22 @@ export default async function HomePage() {
 
                 {/* hero video */}
                 <div className="pt-10 lg:pt-0 hidden lg:block">
-                  <div className="relative w-full max-w-5xl min-[600px]:max-w-none rounded-xl border-8 border-zinc-200/80 dark:border-white/30 shadow-lg overflow-hidden">
-                    <video
-                      src="/featured.mp4"
-                      className="w-full h-auto select-none pointer-events-none"
-                      autoPlay
-                      muted
-                      loop
-                      playsInline
-                      aria-label="CAPlayground featured wallpaper"
-                    />
-                    <span className="absolute bottom-2 left-2 text-xs text-white/90 dark:text-white/80 bg-black/40 dark:bg-black/60 backdrop-blur-sm px-2 py-1 rounded select-none pointer-events-none">
-                      Wallpaper by M4xi
-                    </span>
-                  </div>
+                  <Link href="/wallpapers?id=0000001" className="block">
+                    <div className="relative w-full max-w-5xl min-[600px]:max-w-none rounded-xl border-8 border-zinc-200/80 dark:border-white/30 shadow-lg overflow-hidden cursor-pointer transition-transform hover:scale-[1.02]">
+                      <video
+                        src="/featured.mp4"
+                        className="w-full h-auto select-none pointer-events-none"
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        aria-label="CAPlayground featured wallpaper"
+                      />
+                      <span className="absolute bottom-2 left-2 text-xs text-white/90 dark:text-white/80 bg-black/40 dark:bg-black/60 backdrop-blur-sm px-2 py-1 rounded select-none pointer-events-none">
+                        Wallpaper by M4xi
+                      </span>
+                    </div>
+                  </Link>
                 </div>
               </div>
 
