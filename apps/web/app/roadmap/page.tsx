@@ -76,7 +76,7 @@ export default function RoadmapPage() {
             <RoadmapItem index={3} title="Gradient Layers" status={<Badge>Done: 7th October, 2025</Badge>}>
               Create gradients with the modes radial, axial, and conic.
             </RoadmapItem>
-            <RoadmapItem index={4} title="Cloud Projects (Beta)" status={<Badge>Done: 7th October, 2025</Badge>}>
+            <RoadmapItem index={4} title="Cloud Projects (Beta)" status={<Badge>Done: 18th October, 2025</Badge>}>
               Sync your projects to Google Drive to access projects on multiple devices.
             </RoadmapItem>
             <RoadmapItem index={5} title="Emitters Support" status={<Badge>Done: 24th October, 2025</Badge>}>
