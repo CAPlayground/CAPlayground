@@ -21,7 +21,7 @@ export default function RoadmapPage() {
         <section className="container mx-auto px-3 min-[600px]:px-4 lg:px-6 py-16 md:py-24">
         <header className="mb-10 space-y-2">
           <h1 className="font-heading text-4xl md:text-5xl font-bold">Project Roadmap</h1>
-          <p className="text-muted-foreground">What's cooking in CAPlayground? (Last Updated: 5th October, 2025)</p>
+          <p className="text-muted-foreground">What's cooking in CAPlayground? (Last Updated: 24th October, 2025)</p>
           <div className="flex gap-2 pt-4">
             <Button
               variant={selectedMonth === 1 ? "default" : "outline"}
@@ -74,12 +74,15 @@ export default function RoadmapPage() {
               Wallpaper Gallery to showcase your wallpapers and browse the CAPlayground community's wallpapers.
             </RoadmapItem>
             <RoadmapItem index={3} title="Gradient Layers" status={<Badge>Done: 7th October, 2025</Badge>}>
-              CAGradientLayer support to create cool gradients.
+              Create gradients with the modes radial, axial, and conic.
             </RoadmapItem>
-            <RoadmapItem index={4} title="Emitters Support" status={<Badge variant="outline">Starting Soon</Badge>}>
-              Support Emitters to create create emitters, I guess.
+            <RoadmapItem index={4} title="Cloud Projects (Beta)" status={<Badge>Done: 7th October, 2025</Badge>}>
+              Sync your projects to Google Drive to access projects on multiple devices.
             </RoadmapItem>
-            <RoadmapItem index={5} title="Parallax Effect" status={<Badge variant="outline">Not Started</Badge>}>
+            <RoadmapItem index={5} title="Emitters Support" status={<Badge>Done: 24th October, 2025</Badge>}>
+              Create emitters layers and cells to emit particles.
+            </RoadmapItem>
+            <RoadmapItem index={6} title="Parallax Effect" status={<Badge variant="outline">Coming Soon</Badge>}>
               Create wallpapers with Parallax Effect (Gyroscope) for iOS 26. Will need to make sublayers support because of this.
             </RoadmapItem>
           </div>
