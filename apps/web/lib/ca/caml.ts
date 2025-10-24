@@ -22,6 +22,23 @@ function isTopLevelRoot(el: Element): boolean {
   return !!(p && (p as any).namespaceURI === CAML_NS && p.localName === 'caml');
 }
 
+function radToDeg(radians: number): number {
+  return (radians * 180) / Math.PI;
+}
+
+function parseNumericAttr(element: Element, attrName: string, fallback?: number): number | undefined {
+  const value = attr(element, attrName);
+  if (!value) return fallback;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+}
+
+function parseBooleanAttr(element: Element, attrName: string): 0 | 1 | undefined {
+  const value = attr(element, attrName);
+  if (value === undefined) return undefined;
+  return (value === '1' || value === 'true') ? 1 : 0;
+}
+
 export function parseStateTransitions(xml: string): CAStateTransitions {
   const out: CAStateTransitions = [];
   try {
@@ -142,7 +159,7 @@ export function parseStateOverrides(xml: string): CAStateOverrides {
           if (typeof val === 'number') {
             const kp = keyPath || '';
             if (kp === 'transform.rotation.z' || kp === 'transform.rotation.x' || kp === 'transform.rotation.y') {
-              val = (val * 180) / Math.PI;
+              val = radToDeg(val);
             }
           }
           if (targetId && keyPath) arr.push({ targetId, keyPath, value: val });
@@ -222,32 +239,82 @@ export function parseStates(xml: string): string[] {
   }
 }
 
-function parseCAVideoLayer(el: Element): VideoLayer {
+function parseLayerBase(el: Element): LayerBase {
   const id = attr(el, 'id') || crypto.randomUUID();
-  const name = attr(el, 'name') || 'Video Layer';
+  const name = attr(el, 'name') || 'Layer';
   const bounds = parseNumberList(attr(el, 'bounds'));
   const position = parseNumberList(attr(el, 'position'));
   const anchorPt = parseNumberList(attr(el, 'anchorPoint'));
-  const geometryFlippedAttr = attr(el, 'geometryFlipped');
-  const masksToBoundsAttr = attr(el, 'masksToBounds');
-  const rotationZ = attr(el, 'transform.rotation.z');
-  const rotationX = attr(el, 'transform.rotation.x');
-  const rotationY = attr(el, 'transform.rotation.y');
-  const opacity = attr(el, 'opacity') ? Number(attr(el, 'opacity')) : undefined;
 
-  const base = {
+  const rotationZ = parseNumericAttr(el, 'transform.rotation.z');
+  const rotationX = parseNumericAttr(el, 'transform.rotation.x');
+  const rotationY = parseNumericAttr(el, 'transform.rotation.y');
+
+  const base: LayerBase = {
     id,
     name,
     position: { x: position[0] ?? 0, y: position[1] ?? 0 },
     size: { w: bounds[2] ?? 0, h: bounds[3] ?? 0 },
-    opacity,
-    rotation: rotationZ ? ((Number(rotationZ) * 180) / Math.PI) : undefined,
-    rotationX: rotationX ? ((Number(rotationX) * 180) / Math.PI) : undefined,
-    rotationY: rotationY ? ((Number(rotationY) * 180) / Math.PI) : undefined,
-    anchorPoint: (anchorPt.length === 2 && (anchorPt[0] !== 0.5 || anchorPt[1] !== 0.5)) ? { x: anchorPt[0], y: anchorPt[1] } : undefined,
-    geometryFlipped: typeof geometryFlippedAttr !== 'undefined' ? ((geometryFlippedAttr === '1' ? 1 : 0) as 0 | 1) : undefined,
-    masksToBounds: typeof masksToBoundsAttr !== 'undefined' ? ((masksToBoundsAttr === '1' ? 1 : 0) as 0 | 1) : undefined,
+    opacity: parseNumericAttr(el, 'opacity') || 1,
+    rotation: radToDeg(rotationZ || 0),
+    rotationX: radToDeg(rotationX || 0),
+    rotationY: radToDeg(rotationY || 0),
+    anchorPoint: (anchorPt.length === 2 && (anchorPt[0] !== 0.5 || anchorPt[1] !== 0.5)) 
+? { x: anchorPt[0], y: anchorPt[1] } 
+: undefined,
+    geometryFlipped: parseBooleanAttr(el, 'geometryFlipped') || 0,
+    masksToBounds: parseBooleanAttr(el, 'masksToBounds') || 0,
   };
+  
+  // Parse transform attribute for additional rotation values
+  const transformAttr = attr(el, 'transform');
+  if (transformAttr && /rotate\(/i.test(transformAttr)) {
+    const rotations = parseTransformRotations(transformAttr);
+    if (rotations.z !== undefined) base.rotation = base.rotation || rotations.z;
+    if (rotations.x !== undefined) base.rotationX = base.rotationX || rotations.x;
+    if (rotations.y !== undefined) base.rotationY = base.rotationY || rotations.y;
+  }
+  
+  return base;
+}
+
+function parseTransformRotations(transformAttr: string): { x?: number; y?: number; z?: number } {
+  const rotations: { x?: number; y?: number; z?: number } = {};
+  
+  try {
+    const rx = /rotate\(([^)]+)\)/gi;
+    let m: RegExpExecArray | null;
+    
+    while ((m = rx.exec(transformAttr)) !== null) {
+      const inside = m[1].trim();
+      const parts = inside.split(/\s*,\s*/);
+      const angleStr = parts[0].trim();
+      const angle = parseFloat(angleStr.replace(/deg/i, '').trim());
+      const deg = Number.isFinite(angle) ? angle : 0;
+      
+      if (parts.length >= 4) {
+        const ax = parseFloat(parts[1]);
+        const ay = parseFloat(parts[2]);
+        const az = parseFloat(parts[3]);
+        
+        if (Math.abs(ax - 1) < 1e-6 && Math.abs(ay) < 1e-6 && Math.abs(az) < 1e-6) {
+          rotations.x = deg;
+        } else if (Math.abs(ay - 1) < 1e-6 && Math.abs(ax) < 1e-6 && Math.abs(az) < 1e-6) {
+          rotations.y = deg;
+        } else if (Math.abs(az - 1) < 1e-6 && Math.abs(ax) < 1e-6 && Math.abs(ay) < 1e-6) {
+          rotations.z = deg;
+        }
+      } else {
+        rotations.z = deg;
+      }
+    }
+  } catch {}
+  
+  return rotations;
+}
+
+function parseCAVideoLayer(el: Element): VideoLayer {
+  const base = parseLayerBase(el);
 
   const frameCountAttr = attr(el, 'caplayFrameCount') || attr(el, 'caplay.frameCount');
   const fpsAttr = attr(el, 'caplayFPS') || attr(el, 'caplay.fps');
@@ -327,17 +394,7 @@ function parseCAVideoLayer(el: Element): VideoLayer {
 }
 
 function parseCATextLayer(el: Element): AnyLayer {
-  const id = attr(el, 'id') || crypto.randomUUID();
-  const name = attr(el, 'name') || 'Text Layer';
-  const bounds = parseNumberList(attr(el, 'bounds'));
-  const position = parseNumberList(attr(el, 'position'));
-  const anchorPt = parseNumberList(attr(el, 'anchorPoint'));
-  const geometryFlippedAttr = attr(el, 'geometryFlipped');
-  const masksToBoundsAttr = attr(el, 'masksToBounds');
-  const rotationZ = attr(el, 'transform.rotation.z');
-  const rotationX = attr(el, 'transform.rotation.x');
-  const rotationY = attr(el, 'transform.rotation.y');
-  const opacityAttr = attr(el, 'opacity');
+  const base = parseLayerBase(el);
   const fontSizeAttr = attr(el, 'fontSize');
   const alignmentMode = attr(el, 'alignmentMode') as TextLayer['align'] | undefined;
   const wrappedAttr = attr(el, 'wrapped');
@@ -352,20 +409,6 @@ function parseCATextLayer(el: Element): AnyLayer {
     textValue = stringEl.getAttribute('value') || '';
   }
   const colorHex = floatsToHexColor(attr(el, 'foregroundColor'));
-
-  const base = {
-    id,
-    name,
-    position: { x: position[0] ?? 0, y: position[1] ?? 0 },
-    size: { w: bounds[2] ?? 0, h: bounds[3] ?? 0 },
-    rotation: rotationZ ? ((Number(rotationZ) * 180) / Math.PI) : undefined,
-    rotationX: rotationX ? ((Number(rotationX) * 180) / Math.PI) : undefined,
-    rotationY: rotationY ? ((Number(rotationY) * 180) / Math.PI) : undefined,
-    opacity: opacityAttr ? Number(opacityAttr) : undefined,
-    anchorPoint: (anchorPt.length === 2 && (anchorPt[0] !== 0.5 || anchorPt[1] !== 0.5)) ? { x: anchorPt[0], y: anchorPt[1] } : undefined,
-    geometryFlipped: typeof geometryFlippedAttr !== 'undefined' ? ((geometryFlippedAttr === '1' ? 1 : 0) as 0 | 1) : undefined,
-    masksToBounds: typeof masksToBoundsAttr !== 'undefined' ? ((masksToBoundsAttr === '1' ? 1 : 0) as 0 | 1) : undefined,
-  } as const;
 
   const sublayersEl = directChildByTagNS(el, 'sublayers');
   if (sublayersEl) {
@@ -411,17 +454,7 @@ function parseCATextLayer(el: Element): AnyLayer {
 }
 
 function parseCAGradientLayer(el: Element): AnyLayer {
-  const id = attr(el, 'id') || crypto.randomUUID();
-  const name = attr(el, 'name') || 'Gradient Layer';
-  const bounds = parseNumberList(attr(el, 'bounds'));
-  const position = parseNumberList(attr(el, 'position'));
-  const anchorPt = parseNumberList(attr(el, 'anchorPoint'));
-  const geometryFlippedAttr = attr(el, 'geometryFlipped');
-  const masksToBoundsAttr = attr(el, 'masksToBounds');
-  const rotationZ = attr(el, 'transform.rotation.z');
-  const rotationX = attr(el, 'transform.rotation.x');
-  const rotationY = attr(el, 'transform.rotation.y');
-  const opacityAttr = attr(el, 'opacity');
+  const base = parseLayerBase(el);
   
   const startPointAttr = parseNumberList(attr(el, 'startPoint'));
   const endPointAttr = parseNumberList(attr(el, 'endPoint'));
@@ -454,20 +487,6 @@ function parseCAGradientLayer(el: Element): AnyLayer {
       gradientType = typeValue;
     }
   }
-  
-  const base = {
-    id,
-    name,
-    position: { x: position[0] ?? 0, y: position[1] ?? 0 },
-    size: { w: bounds[2] ?? 0, h: bounds[3] ?? 0 },
-    opacity: opacityAttr ? Number(opacityAttr) : undefined,
-    rotation: rotationZ ? ((Number(rotationZ) * 180) / Math.PI) : undefined,
-    rotationX: rotationX ? ((Number(rotationX) * 180) / Math.PI) : undefined,
-    rotationY: rotationY ? ((Number(rotationY) * 180) / Math.PI) : undefined,
-    anchorPoint: (anchorPt.length === 2 && (anchorPt[0] !== 0.5 || anchorPt[1] !== 0.5)) ? { x: anchorPt[0], y: anchorPt[1] } : undefined,
-    geometryFlipped: typeof geometryFlippedAttr !== 'undefined' ? ((geometryFlippedAttr === '1' ? 1 : 0) as 0 | 1) : undefined,
-    masksToBounds: typeof masksToBoundsAttr !== 'undefined' ? ((masksToBoundsAttr === '1' ? 1 : 0) as 0 | 1) : undefined,
-  } as const;
 
   const sublayersEl = directChildByTagNS(el, 'sublayers');
   if (sublayersEl) {
@@ -510,24 +529,13 @@ function parseCAGradientLayer(el: Element): AnyLayer {
 }
 
 function parseCAEmitterLayer(el: Element): AnyLayer {
-  const id = attr(el, 'id') || crypto.randomUUID();
-  const name = attr(el, 'name') || 'Emitter Layer';
-
-  const bounds = parseNumberList(attr(el, 'bounds')); // x y w h
-  const position = parseNumberList(attr(el, 'position')); // x y
-  const anchorPt = parseNumberList(attr(el, 'anchorPoint')); // ax ay in 0..1
+  const base = parseLayerBase(el);
   const emitterPosition = parseNumberList(attr(el, 'emitterPosition'));
   const emitterSize = parseNumberList(attr(el, 'emitterSize'));
   const renderMode = attr(el, 'renderMode') as 'unordered' | 'additive';
   const emitterShape = attr(el, 'emitterShape') as 'point' | 'line' | 'rectangle' | 'cuboid' | 'circle' | 'sphere';
   const emitterCellsEl = directChildByTagNS(el, 'emitterCells');
   const emitterMode = attr(el, 'emitterMode') as 'volume' | 'outline' | 'surface';
-  const rotZAttr = attr(el, 'transform.rotation.z');
-  const rotXAttr = attr(el, 'transform.rotation.x');
-  const rotYAttr = attr(el, 'transform.rotation.y');
-  const masksToBoundsAttr = attr(el, 'masksToBounds');
-  const geometryFlippedAttr = attr(el, 'geometryFlipped');
-  const transformAttr = attr(el, 'transform');
   const emitterCells = emitterCellsEl
     ? Array.from(emitterCellsEl.children).map((c) => {
         let imageSrc: string | undefined;
@@ -549,56 +557,17 @@ function parseCAEmitterLayer(el: Element): AnyLayer {
         newCell.lifetime = Number(attr(c, 'lifetime'));
         newCell.velocity = Number(attr(c, 'velocity'));
         newCell.scale = Number(attr(c, 'scale'));
-        newCell.emissionRange = (Number(attr(c, 'emissionRange')) * 180) / Math.PI;
-        newCell.spin = (Number(attr(c, 'spin')) * 180) / Math.PI;
+        newCell.emissionRange = radToDeg(Number(attr(c, 'emissionRange')));
+        newCell.spin = radToDeg(Number(attr(c, 'spin')));
         newCell.xAcceleration = Number(attr(c, 'xAcceleration'));
         newCell.yAcceleration = Number(attr(c, 'yAcceleration'));
         return newCell;
       })
     : [];
 
-  let tRotZ: number | undefined;
-  let tRotX: number | undefined;
-  let tRotY: number | undefined;
-  if (transformAttr && /rotate\(/i.test(transformAttr)) {
-    try {
-      const rx = /rotate\(([^)]+)\)/gi;
-      let m: RegExpExecArray | null;
-      while ((m = rx.exec(transformAttr)) !== null) {
-        const inside = m[1].trim();
-        const parts = inside.split(/\s*,\s*/);
-        const angleStr = parts[0].trim();
-        const angle = parseFloat(angleStr.replace(/deg/i, '').trim());
-        const deg = Number.isFinite(angle) ? angle : 0;
-        if (parts.length >= 4) {
-          const ax = parseFloat(parts[1]);
-          const ay = parseFloat(parts[2]);
-          const az = parseFloat(parts[3]);
-          if (Math.abs(ax - 1) < 1e-6 && Math.abs(ay) < 1e-6 && Math.abs(az) < 1e-6) {
-            tRotX = deg;
-          } else if (Math.abs(ay - 1) < 1e-6 && Math.abs(ax) < 1e-6 && Math.abs(az) < 1e-6) {
-            tRotY = deg;
-          } else if (Math.abs(az - 1) < 1e-6 && Math.abs(ax) < 1e-6 && Math.abs(ay) < 1e-6) {
-            tRotZ = deg;
-          }
-        } else {
-          tRotZ = deg;
-        }
-      }
-    } catch {}
-  }
   return {
-    id,
-    name,
+    ...base,
     type: 'emitter',
-    position: { x: position[0] ?? 0, y: position[1] ?? 0 },
-    size: { w: bounds[2] ?? 0, h: bounds[3] ?? 0 },
-    rotation: (rotZAttr ? ((Number(rotZAttr) * 180) / Math.PI) : undefined) ?? tRotZ,
-    rotationX: (rotXAttr ? ((Number(rotXAttr) * 180) / Math.PI) : undefined) ?? tRotX,
-    rotationY: (rotYAttr ? ((Number(rotYAttr) * 180) / Math.PI) : undefined) ?? tRotY,
-    masksToBounds: masksToBoundsAttr === '1' ? 1 : 0,
-    geometryFlipped: geometryFlippedAttr === '1' ? 1 : 0,
-    anchorPoint: (anchorPt.length === 2 && (anchorPt[0] !== 0.5 || anchorPt[1] !== 0.5)) ? { x: anchorPt[0], y: anchorPt[1] } : undefined,
     emitterPosition: { x: emitterPosition[0] ?? 0, y: emitterPosition[1] ?? 0 },
     emitterSize: { w: emitterSize[0] ?? 0, h: emitterSize[1] ?? 0 },
     emitterShape,
@@ -614,18 +583,7 @@ function parseCALayer(el: Element): AnyLayer {
     return parseCAVideoLayer(el);
   }
 
-  const id = attr(el, 'id') || crypto.randomUUID();
-  const name = attr(el, 'name') || 'Layer';
-  const bounds = parseNumberList(attr(el, 'bounds')); // x y w h
-  const position = parseNumberList(attr(el, 'position')); // x y
-  const anchorPt = parseNumberList(attr(el, 'anchorPoint')); // ax ay in 0..1
-  const geometryFlippedAttr = attr(el, 'geometryFlipped');
-  const masksToBoundsAttr = attr(el, 'masksToBounds');
-  const rotZAttr = attr(el, 'transform.rotation.z');
-  const rotXAttr = attr(el, 'transform.rotation.x');
-  const rotYAttr = attr(el, 'transform.rotation.y');
-  const opacity = attr(el, 'opacity') ? Number(attr(el, 'opacity')) : undefined;
-  const transformAttr = attr(el, 'transform');
+  const layerBase = parseLayerBase(el);
   let backgroundColor: string | undefined = undefined;
   let backgroundOpacity: number | undefined = undefined;
   const bgAttr = attr(el, 'backgroundColor');
@@ -651,7 +609,7 @@ function parseCALayer(el: Element): AnyLayer {
   const align = attr(el, 'align') as TextLayer['align'] | undefined;
 
   let imageSrc: string | undefined;
-  const contents = el.getElementsByTagNameNS(CAML_NS, 'contents')[0]; // was supposed to be contents :P thats why images wouldn't render in mica
+  const contents = directChildByTagNS(el, 'contents');
   if (contents) {
     const images = contents.getElementsByTagNameNS(CAML_NS, 'CGImage');
     if (images && images[0]) {
@@ -663,54 +621,13 @@ function parseCALayer(el: Element): AnyLayer {
     }
   }
 
-  let tRotZ: number | undefined;
-  let tRotX: number | undefined;
-  let tRotY: number | undefined;
-  if (transformAttr && /rotate\(/i.test(transformAttr)) {
-    try {
-      const rx = /rotate\(([^)]+)\)/gi;
-      let m: RegExpExecArray | null;
-      while ((m = rx.exec(transformAttr)) !== null) {
-        const inside = m[1].trim();
-        const parts = inside.split(/\s*,\s*/);
-        const angleStr = parts[0].trim();
-        const angle = parseFloat(angleStr.replace(/deg/i, '').trim());
-        const deg = Number.isFinite(angle) ? angle : 0;
-        if (parts.length >= 4) {
-          const ax = parseFloat(parts[1]);
-          const ay = parseFloat(parts[2]);
-          const az = parseFloat(parts[3]);
-          if (Math.abs(ax - 1) < 1e-6 && Math.abs(ay) < 1e-6 && Math.abs(az) < 1e-6) {
-            tRotX = deg;
-          } else if (Math.abs(ay - 1) < 1e-6 && Math.abs(ax) < 1e-6 && Math.abs(az) < 1e-6) {
-            tRotY = deg;
-          } else if (Math.abs(az - 1) < 1e-6 && Math.abs(ax) < 1e-6 && Math.abs(ay) < 1e-6) {
-            tRotZ = deg;
-          }
-        } else {
-          tRotZ = deg;
-        }
-      }
-    } catch {}
-  }
-
   const base = {
-    id,
-    name,
-    position: { x: position[0] ?? 0, y: position[1] ?? 0 },
-    size: { w: bounds[2] ?? 0, h: bounds[3] ?? 0 },
-    opacity,
+    ...layerBase,
     backgroundColor,
     backgroundOpacity,
     cornerRadius,
     borderColor,
     borderWidth,
-    rotation: (rotZAttr ? ((Number(rotZAttr) * 180) / Math.PI) : undefined) ?? tRotZ,
-    rotationX: (rotXAttr ? ((Number(rotXAttr) * 180) / Math.PI) : undefined) ?? tRotX,
-    rotationY: (rotYAttr ? ((Number(rotYAttr) * 180) / Math.PI) : undefined) ?? tRotY,
-    anchorPoint: (anchorPt.length === 2 && (anchorPt[0] !== 0.5 || anchorPt[1] !== 0.5)) ? { x: anchorPt[0], y: anchorPt[1] } : undefined,
-    geometryFlipped: typeof geometryFlippedAttr !== 'undefined' ? ((geometryFlippedAttr === '1' ? 1 : 0) as 0 | 1) : undefined,
-    masksToBounds: typeof masksToBoundsAttr !== 'undefined' ? ((masksToBoundsAttr === '1' ? 1 : 0) as 0 | 1) : undefined,
   } as const;
 
   const parsedAnimations = parseCALayerAnimations(el);
@@ -1438,7 +1355,7 @@ function serializeLayer(doc: XMLDocument, layer: AnyLayer, project?: CAProject, 
   }
 
   const anim = (layer as any).animations as
-    | { enabled?: boolean; keyPath?: KeyPath; autoreverses?: 0 | 1; values?: Array<{ x: number; y: number } | number>; durationSeconds?: number }
+    | Animations
     | undefined;
   if (anim?.enabled && Array.isArray(anim.values) && anim.values.length > 0) {
     const keyPath = (anim.keyPath ?? 'position') as KeyPath;
@@ -1453,6 +1370,7 @@ function serializeLayer(doc: XMLDocument, layer: AnyLayer, project?: CAProject, 
       ? providedDur
       : Math.max(1, (anim.values?.length || 1) - 1);
     a.setAttribute('duration', String(duration));
+    a.setAttribute('speed', String(anim.speed || 1));
     a.setAttribute('removedOnCompletion', '0');
     const infinite = Number((anim as any).infinite ?? 1) === 1;
     const providedRepeat = Number((anim as any).repeatDurationSeconds);
@@ -1528,7 +1446,7 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
   // Parse per-layer keyframe animations
   let parsedAnimations: Animations | undefined;
   try {
-    const animationsEl = el.getElementsByTagNameNS(CAML_NS, 'animations')[0];
+    const animationsEl = directChildByTagNS(el, 'animations');
     const animNode = animationsEl?.getElementsByTagNameNS(CAML_NS, 'animation')[0];
     if (animNode) {
       const kp = (animNode.getAttribute('keyPath') || 'position') as KeyPath;
@@ -1544,25 +1462,15 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
             const y = Math.round(Number.isFinite(parts[1]) ? parts[1] : 0);
             vals.push({ x, y });
           }
-        } else if (kp === 'position.x') {
-          const numEls = Array.from(valuesNode.getElementsByTagNameNS(CAML_NS, 'NSNumber'));
-          const intEls = Array.from(valuesNode.getElementsByTagNameNS(CAML_NS, 'integer'));
-          const merged = [...numEls, ...intEls];
-          for (const n of merged) {
-            const v = Number(n.getAttribute('value') || '');
-            vals.push(Math.round(Number.isFinite(v) ? v : 0));
-          }
-        } else if (kp === 'position.y') {
-          const numEls = Array.from(valuesNode.getElementsByTagNameNS(CAML_NS, 'NSNumber'));
-          const intEls = Array.from(valuesNode.getElementsByTagNameNS(CAML_NS, 'integer'));
-          const merged = [...numEls, ...intEls];
-          for (const n of merged) {
+        } else if (kp === 'position.x' || kp === 'position.y') {
+          const values = Array.from(valuesNode.children);
+          for (const n of values) {
             const v = Number(n.getAttribute('value') || '');
             vals.push(Math.round(Number.isFinite(v) ? v : 0));
           }
         } else if (kp === 'transform.rotation.x' || kp === 'transform.rotation.y' || kp === 'transform.rotation.z') {
-          const reals = Array.from(valuesNode.getElementsByTagNameNS(CAML_NS, 'real'));
-          for (const r of reals) {
+          const values = Array.from(valuesNode.children);
+          for (const r of values) {
             const rad = Number(r.getAttribute('value') || '');
             const deg = ((Number.isFinite(rad) ? rad : 0) * 180) / Math.PI;
             vals.push(deg);
@@ -1589,6 +1497,7 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
       const autoreverses: 0 | 1 = (Number(autorevAttr) || 0) ? 1 : 0;
       const durAttr = animNode.getAttribute('duration');
       const durationSeconds = Number(durAttr);
+      const speed = animNode.getAttribute('speed');
       const repCount = animNode.getAttribute('repeatCount');
       const repDurAttr = animNode.getAttribute('repeatDuration');
       const infinite: 0 | 1 = (repCount === 'inf' || repDurAttr === 'inf') ? 1 : 0;
@@ -1601,6 +1510,7 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
         durationSeconds: Number.isFinite(durationSeconds) && durationSeconds > 0 ? durationSeconds : undefined,
         infinite,
         repeatDurationSeconds: repeatDurationSeconds,
+        speed: Number.isFinite(Number(speed)) ? Number(speed) : undefined,
       };
     }
   } catch {} 

@@ -189,4 +189,5 @@ export type Animations = {
   durationSeconds?: number;
   infinite?: 0 | 1;
   repeatDurationSeconds?: number;
+  speed?: number;
 };

@@ -190,6 +190,27 @@ export function AnimationsTab({
           />
         </div>
         <div className="space-y-1 col-span-2">
+          <Label htmlFor="anim-speed">Speed</Label>
+          <Input
+            id="anim-speed"
+            type="number"
+            step="0.01"
+            min="0"
+            className="h-8"
+            value={getBuf('anim-speed', (() => { const d = Number((selectedBase as any)?.animations?.speed); return Number.isFinite(d) && d > 0 ? String(d) : ''; })())}
+            onChange={(e) => setBuf('anim-speed', e.target.value)}
+            onBlur={(e) => {
+              const v = e.target.value.trim();
+              const current = (selectedBase as any)?.animations || {};
+              const n = v === '' ? 1 : Number(v);
+              const dur = Number.isFinite(n) && n > 0 ? n : 1;
+              updateLayer(selectedBase!.id, { animations: { ...current, speed: dur } } as any);
+              clearBuf('anim-speed');
+            }}
+            disabled={!animEnabled}
+          />
+        </div>
+        <div className="space-y-1 col-span-2">
           <Label>Loop infinitely</Label>
           <div className="flex items-center gap-2 h-8">
             <Switch

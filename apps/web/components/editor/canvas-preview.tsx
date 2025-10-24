@@ -500,13 +500,19 @@ export function CanvasPreview() {
     const baseDuration = (Number.isFinite(providedDur) && providedDur > 0)
       ? providedDur
       : Math.max(1, intervals);
+    
+    const speed = Number(anim.speed ?? 1);
+    const effectiveSpeed = Number.isFinite(speed) && speed > 0 ? speed : 1;
+    
     const autorev = Number(anim.autoreverses ?? 0) === 1;
     const infinite = Number(anim.infinite ?? 1) === 1;
     const providedRepeat = Number(anim.repeatDurationSeconds);
     const repeatDuration = Number.isFinite(providedRepeat) && providedRepeat > 0
       ? providedRepeat
       : baseDuration;
-    let localT = infinite ? t : Math.min(t, repeatDuration);
+    
+    const speedAdjustedT = t * effectiveSpeed;
+    let localT = infinite ? speedAdjustedT : Math.min(speedAdjustedT, repeatDuration * effectiveSpeed);
     if (autorev) {
       const cycle = baseDuration * 2;
       const m = localT % cycle;

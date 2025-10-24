@@ -1308,6 +1308,7 @@ export function EditorProvider({
         emitterSize: { w: 0, h: 0 },
         emitterShape: 'point',
         emitterMode: 'volume',
+        renderMode: 'unordered',
         emitterCells: [],
         type: 'emitter',
       };
