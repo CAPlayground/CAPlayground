@@ -6,6 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Plus, MoreVertical, ChevronRight, ChevronDown, Copy, Trash2, Check } from "lucide-react";
 import { useEditor } from "./editor-context";
 import { useEffect, useRef, useState } from "react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { AnyLayer, GroupLayer } from "@/lib/ca/types";
 
 export function LayersPanel() {
@@ -30,6 +31,8 @@ export function LayersPanel() {
   const current = doc?.docs?.[key];
   const layers = current?.layers ?? [];
   const selectedId = current?.selectedId ?? null;
+  const selectedLayer = layers.find(l => l.id === selectedId)
+
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<'before' | 'after' | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -39,7 +42,6 @@ export function LayersPanel() {
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [multiSelectedIds, setMultiSelectedIds] = useState<string[]>([]);
-
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isSelectMode) {
@@ -88,18 +90,18 @@ export function LayersPanel() {
     const hasChildren = isGroup && (l as GroupLayer).children.length > 0;
     const isCollapsed = collapsed.has(l.id);
     const isChecked = multiSelectedIds.includes(l.id);
-    
+
     const showDropLineBefore = dragOverId === l.id && dropPosition === 'before';
     const showDropLineAfter = dragOverId === l.id && dropPosition === 'after';
-    
+
     const row = (
       <div
         key={l.id}
         className="relative"
       >
         {showDropLineBefore && (
-          <div 
-            className="absolute left-0 right-0 h-0.5 bg-accent z-10" 
+          <div
+            className="absolute left-0 right-0 h-0.5 bg-accent z-10"
             style={{ top: 0, marginLeft: 8 + depth * 16 }}
           />
         )}
@@ -164,78 +166,78 @@ export function LayersPanel() {
             }
           }}
         >
-        <div className="truncate flex-1 min-w-0 flex items-center gap-1">
-          {isSelectMode ? (
-            <button
-              className={`shrink-0 h-4 w-4 rounded-full border ${isChecked ? 'bg-accent border-accent' : 'border-muted-foreground/50'} mr-1`}
-              onClick={(e) => { e.stopPropagation(); toggleMultiSelect(l.id); }}
-              aria-label={isChecked ? 'Deselect layer' : 'Select layer'}
-              title={isChecked ? 'Deselect' : 'Select'}
-            />
-          ) : (
-            hasChildren ? (
+          <div className="truncate flex-1 min-w-0 flex items-center gap-1">
+            {isSelectMode ? (
               <button
-                onClick={(e) => toggleCollapse(l.id, e)}
-                className="shrink-0 hover:bg-accent/50 rounded p-0.5"
-              >
-                {isCollapsed ? (
-                  <ChevronRight className="h-3 w-3" />
-                ) : (
-                  <ChevronDown className="h-3 w-3" />
-                )}
-              </button>
+                className={`shrink-0 h-4 w-4 rounded-full border ${isChecked ? 'bg-accent border-accent' : 'border-muted-foreground/50'} mr-1`}
+                onClick={(e) => { e.stopPropagation(); toggleMultiSelect(l.id); }}
+                aria-label={isChecked ? 'Deselect layer' : 'Select layer'}
+                title={isChecked ? 'Deselect' : 'Select'}
+              />
             ) : (
-              <div className="w-4 shrink-0" />
-            )
-          )}
-          {editingId === l.id ? (
-            <input
-              className="w-full bg-transparent border border-muted rounded-sm px-1 py-0.5 text-sm"
-              value={editingName}
-              autoFocus
-              onChange={(e) => setEditingName(e.target.value)}
-              onBlur={() => commitRename()}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') commitRename();
-                else if (e.key === 'Escape') cancelRename();
-              }}
-              onClick={(e) => e.stopPropagation()}
-            />
-          ) : (
-            <>
-              {l.name}{' '}
-              <span className="text-muted-foreground">
-                ({(((l as any)._displayType || l.type) === 'shape') ? 'basic' : ((l as any)._displayType || l.type)})
-              </span>
-            </>
-          )}
-        </div>
-        <div className="flex items-center gap-1 pr-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-muted-foreground"
-                onClick={(e) => { e.stopPropagation(); }}
-                aria-label="More actions"
-                title="More actions"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" sideOffset={4} onClick={(e) => e.stopPropagation()}>
-              <DropdownMenuItem onClick={() => startRename(l)}>Rename</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => duplicateLayer(l.id)}>Duplicate</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => deleteLayer(l.id)} className="text-destructive focus:text-destructive">Delete</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setIsSelectMode(true); setMultiSelectedIds((prev) => prev.includes(l.id) ? prev : [...prev, l.id]); }}>Select</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+              hasChildren ? (
+                <button
+                  onClick={(e) => toggleCollapse(l.id, e)}
+                  className="shrink-0 hover:bg-accent/50 rounded p-0.5"
+                >
+                  {isCollapsed ? (
+                    <ChevronRight className="h-3 w-3" />
+                  ) : (
+                    <ChevronDown className="h-3 w-3" />
+                  )}
+                </button>
+              ) : (
+                <div className="w-4 shrink-0" />
+              )
+            )}
+            {editingId === l.id ? (
+              <input
+                className="w-full bg-transparent border border-muted rounded-sm px-1 py-0.5 text-sm"
+                value={editingName}
+                autoFocus
+                onChange={(e) => setEditingName(e.target.value)}
+                onBlur={() => commitRename()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitRename();
+                  else if (e.key === 'Escape') cancelRename();
+                }}
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <>
+                {l.name}{' '}
+                <span className="text-muted-foreground">
+                  ({(((l as any)._displayType || l.type) === 'shape') ? 'basic' : ((l as any)._displayType || l.type)})
+                </span>
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-1 pr-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-muted-foreground"
+                  onClick={(e) => { e.stopPropagation(); }}
+                  aria-label="More actions"
+                  title="More actions"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" sideOffset={4} onClick={(e) => e.stopPropagation()}>
+                <DropdownMenuItem onClick={() => startRename(l)}>Rename</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => duplicateLayer(l.id)}>Duplicate</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => deleteLayer(l.id)} className="text-destructive focus:text-destructive">Delete</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { setIsSelectMode(true); setMultiSelectedIds((prev) => prev.includes(l.id) ? prev : [...prev, l.id]); }}>Select</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
         {showDropLineAfter && (
-          <div 
-            className="absolute left-0 right-0 h-0.5 bg-accent z-10" 
+          <div
+            className="absolute left-0 right-0 h-0.5 bg-accent z-10"
             style={{ bottom: 0, marginLeft: 8 + depth * 16 }}
           />
         )}
@@ -262,21 +264,43 @@ export function LayersPanel() {
             {uploadStatus}
           </div>
         )}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="ghost" className="h-7 px-2">
-              <Plus className="h-4 w-4 mr-1" /> Add Layer
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => addTextLayer()}>Text Layer</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => addShapeLayer("rect")}>Basic Layer</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => addGradientLayer()}>Gradient Layer</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => fileInputRef.current?.click()}>Image Layer…</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => videoInputRef.current?.click()}>Video Layer…</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => addEmitterLayer()}>Emitter Layer</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {selectedLayer?.type === 'emitter' ? (
+          <Tooltip disableHoverableContent={true}>
+            <TooltipTrigger asChild>
+              <div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2"
+                  disabled={selectedLayer?.type === 'emitter'}
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Add Layer
+                </Button>
+              </div>
+            </TooltipTrigger>
+            {selectedLayer?.type === 'emitter' &&
+              <TooltipContent sideOffset={6}>
+                Sublayers are not supported for emitter layers.
+              </TooltipContent>
+            }
+          </Tooltip>
+        ) :
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="ghost" className="h-7 px-2">
+                <Plus className="h-4 w-4 mr-1" /> Add Layer
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => addTextLayer()}>Text Layer</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => addShapeLayer("rect")}>Basic Layer</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => addGradientLayer()}>Gradient Layer</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => fileInputRef.current?.click()}>Image Layer…</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => videoInputRef.current?.click()}>Video Layer…</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => addEmitterLayer()}>Emitter Layer</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        }
         <input
           ref={fileInputRef}
           type="file"
@@ -375,53 +399,53 @@ export function LayersPanel() {
       </div>
 
       {isSelectMode && (
-        <div className="border-t p-2 gap-2 flex flex-col">
-          <div className="text-xs text-muted-foreground">
-            {multiSelectedIds.length} selected
+          <div className="border-t p-2 gap-2 flex flex-col">
+            <div className="text-xs text-muted-foreground">
+              {multiSelectedIds.length} selected
+            </div>
+            <div className="flex gap-2 items-center w-full">
+              <Button
+                variant="outline"
+                size="icon"
+                disabled={multiSelectedIds.length === 0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  for (const id of multiSelectedIds) {
+                    try { duplicateLayer(id); } catch {}
+                  }
+                }}
+                className="h-8 w-8"
+                title="Duplicate layers"
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                disabled={multiSelectedIds.length === 0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  for (const id of multiSelectedIds) {
+                    try { deleteLayer(id); } catch {}
+                  }
+                  setMultiSelectedIds([]);
+                }}
+                className="h-8 w-8"
+                title="Delete layers"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => { setIsSelectMode(false); setMultiSelectedIds([]); }}
+                className="flex-1 gap-1.5"
+              >
+                <Check className="h-4 w-4" />
+                Done
+              </Button>
+            </div>
           </div>
-          <div className="flex gap-2 items-center w-full">
-            <Button
-              variant="outline"
-              size="icon"
-              disabled={multiSelectedIds.length === 0}
-              onClick={(e) => {
-                e.stopPropagation();
-                for (const id of multiSelectedIds) {
-                  try { duplicateLayer(id); } catch {}
-                }
-              }}
-              className="h-8 w-8"
-              title="Duplicate layers"
-            >
-              <Copy className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              disabled={multiSelectedIds.length === 0}
-              onClick={(e) => {
-                e.stopPropagation();
-                for (const id of multiSelectedIds) {
-                  try { deleteLayer(id); } catch {}
-                }
-                setMultiSelectedIds([]);
-              }}
-              className="h-8 w-8"
-              title="Delete layers"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => { setIsSelectMode(false); setMultiSelectedIds([]); }}
-              className="flex-1 gap-1.5"
-            >
-              <Check className="h-4 w-4" />
-              Done
-            </Button>
-          </div>
-        </div>
-      )}
+        )}
     </Card>
   );
 }

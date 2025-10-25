@@ -100,7 +100,12 @@ export function EmitterCanvas({
         newCell.velocity = cell.velocity;
         newCell.emissionRange = Math.PI * cell.emissionRange / 180;
         newCell.scale = cell.scale;
+        newCell.scaleRange = cell.scaleRange;
+        newCell.scaleSpeed = cell.scaleSpeed;
+        newCell.alphaRange = cell.alphaRange;
+        newCell.alphaSpeed = cell.alphaSpeed;
         newCell.spin = Math.PI * cell.spin / 180;
+        newCell.spinRange = Math.PI * cell.spinRange / 180;
         newCell.yAcceleration = cell.yAcceleration || 0;
         newCell.xAcceleration = cell.xAcceleration || 0;
         return newCell;

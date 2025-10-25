@@ -219,8 +219,8 @@ export function EmitterTab({
                 </div>
               </AccordionTrigger>
               <AccordionContent>
-                <div className="grid grid-cols-2 gap-2 items-end" key={i}>
-                  <div className="space-y-1">
+                <div className="grid grid-cols-6 gap-3 items-end" key={i}>
+                  <div className="col-span-3 space-y-1">
                     <Label>Birth Rate</Label>
                     <Input
                       type="number"
@@ -249,7 +249,7 @@ export function EmitterTab({
                       }}
                     />
                   </div>
-                  <div className="space-y-1">
+                  <div className="col-span-3 space-y-1">
                     <Label>Lifetime</Label>
                     <Input
                       type="number"
@@ -278,7 +278,7 @@ export function EmitterTab({
                       }}
                     />
                   </div>
-                  <div className="space-y-1">
+                  <div className="col-span-3 space-y-1">
                     <Label>Velocity</Label>
                     <Input
                       type="number"
@@ -307,36 +307,7 @@ export function EmitterTab({
                       }}
                     />
                   </div>
-                  <div className="space-y-1">
-                    <Label>Scale</Label>
-                    <Input
-                      type="number"
-                      step="1"
-                      value={getBuf('emitterCells[' + i + '].scale', fmt2(cell.scale))}
-                      disabled={inState}
-                      onChange={(e) => {
-                        setBuf('emitterCells[' + i + '].scale', e.target.value);
-                        const v = e.target.value.trim();
-                        if (v === "") return;
-                        const num = Number(v);
-                        const cells = selected.emitterCells?.slice() || [];
-                        cells[i] = { ...cell, scale: num } as any;
-                        if (Number.isFinite(num)) updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
-                      }}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
-                      onBlur={(e) => {
-                        const v = e.target.value.trim();
-                        const num = v === "" ? 0 : Number(v);
-                        const cells = selected.emitterCells?.slice() || [];
-                        cells[i] = { ...cell, scale: num } as any;
-                        updateLayer(
-                          selected.id,
-                          { emitterCells: cells as any } as any);
-                        clearBuf('emitterCells[' + i + '].scale');
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-1">
+                  <div className="col-span-3 space-y-1">
                     <Label>Emission Range</Label>
                     <Input
                       type="number"
@@ -365,7 +336,152 @@ export function EmitterTab({
                       }}
                     />
                   </div>
-                  <div className="space-y-1">
+                  <div className="col-span-2 space-y-1">
+                    <Label>Scale</Label>
+                    <Input
+                      type="number"
+                      step="1"
+                      value={getBuf('emitterCells[' + i + '].scale', fmt2(cell.scale))}
+                      disabled={inState}
+                      onChange={(e) => {
+                        setBuf('emitterCells[' + i + '].scale', e.target.value);
+                        const v = e.target.value.trim();
+                        if (v === "") return;
+                        const num = Number(v);
+                        const cells = selected.emitterCells?.slice() || [];
+                        cells[i] = { ...cell, scale: num } as any;
+                        if (Number.isFinite(num)) updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
+                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        const num = v === "" ? 0 : Number(v);
+                        const cells = selected.emitterCells?.slice() || [];
+                        cells[i] = { ...cell, scale: num } as any;
+                        updateLayer(
+                          selected.id,
+                          { emitterCells: cells as any } as any);
+                        clearBuf('emitterCells[' + i + '].scale');
+                      }}
+                    />
+                  </div>
+                  <div className="col-span-2 space-y-1">
+                    <Label>Scale Range</Label>
+                    <Input
+                      type="number"
+                      step="1"
+                      value={getBuf('emitterCells[' + i + '].scaleRange', fmt2(cell.scaleRange))}
+                      disabled={inState}
+                      onChange={(e) => {
+                        setBuf('emitterCells[' + i + '].scaleRange', e.target.value);
+                        const v = e.target.value.trim();
+                        if (v === "") return;
+                        const num = Number(v);
+                        const cells = selected.emitterCells?.slice() || [];
+                        cells[i] = { ...cell, scaleRange: num } as any;
+                        if (Number.isFinite(num)) updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
+                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        const num = v === "" ? 0 : Number(v);
+                        const cells = selected.emitterCells?.slice() || [];
+                        cells[i] = { ...cell, scaleRange: num } as any;
+                        updateLayer(
+                          selected.id,
+                          { emitterCells: cells as any } as any);
+                        clearBuf('emitterCells[' + i + '].scaleRange');
+                      }}
+                    />
+                  </div>
+                  <div className="col-span-2 space-y-1">
+                    <Label>Scale Speed</Label>
+                    <Input
+                      type="number"
+                      step="1"
+                      value={getBuf('emitterCells[' + i + '].scaleSpeed', fmt2(cell.scaleSpeed))}
+                      disabled={inState}
+                      onChange={(e) => {
+                        setBuf('emitterCells[' + i + '].scaleSpeed', e.target.value);
+                        const v = e.target.value.trim();
+                        if (v === "") return;
+                        const num = Number(v);
+                        const cells = selected.emitterCells?.slice() || [];
+                        cells[i] = { ...cell, scaleSpeed: num } as any;
+                        if (Number.isFinite(num)) updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
+                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        const num = v === "" ? 0 : Number(v);
+                        const cells = selected.emitterCells?.slice() || [];
+                        cells[i] = { ...cell, scaleSpeed: num } as any;
+                        updateLayer(
+                          selected.id,
+                          { emitterCells: cells as any } as any);
+                        clearBuf('emitterCells[' + i + '].scaleSpeed');
+                      }}
+                    />
+                  </div>
+                  <div className="col-span-3 space-y-1">
+                    <Label>Alpha Range</Label>
+                    <Input
+                      type="number"
+                      step="1"
+                      value={getBuf('emitterCells[' + i + '].alphaRange', fmt2(cell.alphaRange))}
+                      disabled={inState}
+                      onChange={(e) => {
+                        setBuf('emitterCells[' + i + '].alphaRange', e.target.value);
+                        const v = e.target.value.trim();
+                        if (v === "") return;
+                        const num = Number(v);
+                        const cells = selected.emitterCells?.slice() || [];
+                        cells[i] = { ...cell, alphaRange: num } as any;
+                        if (Number.isFinite(num)) updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
+                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        const num = v === "" ? 0 : Number(v);
+                        const cells = selected.emitterCells?.slice() || [];
+                        cells[i] = { ...cell, alphaRange: num } as any;
+                        updateLayer(
+                          selected.id,
+                          { emitterCells: cells as any } as any);
+                        clearBuf('emitterCells[' + i + '].alphaRange');
+                      }}
+                    />
+                  </div>
+                  <div className="col-span-3 space-y-1">
+                    <Label>Alpha Speed</Label>
+                    <Input
+                      type="number"
+                      step="1"
+                      value={getBuf('emitterCells[' + i + '].alphaSpeed', fmt2(cell.alphaSpeed))}
+                      disabled={inState}
+                      onChange={(e) => {
+                        setBuf('emitterCells[' + i + '].alphaSpeed', e.target.value);
+                        const v = e.target.value.trim();
+                        if (v === "") return;
+                        const num = Number(v);
+                        const cells = selected.emitterCells?.slice() || [];
+                        cells[i] = { ...cell, alphaSpeed: num } as any;
+                        if (Number.isFinite(num)) updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
+                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        const num = v === "" ? 0 : Number(v);
+                        const cells = selected.emitterCells?.slice() || [];
+                        cells[i] = { ...cell, alphaSpeed: num } as any;
+                        updateLayer(
+                          selected.id,
+                          { emitterCells: cells as any } as any);
+                        clearBuf('emitterCells[' + i + '].alphaSpeed');
+                      }}
+                    />
+                  </div>
+                  <div className="col-span-3 space-y-1">
                     <Label>Spin</Label>
                     <Input
                       type="number"
@@ -394,7 +510,36 @@ export function EmitterTab({
                       }}
                     />
                   </div>
-                  <div className="space-y-1">
+                  <div className="col-span-3 space-y-1">
+                    <Label>Spin Range</Label>
+                    <Input
+                      type="number"
+                      step="1"
+                      value={getBuf('emitterCells[' + i + '].spinRange', fmt2(cell.spinRange))}
+                      disabled={inState}
+                      onChange={(e) => {
+                        setBuf('emitterCells[' + i + '].spinRange', e.target.value);
+                        const v = e.target.value.trim();
+                        if (v === "") return;
+                        const num = Number(v);
+                        const cells = selected.emitterCells?.slice() || [];
+                        cells[i] = { ...cell, spinRange: num } as any;
+                        if (Number.isFinite(num)) updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
+                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        const num = v === "" ? 0 : Number(v);
+                        const cells = selected.emitterCells?.slice() || [];
+                        cells[i] = { ...cell, spinRange: num } as any;
+                        updateLayer(
+                          selected.id,
+                          { emitterCells: cells as any } as any);
+                        clearBuf('emitterCells[' + i + '].spinRange');
+                      }}
+                    />
+                  </div>
+                  <div className="col-span-3 space-y-1">
                     <Label>X Acceleration</Label>
                     <Input
                       type="number"
@@ -423,7 +568,7 @@ export function EmitterTab({
                       }}
                     />
                   </div>
-                  <div className="space-y-1">
+                  <div className="col-span-3 space-y-1">
                     <Label>Y Acceleration</Label>
                     <Input
                       type="number"
@@ -457,7 +602,7 @@ export function EmitterTab({
                     variant="destructive"
                     disabled={inState}
                     onClick={() => removeEmitterCell(selected.id, i)}
-                    className="col-span-2 justify-self-center"
+                    className="col-span-6 justify-self-center"
                   >
                     Remove
                   </Button>

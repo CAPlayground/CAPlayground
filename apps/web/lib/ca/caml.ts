@@ -557,8 +557,13 @@ function parseCAEmitterLayer(el: Element): AnyLayer {
         newCell.lifetime = Number(attr(c, 'lifetime'));
         newCell.velocity = Number(attr(c, 'velocity'));
         newCell.scale = Number(attr(c, 'scale'));
-        newCell.emissionRange = radToDeg(Number(attr(c, 'emissionRange')));
-        newCell.spin = radToDeg(Number(attr(c, 'spin')));
+        newCell.scaleRange = Number(attr(c, 'scaleRange'));
+        newCell.scaleSpeed = Number(attr(c, 'scaleSpeed'));
+        newCell.alphaRange = Number(attr(c, 'alphaRange'));
+        newCell.alphaSpeed = Number(attr(c, 'alphaSpeed'));
+        newCell.emissionRange = radToDeg(Number(attr(c, 'emissionRange')) || 0);
+        newCell.spin = radToDeg(Number(attr(c, 'spin')) || 0);
+        newCell.spinRange = radToDeg(Number(attr(c, 'spinRange')) || 0);
         newCell.xAcceleration = Number(attr(c, 'xAcceleration'));
         newCell.yAcceleration = Number(attr(c, 'yAcceleration'));
         return newCell;
@@ -1236,7 +1241,12 @@ function serializeLayer(doc: XMLDocument, layer: AnyLayer, project?: CAProject, 
       emitterCell.setAttribute('velocity', num(cell.velocity));
       emitterCell.setAttribute('emissionRange', num(rad(cell.emissionRange)));
       emitterCell.setAttribute('scale', num(cell.scale));
+      emitterCell.setAttribute('scaleRange', num(cell.scaleRange));
+      emitterCell.setAttribute('scaleSpeed', num(cell.scaleSpeed));
+      emitterCell.setAttribute('alphaRange', num(cell.alphaRange));
+      emitterCell.setAttribute('alphaSpeed', num(cell.alphaSpeed));
       emitterCell.setAttribute('spin', num(rad(cell.spin)));
+      emitterCell.setAttribute('spinRange', num(rad(cell.spinRange)));
       emitterCell.setAttribute('xAcceleration', num(cell.xAcceleration));
       emitterCell.setAttribute('yAcceleration', num(cell.yAcceleration));
       emitterCells.appendChild(emitterCell);
