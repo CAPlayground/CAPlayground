@@ -3,7 +3,7 @@ import { Footer } from "@/components/footer"
 import { FeaturedWallpapers } from "@/components/featured-wallpapers"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { Send, Cloud as NotificationIcon, Github, Star } from "lucide-react"
+import { Send, BookOpen as NotificationIcon, Github, Star } from "lucide-react"
 import Image from "next/image"
 
 export default async function HomePage() {
@@ -37,7 +37,7 @@ export default async function HomePage() {
                   <Link href="/dashboard">
                     <div className="inline-flex items-center justify-center lg:justify-start px-6 py-2.5 rounded-full bg-accent/10 backdrop-blur-sm border border-accent/20 transition-all duration-200 hover:bg-accent/20 hover:border-accent/30 hover:shadow-sm cursor-pointer w-auto">
                       <NotificationIcon className="h-4 w-4 text-accent mr-2" aria-hidden="true" />
-                      <span className="text-accent font-sans font-medium text-sm">Cloud projects currently in beta!</span>
+                      <span className="text-accent font-sans font-medium text-sm">Docs have been massively improved!</span>
                     </div>
                   </Link>
 
