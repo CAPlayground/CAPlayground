@@ -23,6 +23,7 @@ import { VideoTab } from "./tabs/VideoTab";
 import { AnimationsTab } from "./tabs/AnimationsTab";
 import { GyroTab } from "./tabs/GyroTab";
 import { EmitterTab } from "./tabs/EmitterTab";
+import { ReplicatorTab } from "./tabs/ReplicatorTab";
 
 export function Inspector() {
   const { doc, setDoc, updateLayer, updateLayerTransient, replaceImageForLayer, addEmitterCellImage, isAnimationPlaying, animatedLayers, selectLayer } = useEditor();
@@ -140,6 +141,12 @@ export function Inspector() {
         { id: 'compositing' as TabId, icon: Layers, label: 'Compositing' },
         { id: 'emitter' as TabId, icon: Cog, label: 'Emitter' },
       ]
+    } else if ((selected as any)?.type === 'replicator') {
+      baseTabs = [
+        { id: 'geometry' as TabId, icon: Box, label: 'Geometry' },
+        { id: 'compositing' as TabId, icon: Layers, label: 'Compositing' },
+        { id: 'replicator' as TabId, icon: Cog, label: 'Replicator' },
+      ];
     }
     return baseTabs;
   }, [selected?.type, doc?.meta.gyroEnabled]);
@@ -155,8 +162,10 @@ export function Inspector() {
       setActiveTab('video');
     } else if (selected?.type !== 'text' && selected?.type !== 'emitter' && selected?.type !== 'gradient' && selected?.type !== 'image' && selected?.type !== 'video' && (activeTab === 'text' || activeTab === 'gradient' || activeTab === 'image' || activeTab === 'video' || activeTab === 'emitter')) {
       setActiveTab('geometry');
-    } else if (selected?.type === 'emitter' && (['animations', 'text', 'gradient', 'image', 'video', 'content'].includes(activeTab))) {
+    } else if (selected?.type === 'emitter' && (['animations', 'text', 'gradient', 'image', 'video', 'content', 'replicator'].includes(activeTab))) {
       setActiveTab('emitter');
+    } else if ((selected as any)?.type === 'replicator' && (['animations', 'text', 'gradient', 'image', 'video', 'content', 'emitter'].includes(activeTab))) {
+      setActiveTab('replicator');
     }
   }, [selected?.type, activeTab]);
 
@@ -390,6 +399,13 @@ export function Inspector() {
             <AnimationsTab
               {...tabProps}
               animEnabled={animEnabled}
+              activeState={current?.activeState}
+            />
+          )}
+
+          {activeTab === 'replicator' && (selected as any).type === 'replicator' && (
+            <ReplicatorTab
+              {...tabProps}
               activeState={current?.activeState}
             />
           )}

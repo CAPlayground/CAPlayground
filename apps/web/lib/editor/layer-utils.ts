@@ -6,8 +6,8 @@ export function findById(layers: AnyLayer[], id: string | null | undefined): Any
   if (!id) return undefined;
   for (const l of layers) {
     if (l.id === id) return l;
-    if ((l as any).type === 'group') {
-      const g = l as GroupLayer;
+    if ((l as any).type === 'group' || (l as any).type === 'replicator') {
+      const g = l as any;
       const found = findById(g.children, id);
       if (found) return found;
     }
@@ -24,9 +24,9 @@ export function insertIntoGroupInTree(
   let inserted = false;
   const next: AnyLayer[] = [];
   for (const l of layers) {
-    if (l.id === groupId && l.type === 'group') {
-      const g = l as GroupLayer;
-      let kids = [...g.children];
+    if (l.id === groupId && ((l as any).type === 'group' || (l as any).type === 'replicator')) {
+      const g: any = l as any;
+      let kids = [...(g.children as AnyLayer[])];
       const i = typeof index === 'number' && index >= 0 && index <= kids.length ? index : kids.length;
       kids.splice(i, 0, node);
       const disp = (g as any)._displayType as string | undefined;
@@ -41,8 +41,8 @@ export function insertIntoGroupInTree(
       }
       next.push({ ...g, children: kids } as AnyLayer);
       inserted = true;
-    } else if (l.type === 'group') {
-      const g = l as GroupLayer;
+    } else if ((l as any).type === 'group' || (l as any).type === 'replicator') {
+      const g: any = l as any;
       const res = insertIntoGroupInTree(g.children, groupId, node, index);
       if (res.inserted) {
         inserted = true;
@@ -59,6 +59,16 @@ export function insertIntoGroupInTree(
 
 export function cloneLayerDeep(layer: AnyLayer): AnyLayer {
   const newId = genId();
+  if ((layer as any).type === 'replicator') {
+    const r = layer as any;
+    return {
+      ...JSON.parse(JSON.stringify({ ...r, id: newId })) as any,
+      id: newId,
+      children: (r.children || []).map(cloneLayerDeep),
+      position: { x: (r.position?.x ?? 0) + 10, y: (r.position?.y ?? 0) + 10 },
+      name: `${r.name} copy`,
+    } as AnyLayer;
+  }
   if (layer.type === 'group') {
     const g = layer as GroupLayer;
     return {
@@ -79,8 +89,8 @@ export function cloneLayerDeep(layer: AnyLayer): AnyLayer {
 export function updateInTree(layers: AnyLayer[], id: string, patch: Partial<AnyLayer>): AnyLayer[] {
   return layers.map((l) => {
     if (l.id === id) return { ...l, ...patch } as AnyLayer;
-    if (l.type === "group") {
-      const g = l as GroupLayer;
+    if ((l as any).type === "group" || (l as any).type === 'replicator') {
+      const g: any = l as any;
       return { ...g, children: updateInTree(g.children, id, patch) } as AnyLayer;
     }
     return l;
@@ -95,8 +105,8 @@ export function removeFromTree(layers: AnyLayer[], id: string): { removed: AnyLa
       removed = l;
       continue;
     }
-    if (l.type === 'group') {
-      const g = l as GroupLayer;
+    if ((l as any).type === 'group' || (l as any).type === 'replicator') {
+      const g: any = l as any;
       const res = removeFromTree(g.children, id);
       if (res.removed) removed = res.removed;
       next.push({ ...g, children: res.layers } as AnyLayer);
@@ -116,8 +126,8 @@ export function insertBeforeInTree(layers: AnyLayer[], targetId: string, node: A
       next.push(node);
       next.push(l);
       inserted = true;
-    } else if (l.type === 'group') {
-      const g = l as GroupLayer;
+    } else if ((l as any).type === 'group' || (l as any).type === 'replicator') {
+      const g: any = l as any;
       const res = insertBeforeInTree(g.children, targetId, node);
       if (res.inserted) {
         inserted = true;
@@ -136,8 +146,8 @@ export function deleteInTree(layers: AnyLayer[], id: string): AnyLayer[] {
   const next: AnyLayer[] = [];
   for (const l of layers) {
     if (l.id === id) continue;
-    if (l.type === "group") {
-      const g = l as GroupLayer;
+    if ((l as any).type === "group" || (l as any).type === 'replicator') {
+      const g: any = l as any;
       next.push({ ...g, children: deleteInTree(g.children, id) } as AnyLayer);
     } else {
       next.push(l);
@@ -149,7 +159,7 @@ export function deleteInTree(layers: AnyLayer[], id: string): AnyLayer[] {
 export function containsId(layers: AnyLayer[], id: string): boolean {
   for (const l of layers) {
     if (l.id === id) return true;
-    if (l.type === "group" && containsId((l as GroupLayer).children, id)) return true;
+    if (((l as any).type === "group" || (l as any).type === 'replicator') && containsId(((l as any).children as AnyLayer[]), id)) return true;
   }
   return false;
 }
@@ -166,11 +176,19 @@ export function wrapAsGroup(
         const g = l as GroupLayer;
         return { ...g, children: g.children.map(wrapNode) } as AnyLayer;
       }
+      if ((l as any).type === 'replicator') {
+        const r: any = l as any;
+        return { ...r, children: ((r.children || []) as AnyLayer[]).map(wrapNode) } as AnyLayer;
+      }
       return l;
     }
 
     if (l.type === 'group') {
       newGroupId = l.id;
+      return l;
+    }
+    if ((l as any).type === 'replicator') {
+      newGroupId = (l as any).id;
       return l;
     }
     if (l.type === 'shape') {

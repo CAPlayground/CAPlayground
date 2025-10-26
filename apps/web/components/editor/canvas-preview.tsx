@@ -100,8 +100,8 @@ export function CanvasPreview() {
       const idx = arr.findIndex((l) => l.id === id);
       if (idx >= 0) return { siblings: arr, index: idx };
       for (const l of arr) {
-        if ((l as any).type === 'group' && Array.isArray((l as any).children)) {
-          const res = walk((l as any).children as AnyLayer[]);
+        if (((l as any).type === 'group' || (l as any).type === 'replicator') && Array.isArray((l as any).children)) {
+          const res = walk(((l as any).children) as AnyLayer[]);
           if (res) return res;
         }
       }
@@ -340,7 +340,7 @@ export function CanvasPreview() {
     const cloneTree = (arr: AnyLayer[]): AnyLayer[] => arr.map((l) => {
       const copy = JSON.parse(JSON.stringify(l)) as AnyLayer;
       map[copy.id] = copy;
-      if ((copy as any).type === 'group' && Array.isArray((copy as any).children)) {
+      if (((copy as any).type === 'group' || (copy as any).type === 'replicator') && Array.isArray((copy as any).children)) {
         (copy as any).children = cloneTree((copy as any).children);
       }
       return copy;
@@ -421,7 +421,7 @@ export function CanvasPreview() {
     const map: Record<string, AnyLayer> = {};
     const walk = (l: AnyLayer) => {
       map[l.id] = l;
-      if ((l as any).type === 'group' && Array.isArray((l as any).children)) {
+      if (((l as any).type === 'group' || (l as any).type === 'replicator') && Array.isArray((l as any).children)) {
         (l as any).children.forEach(walk);
       }
     };
@@ -598,7 +598,7 @@ export function CanvasPreview() {
         if (anim && anim.enabled) return true;
         if ((l as any).type === 'video') return true;
         if ((l as any).type === 'emitter') return true;
-        if ((l as any).type === 'group' && Array.isArray((l as any).children)) {
+        if (((l as any).type === 'group' || (l as any).type === 'replicator') && Array.isArray((l as any).children)) {
           if (check((l as any).children as AnyLayer[])) return true;
         }
       }
@@ -805,8 +805,8 @@ export function CanvasPreview() {
       for (const n of arr) {
         stack.push(n);
         if (n.id === id) return [...stack];
-        if ((n as any).type === 'group' && Array.isArray((n as any).children)) {
-          const p = dfs((n as GroupLayer).children);
+        if (((n as any).type === 'group' || (n as any).type === 'replicator') && Array.isArray((n as any).children)) {
+          const p = dfs(((n as any).children) as AnyLayer[]);
           if (p) return p;
         }
         stack.pop();
@@ -823,8 +823,8 @@ export function CanvasPreview() {
     if (!path || path.length === 0) return { containerH, useYUp };
     for (let i = 0; i < path.length - 1; i++) {
       const node = path[i];
-      if ((node as any).type === 'group') {
-        const g = node as GroupLayer;
+      if ((node as any).type === 'group' || (node as any).type === 'replicator') {
+        const g: any = node as any;
         useYUp = (typeof (g as any).geometryFlipped === 'number') ? (((g as any).geometryFlipped as 0 | 1) === 0) : useYUp;
         containerH = g.size.h;
       }
@@ -844,8 +844,8 @@ export function CanvasPreview() {
       const lt = computeCssLT(node, containerH, useYUp);
       left += lt.left;
       top += lt.top;
-      if (i < path.length - 1 && (node as any).type === 'group') {
-        const g = node as GroupLayer;
+      if (i < path.length - 1 && ((node as any).type === 'group' || (node as any).type === 'replicator')) {
+        const g: any = node as any;
         useYUp = (typeof (g as any).geometryFlipped === 'number') ? (((g as any).geometryFlipped as 0 | 1) === 0) : useYUp;
         containerH = g.size.h;
       }
@@ -1263,6 +1263,54 @@ export function CanvasPreview() {
         </LayerContextMenu>
       );
     }
+    if ((l as any).type === "replicator") {
+      const g = l as any;
+      const nextUseYUp = (typeof (g as any).geometryFlipped === 'number')
+        ? (((g as any).geometryFlipped as 0 | 1) === 0)
+        : useYUp;
+      const cnt = Math.max(1, Math.floor(Number(g.instanceCount || 1)));
+      const delay = Number(g.instanceDelay || 0);
+      const tX = Number(g.instanceTranslateX || 0);
+      const tY = Number(g.instanceTranslateY || 0);
+      const rZ = Number(g.instanceRotateZ || 0);
+      const children = Array.isArray(g.children) ? g.children as AnyLayer[] : [];
+      const instances: React.ReactNode[] = [];
+      for (let i = 0; i < cnt; i++) {
+        const shouldShow = !(delay > 0 && i > 0 && timeSec < i * delay);
+        const wrapStyle: React.CSSProperties = {
+          position: 'absolute',
+          inset: 0,
+          transform: `translate(${tX * i}px, ${nextUseYUp ? -(tY * i) : (tY * i)}px) rotate(${-(rZ * i)}deg)`,
+          transformOrigin: `${a.x * 100}% ${transformOriginY}%`,
+          pointerEvents: i === 0 ? 'auto' : 'none',
+          display: shouldShow ? undefined : 'none',
+        };
+        instances.push(
+          <div key={`rep-${g.id}-${i}`} style={wrapStyle}>
+            {children.map((c) => {
+              const disable = i > 0 ? true : false;
+              return renderLayer(c, g.size.h, nextUseYUp, children, assets, disable);
+            })}
+          </div>
+        );
+      }
+      return (
+        <LayerContextMenu key={g.id} layer={g} siblings={siblings}>
+          <div
+            style={{ ...common, ...bgStyleFor(g), ...((((g as any).masksToBounds ?? 0) === 1) ? { overflow: 'hidden' as const } : {}) }}
+            onMouseDown={(e) => startDrag(g, e, containerH, useYUp)}
+            onTouchStart={(e) => {
+              if (e.touches.length === 1) {
+                e.preventDefault();
+                startDrag(g, touchToMouseLike(e.touches[0]), containerH, useYUp);
+              }
+            }}
+          >
+            {instances}
+          </div>
+        </LayerContextMenu>
+      );
+    }
     // group
     const g = l as GroupLayer;
     const nextUseYUp = (typeof (g as any).geometryFlipped === 'number')
@@ -1378,8 +1426,12 @@ export function CanvasPreview() {
     if (!id) return undefined;
     for (const l of layers) {
       if (l.id === id) return l;
-      if (l.type === "group") {
+      if ((l as any).type === "group") {
         const found = findById((l as GroupLayer).children, id);
+        if (found) return found;
+      }
+      if ((l as any).type === 'replicator' && Array.isArray((l as any).children)) {
+        const found = findById(((l as any).children) as AnyLayer[], id);
         if (found) return found;
       }
     }

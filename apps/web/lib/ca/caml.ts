@@ -1,5 +1,5 @@
 import { CAEmitterCell, CAEmitterLayer } from '@/components/editor/emitter/emitter';
-import { AnyLayer, CAProject, GroupLayer, TextLayer, VideoLayer, CAStateOverrides, CAStateTransitions, GyroParallaxDictionary, KeyPath, Animations, EmitterLayer } from './types';
+import { AnyLayer, CAProject, GroupLayer, TextLayer, VideoLayer, CAStateOverrides, CAStateTransitions, GyroParallaxDictionary, KeyPath, Animations, EmitterLayer, LayerBase } from './types';
 
 const CAML_NS = 'http://www.apple.com/CoreAnimation/1.0';
 
@@ -180,6 +180,39 @@ function parseNumberList(input?: string): number[] {
     .map((s) => s.trim())
     .filter(Boolean)
     .map((s) => Number(s));
+}
+
+function parseInstanceTransform(attrVal?: string): { tx?: number; ty?: number; tz?: number; rz?: number } {
+  const out: { tx?: number; ty?: number; tz?: number; rz?: number } = {};
+  if (!attrVal) return out;
+  try {
+    const s = String(attrVal);
+    const t = /translate\(([^)]+)\)/i.exec(s);
+    if (t && t[1]) {
+      const parts = t[1].split(/\s*,\s*/).map((p) => Number(p));
+      if (Number.isFinite(parts[0])) out.tx = parts[0];
+      if (Number.isFinite(parts[1])) out.ty = parts[1];
+      if (Number.isFinite(parts[2])) out.tz = parts[2];
+    }
+    const r = /rotate\(([^)]+)\)/gi;
+    let m: RegExpExecArray | null;
+    while ((m = r.exec(s)) !== null) {
+      const inside = m[1].trim();
+      const parts = inside.split(/\s*,\s*/);
+      const angleStr = parts[0];
+      const deg = parseFloat((angleStr || '').replace(/deg/i, '').trim());
+      if (Number.isFinite(deg)) {
+        if (parts.length < 4) out.rz = deg; // default z
+        else {
+          const ax = parseFloat(parts[1]);
+          const ay = parseFloat(parts[2]);
+          const az = parseFloat(parts[3]);
+          if (Math.abs(az - 1) < 1e-6 && Math.abs(ax) < 1e-6 && Math.abs(ay) < 1e-6) out.rz = deg;
+        }
+      }
+    }
+  } catch {}
+  return out;
 }
 
 function floatsToHexColor(rgb: string | undefined): string | undefined {
@@ -413,13 +446,14 @@ function parseCATextLayer(el: Element): AnyLayer {
   const sublayersEl = directChildByTagNS(el, 'sublayers');
   if (sublayersEl) {
     const sublayerNodes = (Array.from(sublayersEl.children) as Element[])
-      .filter((c) => ((c as any).namespaceURI === CAML_NS) && (c.localName === 'CALayer' || c.localName === 'CATextLayer' || c.localName === 'CAGradientLayer'));
+      .filter((c) => ((c as any).namespaceURI === CAML_NS) && (c.localName === 'CALayer' || c.localName === 'CATextLayer' || c.localName === 'CAGradientLayer' || c.localName === 'CAReplicatorLayer'));
     if (sublayerNodes.length > 0) {
       const children: AnyLayer[] = [];
       for (const n of sublayerNodes) {
         if (n.localName === 'CALayer') children.push(parseCALayer(n));
         else if (n.localName === 'CATextLayer') children.push(parseCATextLayer(n));
         else if (n.localName === 'CAGradientLayer') children.push(parseCAGradientLayer(n));
+        else if (n.localName === 'CAReplicatorLayer') children.push(parseCAReplicatorLayer(n));
       }
       const group: GroupLayer = {
         ...base,
@@ -491,13 +525,14 @@ function parseCAGradientLayer(el: Element): AnyLayer {
   const sublayersEl = directChildByTagNS(el, 'sublayers');
   if (sublayersEl) {
     const sublayerNodes = (Array.from(sublayersEl.children) as Element[])
-      .filter((c) => ((c as any).namespaceURI === CAML_NS) && (c.localName === 'CALayer' || c.localName === 'CATextLayer' || c.localName === 'CAGradientLayer'));
+      .filter((c) => ((c as any).namespaceURI === CAML_NS) && (c.localName === 'CALayer' || c.localName === 'CATextLayer' || c.localName === 'CAGradientLayer' || c.localName === 'CAReplicatorLayer'));
     if (sublayerNodes.length > 0) {
       const children: AnyLayer[] = [];
       for (const n of sublayerNodes) {
         if (n.localName === 'CALayer') children.push(parseCALayer(n));
         else if (n.localName === 'CATextLayer') children.push(parseCATextLayer(n));
         else if (n.localName === 'CAGradientLayer') children.push(parseCAGradientLayer(n));
+        else if (n.localName === 'CAReplicatorLayer') children.push(parseCAReplicatorLayer(n));
       }
       const group: GroupLayer = {
         ...base,
@@ -584,6 +619,42 @@ function parseCAEmitterLayer(el: Element): AnyLayer {
 
 function parseCALayer(el: Element): AnyLayer {
   const caplayKind = attr(el, 'caplayKind') || attr(el, 'caplay.kind');
+  if (caplayKind === 'replicator') {
+    const base = parseLayerBase(el);
+    const sublayersEl = directChildByTagNS(el, 'sublayers');
+    const nodes = sublayersEl ? (Array.from(sublayersEl.children) as Element[]) : [];
+    const repNode = nodes.find((n) => (n as any).namespaceURI === CAML_NS && n.localName === 'CAReplicatorLayer');
+    if (repNode) {
+      const parsedRep = parseCAReplicatorLayer(repNode);
+      const others: AnyLayer[] = [];
+      for (const n of nodes) {
+        if (n === repNode) continue;
+        if ((n as any).namespaceURI !== CAML_NS) continue;
+        if (n.localName === 'CALayer') others.push(parseCALayer(n));
+        else if (n.localName === 'CATextLayer') others.push(parseCATextLayer(n));
+        else if (n.localName === 'CAGradientLayer') others.push(parseCAGradientLayer(n));
+        else if (n.localName === 'CAEmitterLayer') others.push(parseCAEmitterLayer(n));
+        else if (n.localName === 'CAReplicatorLayer') others.push(parseCAReplicatorLayer(n));
+      }
+      const mergedChildren = ([...((parsedRep as any).children || []), ...others]) as AnyLayer[];
+      const normalized: AnyLayer = {
+        ...(parsedRep as any),
+        id: base.id,
+        name: base.name,
+        position: base.position,
+        size: base.size,
+        opacity: base.opacity,
+        rotation: (base as any).rotation,
+        rotationX: (base as any).rotationX,
+        rotationY: (base as any).rotationY,
+        anchorPoint: (base as any).anchorPoint,
+        geometryFlipped: (base as any).geometryFlipped,
+        masksToBounds: (base as any).masksToBounds,
+        children: mergedChildren,
+      } as AnyLayer;
+      return normalized;
+    }
+  }
   if (caplayKind === 'video') {
     return parseCAVideoLayer(el);
   }
@@ -640,7 +711,7 @@ function parseCALayer(el: Element): AnyLayer {
   const sublayersEl = directChildByTagNS(el, 'sublayers');
   const sublayerNodes = sublayersEl
     ? (Array.from(sublayersEl.children) as Element[])
-        .filter((c) => ((c as any).namespaceURI === CAML_NS) && (c.localName === 'CALayer' || c.localName === 'CATextLayer' || c.localName === 'CAGradientLayer' || c.localName === 'CAEmitterLayer'))
+        .filter((c) => ((c as any).namespaceURI === CAML_NS) && (c.localName === 'CALayer' || c.localName === 'CATextLayer' || c.localName === 'CAGradientLayer' || c.localName === 'CAEmitterLayer' || c.localName === 'CAReplicatorLayer'))
     : [];
   
   if (caplayKind === 'image' || caplayKind === 'text' || caplayKind === 'gradient' || caplayKind === 'emitter') {
@@ -651,6 +722,7 @@ function parseCALayer(el: Element): AnyLayer {
         else if (n.localName === 'CATextLayer') children.push(parseCATextLayer(n));
         else if (n.localName === 'CAGradientLayer') children.push(parseCAGradientLayer(n));
         else if (n.localName === 'CAEmitterLayer') children.push(parseCAEmitterLayer(n));
+        else if (n.localName === 'CAReplicatorLayer') children.push(parseCAReplicatorLayer(n));
       }
     }
     const group: GroupLayer = {
@@ -737,6 +809,7 @@ function parseCALayer(el: Element): AnyLayer {
       else if (n.localName === 'CATextLayer') children.push(parseCATextLayer(n));
       else if (n.localName === 'CAGradientLayer') children.push(parseCAGradientLayer(n));
       else if (n.localName === 'CAEmitterLayer') children.push(parseCAEmitterLayer(n));
+      else if (n.localName === 'CAReplicatorLayer') children.push(parseCAReplicatorLayer(n));
     }
     const normalize = (s: string) => {
       try { s = decodeURIComponent(s); } catch {}
@@ -811,7 +884,7 @@ export function serializeCAML(
   const layerIndex: Record<string, AnyLayer> = {};
   const indexWalk = (l: AnyLayer) => {
     layerIndex[l.id] = l as AnyLayer;
-    if ((l as any).type === 'group' && Array.isArray((l as any).children)) {
+    if ((((l as any).type === 'group') || ((l as any).type === 'replicator')) && Array.isArray((l as any).children)) {
       ((l as any).children as AnyLayer[]).forEach(indexWalk);
     }
   };
@@ -996,6 +1069,7 @@ function serializeLayer(doc: XMLDocument, layer: AnyLayer, project?: CAProject, 
   const isText = layer.type === 'text';
   const isGradient = layer.type === 'gradient';
   const isEmitter = layer.type === 'emitter';
+  const isReplicator = (layer as any).type === 'replicator';
   const hasGradientProps = layer.type === 'group' && ((layer as any).gradientType || (layer as any)._displayType === 'gradient');
   const elementType = isText
     ? 'CATextLayer'
@@ -1003,7 +1077,9 @@ function serializeLayer(doc: XMLDocument, layer: AnyLayer, project?: CAProject, 
       ? 'CAGradientLayer'
       : isEmitter
         ? 'CAEmitterLayer'
-        : 'CALayer';
+        : isReplicator
+          ? 'CAReplicatorLayer'
+          : 'CALayer';
   const el = doc.createElementNS(CAML_NS, elementType);
   setAttr(el, 'id', layer.id);
   setAttr(el, 'name', layer.name);
@@ -1062,6 +1138,22 @@ function serializeLayer(doc: XMLDocument, layer: AnyLayer, project?: CAProject, 
   setAttr(el, 'allowsGroupOpacity', '1');
   setAttr(el, 'contentsFormat', 'RGBA8');
   setAttr(el, 'cornerCurve', 'circular');
+
+  if (isReplicator) {
+    const rep: any = layer;
+    setAttr(el, 'instanceColor', '1 1 1');
+    const cnt = Math.max(0, Math.floor(Number(rep.instanceCount ?? 0)));
+    setAttr(el, 'instanceCount', cnt);
+    if (typeof rep.instanceDelay === 'number') setAttr(el, 'instanceDelay', Number(rep.instanceDelay));
+    const tParts: string[] = [];
+    const tx = Number(rep.instanceTranslateX ?? 0);
+    const ty = Number(rep.instanceTranslateY ?? 0);
+    const tz = Number(rep.instanceTranslateZ ?? 0);
+    if (tx || ty || tz) tParts.push(`translate(${tx}, ${ty}, ${tz})`);
+    const rz = Number(rep.instanceRotateZ ?? 0);
+    if (Number.isFinite(rz) && rz) tParts.push(`rotate(${rz}deg)`);
+    if (tParts.length) setAttr(el, 'instanceTransform', tParts.join(' '));
+  }
 
   const displayType = (layer as any)._displayType as string | undefined;
   const inferredType = !displayType && layer.type === 'group' ? (
@@ -1364,6 +1456,15 @@ function serializeLayer(doc: XMLDocument, layer: AnyLayer, project?: CAProject, 
     if (children.length) el.appendChild(sublayers);
   }
 
+  if ((layer as any).type === 'replicator') {
+    const sublayers = doc.createElementNS(CAML_NS, 'sublayers');
+    const children = ((layer as any).children || []) as AnyLayer[];
+    for (const child of children) {
+      sublayers.appendChild(serializeLayer(doc, child, project));
+    }
+    if (children.length) el.appendChild(sublayers);
+  }
+
   const anim = (layer as any).animations as
     | Animations
     | undefined;
@@ -1525,4 +1626,39 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
     }
   } catch {} 
   return parsedAnimations;
+}
+
+function parseCAReplicatorLayer(el: Element): AnyLayer {
+  const base = parseLayerBase(el);
+  const instanceCountAttr = attr(el, 'instanceCount');
+  const instanceDelayAttr = attr(el, 'instanceDelay');
+  const it = attr(el, 'instanceTransform');
+  const { tx, ty, tz, rz } = parseInstanceTransform(it);
+
+  const sublayersEl = directChildByTagNS(el, 'sublayers');
+  const sublayerNodes = sublayersEl
+    ? (Array.from(sublayersEl.children) as Element[])
+        .filter((c) => ((c as any).namespaceURI === CAML_NS) && (c.localName === 'CALayer' || c.localName === 'CATextLayer' || c.localName === 'CAGradientLayer' || c.localName === 'CAEmitterLayer' || c.localName === 'CAReplicatorLayer'))
+    : [];
+  const children: AnyLayer[] = [];
+  for (const n of sublayerNodes) {
+    if (n.localName === 'CALayer') children.push(parseCALayer(n));
+    else if (n.localName === 'CATextLayer') children.push(parseCATextLayer(n));
+    else if (n.localName === 'CAGradientLayer') children.push(parseCAGradientLayer(n));
+    else if (n.localName === 'CAEmitterLayer') children.push(parseCAEmitterLayer(n));
+    else if (n.localName === 'CAReplicatorLayer') children.push(parseCAReplicatorLayer(n));
+  }
+
+  const layer: AnyLayer = {
+    ...base,
+    type: 'replicator',
+    children,
+    instanceCount: Math.max(0, Math.floor(Number(instanceCountAttr || '0'))),
+    ...(typeof instanceDelayAttr === 'string' && instanceDelayAttr.trim() ? { instanceDelay: Number(instanceDelayAttr) } : {}),
+    ...(typeof tx === 'number' ? { instanceTranslateX: tx } : {}),
+    ...(typeof ty === 'number' ? { instanceTranslateY: ty } : {}),
+    ...(typeof tz === 'number' ? { instanceTranslateZ: tz } : {}),
+    ...(typeof rz === 'number' ? { instanceRotateZ: rz } : {}),
+  } as any;
+  return layer;
 }

@@ -60,6 +60,7 @@ export type EditorContextValue = {
   addGradientLayer: () => void;
   addVideoLayerFromFile: (file: File) => Promise<void>;
   addEmitterLayer: () => void;
+  addReplicatorLayer: () => void;
   removeEmitterCell: (layerId: string, index: number) => void;
   updateLayer: (id: string, patch: Partial<AnyLayer>) => void;
   updateLayerTransient: (id: string, patch: Partial<AnyLayer>) => void;
@@ -230,6 +231,8 @@ export function EditorProvider({
                   }
                 } else if (layer.type === "group") {
                   walk((layer as GroupLayer).children);
+                } else if ((layer as any).type === 'replicator') {
+                  walk((layer as any).children || []);
                 } else if (layer.type === "emitter") {
                   const emitter = layer as EmitterLayer;
                   emitter.emitterCells?.forEach((cell) => {
@@ -281,6 +284,10 @@ export function EditorProvider({
             if ((l as any).type === 'group') {
               const g = l as GroupLayer;
               return { ...g, children: applyAssetSrc(g.children) } as AnyLayer;
+            }
+            if ((l as any).type === 'replicator') {
+              const r: any = l as any;
+              return { ...r, children: applyAssetSrc((r.children || []) as AnyLayer[]) } as AnyLayer;
             }
             return l;
           });
@@ -499,6 +506,10 @@ export function EditorProvider({
               const g = l as GroupLayer;
               return { ...g, children: g.children.map(mapOne) } as AnyLayer;
             }
+            if ((l as any).type === 'replicator') {
+              const r: any = l as any;
+              return { ...r, children: ((r.children || []) as AnyLayer[]).map(mapOne) } as AnyLayer;
+            }
             return l;
           };
           return layers.map(mapOne);
@@ -664,7 +675,7 @@ export function EditorProvider({
         nextLayers = [...cur.layers, layer];
       } else {
         const target = findById(cur.layers, selId);
-        if (target && (target as any).type === 'group') {
+        if (target && ((target as any).type === 'group' || (target as any).type === 'replicator')) {
           nextLayers = insertIntoGroupInTree(cur.layers, selId, layer).layers;
         } else if (target) {
           const wrapped = wrapAsGroup(cur.layers, selId);
@@ -676,6 +687,32 @@ export function EditorProvider({
       }
       const next = { ...cur, layers: nextLayers, selectedId: layer.id };
       return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
+    });
+  }, [addBase]);
+
+  const addReplicatorLayer = useCallback(() => {
+    setDoc((prev) => {
+      if (!prev) return prev;
+      const key = prev.activeCA;
+      const cur = prev.docs[key];
+      const canvasW = prev.meta.width || 390;
+      const canvasH = prev.meta.height || 844;
+      const layer: AnyLayer = {
+        ...(addBase('Replicator') as any),
+        type: 'replicator',
+        position: { x: canvasW / 2, y: canvasH / 2 },
+        size: { w: canvasW, h: canvasH },
+        instanceCount: 1,
+        instanceDelay: 0,
+        instanceTranslateX: 0,
+        instanceTranslateY: 0,
+        instanceTranslateZ: 0,
+        instanceRotateZ: 0,
+        children: [],
+      } as any;
+      const nextLayers = [...cur.layers, layer];
+      const nextCur = { ...cur, layers: nextLayers, selectedId: (layer as any).id } as CADoc;
+      return { ...prev, docs: { ...prev.docs, [key]: nextCur } } as ProjectDocument;
     });
   }, [addBase]);
 
@@ -736,7 +773,7 @@ export function EditorProvider({
         nextLayers = [...cur.layers, layer];
       } else {
         const target = findById(cur.layers, selId);
-        if (target && (target as any).type === 'group') {
+        if (target && ((target as any).type === 'group' || (target as any).type === 'replicator')) {
           nextLayers = insertIntoGroupInTree(cur.layers, selId, layer).layers;
         } else if (target) {
           const wrapped = wrapAsGroup(cur.layers, selId);
@@ -783,8 +820,12 @@ export function EditorProvider({
           if (l.id === layerId && l.type === "image") {
             return { ...l, src: dataURL } as AnyLayer;
           }
-          if (l.type === "group") {
+          if ((l as any).type === "group") {
             return { ...(l as GroupLayer), children: updateRec((l as GroupLayer).children) } as AnyLayer;
+          }
+          if ((l as any).type === 'replicator') {
+            const r: any = l as any;
+            return { ...r, children: updateRec((r.children || []) as AnyLayer[]) } as AnyLayer;
           }
           return l;
         });
@@ -824,17 +865,20 @@ export function EditorProvider({
       assets[cellId] = { filename, dataURL };
       const updateRec = (layers: AnyLayer[]): AnyLayer[] =>
         layers.map((l) => {
-        if (l.id === layerId) {
-          const newCell = new CAEmitterCell()
-          newCell.contents = dataURL
-          newCell.id = cellId
-          return {
-            ...l,
-            emitterCells: [...((l as any).emitterCells || []), newCell],
-          } as EmitterLayer;
-        }
-        return l;
-      });
+          if (l.id === layerId) {
+            const newCell = new CAEmitterCell()
+            newCell.contents = dataURL
+            newCell.id = cellId
+            return {
+              ...l,
+              emitterCells: [...((l as any).emitterCells || []), newCell],
+            } as EmitterLayer;
+          }
+          if ((l as any).type === 'group' || (l as any).type === 'replicator') {
+            return { ...(l as any), children: updateRec((l as any).children || []) } as AnyLayer;
+          }
+          return l;
+        });
       const next = { ...cur, assets, layers: updateRec(cur.layers) };
       return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
@@ -883,7 +927,7 @@ export function EditorProvider({
         nextLayers = [...cur.layers, layer];
       } else {
         const target = findById(cur.layers, selId);
-        if (target && (target as any).type === 'group') {
+        if (target && ((target as any).type === 'group' || (target as any).type === 'replicator')) {
           nextLayers = insertIntoGroupInTree(cur.layers, selId, layer).layers;
         } else if (target) {
           const wrapped = wrapAsGroup(cur.layers, selId);
@@ -955,7 +999,7 @@ export function EditorProvider({
         nextLayers = [...cur.layers, layer];
       } else {
         const target = findById(cur.layers, selId);
-        if (target && (target as any).type === 'group') {
+        if (target && ((target as any).type === 'group' || (target as any).type === 'replicator')) {
           nextLayers = insertIntoGroupInTree(cur.layers, selId, layer).layers;
         } else if (target) {
           const wrapped = wrapAsGroup(cur.layers, selId);
@@ -1003,7 +1047,7 @@ export function EditorProvider({
         nextLayers = [...cur.layers, layer];
       } else {
         const target = findById(cur.layers, selId);
-        if (target && (target as any).type === 'group') {
+        if (target && ((target as any).type === 'group' || (target as any).type === 'replicator')) {
           nextLayers = insertIntoGroupInTree(cur.layers, selId, layer).layers;
         } else if (target) {
           const wrapped = wrapAsGroup(cur.layers, selId);
@@ -1164,7 +1208,7 @@ export function EditorProvider({
         if (!selId || selId === '__root__') nextLayers = [...cur.layers, layer];
         else {
           const target = findById(cur.layers, selId);
-          if (target && (target as any).type === 'group') nextLayers = insertIntoGroupInTree(cur.layers, selId, layer).layers;
+          if (target && ((target as any).type === 'group' || (target as any).type === 'replicator')) nextLayers = insertIntoGroupInTree(cur.layers, selId, layer).layers;
           else if (target) {
             const wrapped = wrapAsGroup(cur.layers, selId);
             const groupId = wrapped.newGroupId || selId;
@@ -1256,7 +1300,7 @@ export function EditorProvider({
       if (!selId || selId === '__root__') nextLayers = [...cur.layers, layer];
       else {
         const target = findById(cur.layers, selId);
-        if (target && (target as any).type === 'group') nextLayers = insertIntoGroupInTree(cur.layers, selId, layer).layers;
+        if (target && ((target as any).type === 'group' || (target as any).type === 'replicator')) nextLayers = insertIntoGroupInTree(cur.layers, selId, layer).layers;
         else if (target) {
           const wrapped = wrapAsGroup(cur.layers, selId);
           const groupId = wrapped.newGroupId || selId;
@@ -1435,6 +1479,8 @@ export function EditorProvider({
           if (a) images[l.id] = { ...a };
         } else if (l.type === 'group') {
           (l as GroupLayer).children.forEach(walk);
+        } else if ((l as any).type === 'replicator') {
+          ((l as any).children || []).forEach(walk);
         }
       };
       walk(sel);
@@ -1507,6 +1553,10 @@ export function EditorProvider({
         if (o.type === 'group' && c.type === 'group') {
           const oc = (o as GroupLayer).children;
           const cc = (c as GroupLayer).children;
+          for (let i = 0; i < oc.length; i++) buildMap(oc[i], cc[i]);
+        } else if ((o as any).type === 'replicator' && (c as any).type === 'replicator') {
+          const oc = ((o as any).children || []) as AnyLayer[];
+          const cc = ((c as any).children || []) as AnyLayer[];
           for (let i = 0; i < oc.length; i++) buildMap(oc[i], cc[i]);
         }
       };
@@ -1618,6 +1668,7 @@ export function EditorProvider({
     addGradientLayer,
     addVideoLayerFromFile,
     addEmitterLayer,
+    addReplicatorLayer,
     updateLayer,
     updateLayerTransient,
     selectLayer,

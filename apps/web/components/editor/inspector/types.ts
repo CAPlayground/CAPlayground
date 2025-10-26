@@ -9,6 +9,7 @@ export type TabId =
   'image' |
   'video' |
   'emitter' |
+  'replicator' |
   'animations' |
   'gyro';
 
@@ -33,8 +34,12 @@ export const findById = (layers: AnyLayer[], id: string | null | undefined): Any
   if (!id) return undefined;
   for (const l of layers) {
     if (l.id === id) return l;
-    if (l.type === "group") {
-      const found = findById(l.children, id);
+    if ((l as any).type === "group") {
+      const found = findById(((l as any).children) as AnyLayer[], id);
+      if (found) return found;
+    }
+    if ((l as any).type === 'replicator' && Array.isArray((l as any).children)) {
+      const found = findById(((l as any).children) as AnyLayer[], id);
       if (found) return found;
     }
   }

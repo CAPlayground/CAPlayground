@@ -104,6 +104,17 @@ export type GradientLayer = LayerBase & {
   colors: GradientColor[];
 };
 
+export type ReplicatorLayer = LayerBase & {
+  type: 'replicator';
+  children: AnyLayer[];
+  instanceCount: number;
+  instanceDelay?: number;
+  instanceTranslateX?: number;
+  instanceTranslateY?: number;
+  instanceTranslateZ?: number;
+  instanceRotateZ?: number;
+};
+
 export type AnyLayer =
   ImageLayer |
   TextLayer |
@@ -111,7 +122,8 @@ export type AnyLayer =
   GroupLayer |
   VideoLayer |
   GradientLayer |
-  EmitterLayer;
+  EmitterLayer |
+  ReplicatorLayer;
 
 export type CAAsset = {
   path: string;

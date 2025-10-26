@@ -24,6 +24,7 @@ export function LayersPanel() {
     moveLayerInto,
     updateLayer,
     addEmitterLayer,
+    addReplicatorLayer,
   } = useEditor();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
@@ -86,8 +87,9 @@ export function LayersPanel() {
   };
 
   const renderItem = (l: AnyLayer, depth: number) => {
-    const isGroup = l.type === "group";
-    const hasChildren = isGroup && (l as GroupLayer).children.length > 0;
+    const isContainer = l.type === "group" || (l as any).type === 'replicator';
+    const children = (isContainer ? ((l as any).children || []) : []) as AnyLayer[];
+    const hasChildren = isContainer && children.length > 0;
     const isCollapsed = collapsed.has(l.id);
     const isChecked = multiSelectedIds.includes(l.id);
 
@@ -142,7 +144,7 @@ export function LayersPanel() {
             setDragOverId(null);
             setDropPosition(null);
             if (!src || src === l.id) return;
-            if (isGroup && (e.altKey || e.ctrlKey || e.metaKey)) {
+            if (isContainer && (e.altKey || e.ctrlKey || e.metaKey)) {
               moveLayerInto(src, l.id);
             } else {
               let beforeId = l.id;
@@ -243,12 +245,11 @@ export function LayersPanel() {
         )}
       </div>
     );
-    if (isGroup && !isCollapsed) {
-      const g = l as GroupLayer;
+    if (isContainer && !isCollapsed) {
       return (
         <div key={l.id}>
           {row}
-          {g.children.map((c) => renderItem(c, depth + 1))}
+          {children.map((c) => renderItem(c, depth + 1))}
         </div>
       );
     }
@@ -298,6 +299,7 @@ export function LayersPanel() {
               <DropdownMenuItem onSelect={() => fileInputRef.current?.click()}>Image Layer…</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => videoInputRef.current?.click()}>Video Layer…</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => addEmitterLayer()}>Emitter Layer</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => addReplicatorLayer()}>Replicator Layer</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         }
