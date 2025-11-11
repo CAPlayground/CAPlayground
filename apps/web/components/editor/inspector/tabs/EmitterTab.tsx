@@ -336,6 +336,64 @@ export function EmitterTab({
                       }}
                     />
                   </div>
+                  <div className="col-span-3 space-y-1">
+                    <Label>Emission Longitude</Label>
+                    <Input
+                      type="number"
+                      step="1"
+                      value={getBuf('emitterCells[' + i + '].emissionLongitude', fmt0(cell.emissionLongitude))}
+                      disabled={inState}
+                      onChange={(e) => {
+                        setBuf('emitterCells[' + i + '].emissionLongitude', e.target.value);
+                        const v = e.target.value.trim();
+                        if (v === "") return;
+                        const num = Number(v);
+                        const cells = selected.emitterCells?.slice() || [];
+                        cells[i] = { ...cell, emissionLongitude: num } as any;
+                        if (Number.isFinite(num)) updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
+                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        const num = v === "" ? 0 : Number(v);
+                        const cells = selected.emitterCells?.slice() || [];
+                        cells[i] = { ...cell, emissionLongitude: num } as any;
+                        updateLayer(
+                          selected.id,
+                          { emitterCells: cells as any } as any);
+                        clearBuf('emitterCells[' + i + '].emissionLongitude');
+                      }}
+                    />
+                  </div>
+                  <div className="col-span-3 space-y-1">
+                    <Label>Emission Latitude</Label>
+                    <Input
+                      type="number"
+                      step="1"
+                      value={getBuf('emitterCells[' + i + '].emissionLatitude', fmt0(cell.emissionLatitude))}
+                      disabled={inState}
+                      onChange={(e) => {
+                        setBuf('emitterCells[' + i + '].emissionLatitude', e.target.value);
+                        const v = e.target.value.trim();
+                        if (v === "") return;
+                        const num = Number(v);
+                        const cells = selected.emitterCells?.slice() || [];
+                        cells[i] = { ...cell, emissionLatitude: num } as any;
+                        if (Number.isFinite(num)) updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
+                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        const num = v === "" ? 0 : Number(v);
+                        const cells = selected.emitterCells?.slice() || [];
+                        cells[i] = { ...cell, emissionLatitude: num } as any;
+                        updateLayer(
+                          selected.id,
+                          { emitterCells: cells as any } as any);
+                        clearBuf('emitterCells[' + i + '].emissionLatitude');
+                      }}
+                    />
+                  </div>
                   <div className="col-span-2 space-y-1">
                     <Label>Scale</Label>
                     <Input

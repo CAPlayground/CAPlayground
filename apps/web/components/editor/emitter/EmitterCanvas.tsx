@@ -91,6 +91,8 @@ export function EmitterCanvas({
         newCell.lifetime = cell.lifetime;
         newCell.velocity = cell.velocity;
         newCell.emissionRange = Math.PI * cell.emissionRange / 180;
+        newCell.emissionLongitude = Math.PI * cell.emissionLongitude / 180;
+        newCell.emissionLatitude = Math.PI * cell.emissionLatitude / 180;
         newCell.scale = cell.scale;
         newCell.scaleRange = cell.scaleRange;
         newCell.scaleSpeed = cell.scaleSpeed;

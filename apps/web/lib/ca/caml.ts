@@ -524,6 +524,8 @@ function parseCAEmitterLayer(el: Element): AnyLayer {
         newCell.alphaRange = Number(attr(c, 'alphaRange'));
         newCell.alphaSpeed = Number(attr(c, 'alphaSpeed'));
         newCell.emissionRange = radToDeg(Number(attr(c, 'emissionRange')) || 0);
+        newCell.emissionLongitude = radToDeg(Number(attr(c, 'emissionLongitude')) || 0);
+        newCell.emissionLatitude = radToDeg(Number(attr(c, 'emissionLatitude')) || 0);
         newCell.spin = radToDeg(Number(attr(c, 'spin')) || 0);
         newCell.spinRange = radToDeg(Number(attr(c, 'spinRange')) || 0);
         newCell.xAcceleration = Number(attr(c, 'xAcceleration'));
@@ -1070,6 +1072,8 @@ function serializeLayer(doc: XMLDocument, layer: AnyLayer, project?: CAProject, 
       emitterCell.setAttribute('lifetime', num(cell.lifetime));
       emitterCell.setAttribute('velocity', num(cell.velocity));
       emitterCell.setAttribute('emissionRange', num(rad(cell.emissionRange)));
+      emitterCell.setAttribute('emissionLongitude', num(rad(cell.emissionLongitude)));
+      emitterCell.setAttribute('emissionLatitude', num(rad(cell.emissionLatitude)));
       emitterCell.setAttribute('scale', num(cell.scale));
       emitterCell.setAttribute('scaleRange', num(cell.scaleRange));
       emitterCell.setAttribute('scaleSpeed', num(cell.scaleSpeed));
