@@ -275,7 +275,13 @@ export function EditorProvider({
                 const blob = new Blob([buf]);
                 const dataURL = await new Promise<string>((resolve) => {
                   const r = new FileReader();
-                  r.onload = () => resolve(String(r.result));
+                  r.onload = () => {
+                    let result = String(r.result);
+                    if (filename.endsWith('.svg')) {
+                      result = result.replace(/^data:application\/octet-stream/, 'data:image/svg+xml');
+                    }
+                    resolve(result);
+                  }
                   r.readAsDataURL(blob);
                 });
                 const bindingKeys = findAssetBindings(layers, filename);
@@ -836,6 +842,12 @@ export function EditorProvider({
             emitterCells: [...((l as any).emitterCells || []), newCell],
           } as EmitterLayer;
         }
+        if (l.children?.length) {
+          return {
+            ...l,
+            children: updateRec(l.children),
+          };
+        }
         return l;
       });
       const next = { ...cur, assets, layers: updateRec(cur.layers) };
@@ -859,6 +871,12 @@ export function EditorProvider({
               ...l,
               emitterCells: newCells,
             } as EmitterLayer;
+          }
+          if (l.children?.length) {
+            return {
+              ...l,
+              children: updateRec(l.children),
+            };
           }
           return l;
         });
@@ -1243,6 +1261,7 @@ export function EditorProvider({
       if (!prev) return prev;
       const key = prev.activeCA;
       const cur = prev.docs[key];
+      const selId = cur.selectedId || null;
       const canvasW = prev.meta.width || 390;
       const canvasH = prev.meta.height || 844;
       const layer: EmitterLayer = {
@@ -1257,7 +1276,7 @@ export function EditorProvider({
         emitterCells: [],
         type: 'emitter',
       };
-      const nextLayers = [...cur.layers, layer];
+      const nextLayers = insertIntoSelected(cur.layers, selId, layer);
       const nextCur = { ...cur, layers: nextLayers } as CADoc;
       return { ...prev, docs: { ...prev.docs, [key]: nextCur } } as ProjectDocument;
     });

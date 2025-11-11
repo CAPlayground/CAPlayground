@@ -1420,8 +1420,6 @@ export function CanvasPreview() {
               layer={e}
               paused={!isAnimationPlaying}
               assets={assets}
-              left={Number(style.left) || 0}
-              top={Number(style.top) || 0}
               docWidth={doc?.meta.width || 0}
               docHeight={doc?.meta.height || 0}
             />
