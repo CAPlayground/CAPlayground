@@ -17,16 +17,12 @@ export function EmitterCanvas({
   paused = false,
   layer: emitterLayer,
   assets,
-  left,
-  top,
   docWidth,
   docHeight,
 }: {
   paused?: boolean;
   layer: EmitterLayer;
   assets?: Record<string, { dataURL?: string }>;
-  left: number;
-  top: number;
   docWidth: number;
   docHeight: number;
 }) {
@@ -70,14 +66,10 @@ export function EmitterCanvas({
     } else {
       ctx.setTransform(1, 0, 0, -1, 0, canvas.height);
     }
+    ctx.translate(canvas.width / 2, canvas.height / 2);
     ctx.translate(
-      emitterLayer.position.x,
-      geometryFlipped ? canvas.height - emitterLayer.position.y : emitterLayer.position.y
-    );
-    ctx.rotate(Math.PI * (emitterLayer.rotation || 0) / 180 * (geometryFlipped ? -1 : 1));
-    ctx.translate(
-      -emitterLayer.size.w / 2,
-      -emitterLayer.size.h / 2
+      0,
+      geometryFlipped ? -emitterLayer.size.h : 0
     );
     const layer = new CAEmitterLayer();
     layer.emitterPosition = emitterLayer.emitterPosition;
@@ -99,6 +91,8 @@ export function EmitterCanvas({
         newCell.lifetime = cell.lifetime;
         newCell.velocity = cell.velocity;
         newCell.emissionRange = Math.PI * cell.emissionRange / 180;
+        newCell.emissionLongitude = Math.PI * cell.emissionLongitude / 180;
+        newCell.emissionLatitude = Math.PI * cell.emissionLatitude / 180;
         newCell.scale = cell.scale;
         newCell.scaleRange = cell.scaleRange;
         newCell.scaleSpeed = cell.scaleSpeed;
@@ -152,28 +146,20 @@ export function EmitterCanvas({
   }, [JSON.stringify(emitterLayer)]);
 
   return (
-    <div
+    <canvas
+      ref={canvasRef}
+      width={docWidth * 4}
+      height={docHeight * 4}
       style={{
-        width: emitterLayer.size.w,
-        height: emitterLayer.size.h,
-        transform: `rotate(${emitterLayer.rotation}deg)`,
-        transformOrigin: '50% 50% 0',
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        width: docWidth * 4,
+        height: docHeight * 4,
+        pointerEvents: 'none',
+        background: 'transparent',
+        transform: `translateX(-50%) translateY(50%)`,
       }}
-    >
-      <canvas
-        ref={canvasRef}
-        width={docWidth}
-        height={docHeight}
-        style={{
-          width: docWidth,
-          height: docHeight,
-          position: 'absolute',
-          pointerEvents: 'none',
-          background: 'transparent',
-          left: -left,
-          top: -top,
-        }}
-      />
-    </div>
+    />
   );
 }
