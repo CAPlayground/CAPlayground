@@ -15,6 +15,7 @@ import { LayerContextMenu } from "./layer-context-menu";
 import type { AnyLayer, EmitterLayer, ShapeLayer, TransformLayer, ReplicatorLayer } from "@/lib/ca/types";
 import { EmitterCanvas } from "./emitter/EmitterCanvas";
 import GyroControls from "./gyro/GyroControls";
+import { blendModes } from "@/lib/blending";
 
 export function CanvasPreview() {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -1218,7 +1219,34 @@ export function CanvasPreview() {
       ...(borderStyle || {}),
       ...(typeof (l as any).cornerRadius === 'number' ? { borderRadius: (l as any).cornerRadius } : {}),
       overflow: (l as any).masksToBounds ? 'hidden' : 'visible',
+      mixBlendMode: blendModes[l.blendMode || 'normalBlendMode']?.css ?? 'normal',
     };
+    if (l.filters) {
+      let filterString = '';
+      const currentFilters = l.filters.filter(f => f.enabled);
+      for (const filter of currentFilters) {
+        if (filter.type === 'gaussianBlur') {
+          filterString += `blur(${filter.value}px)`;
+        }
+        if (filter.type === 'colorContrast') {
+          filterString += `contrast(${filter.value})`;
+        }
+        if (filter.type === 'colorHueRotate') {
+          filterString += `hue-rotate(${filter.value}deg)`;
+        }
+        if (filter.type === 'colorInvert') {
+          filterString += 'invert(100%)';
+        }
+        if (filter.type === 'colorSaturate') {
+          filterString += `saturate(${filter.value})`;
+        }
+        if (filter.type === 'CISepiaTone') {
+          filterString += `sepia(${filter.value})`;
+        }
+      }
+      common.filter = filterString;
+    }
+    
     const nextUseYUp = (typeof (l as any).geometryFlipped === 'number')
       ? (((l as any).geometryFlipped as 0 | 1) === 0)
       : useYUp;

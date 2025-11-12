@@ -8,6 +8,8 @@ import type { InspectorTabProps } from "../types";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 import type { TabId } from "../types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { blendModes } from "@/lib/blending";
 
 interface CompositingTabProps extends InspectorTabProps {
   setActiveTab: (tab: TabId) => void;
@@ -28,6 +30,24 @@ export function CompositingTab({
   const inState = !!activeState && activeState !== 'Base State';
   return (
     <div className="grid grid-cols-2 gap-x-1.5 gap-y-3">
+      <div className="space-y-1 col-span-2">
+        <Label htmlFor="blendMode">Blending</Label>
+        <Select
+          value={selected.blendMode}
+          onValueChange={(v) => updateLayer(selected.id, { blendMode: v as any } as any)}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select blending mode" />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.values(blendModes).map((mode) => (
+              <SelectItem key={mode.id} value={mode.id}>
+                {mode.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       <div className="space-y-1 col-span-2">
         <Label htmlFor="opacity">Opacity</Label>
         <div className="flex items-center gap-2 w-full">

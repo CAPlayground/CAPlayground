@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useEditor } from "../editor-context";
 import { useEffect, useMemo, useState } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { SquareSlash, Box, Layers, Palette, Type, Image as ImageIcon, Play, PanelLeft, PanelTop, PanelRight, Video, Smartphone, Blend, Cog } from "lucide-react";
+import { SquareSlash, Box, Layers, Palette, Type, Image as ImageIcon, Play, PanelLeft, PanelTop, PanelRight, Video, Smartphone, Blend, Cog, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { round2, fmt2, fmt0, findById, type TabId } from "./types";
@@ -24,6 +24,7 @@ import { AnimationsTab } from "./tabs/AnimationsTab";
 import { GyroTab } from "./tabs/GyroTab";
 import { EmitterTab } from "./tabs/EmitterTab";
 import { ReplicatorTab } from "./tabs/ReplicatorTab";
+import { FiltersTab } from "./tabs/FiltersTab";
 
 export function Inspector() {
   const { doc, setDoc, updateLayer, updateLayerTransient, replaceImageForLayer, addEmitterCellImage, isAnimationPlaying, animatedLayers, selectLayer } = useEditor();
@@ -152,6 +153,7 @@ export function Inspector() {
         { id: 'replicator' as TabId, icon: Cog, label: 'Replicator' },
       ]
     }
+    baseTabs.push({ id: 'filters' as TabId, icon: Filter, label: 'Filters' });
     return baseTabs;
   }, [selected?.type, doc?.meta.gyroEnabled]);
 
@@ -419,6 +421,9 @@ export function Inspector() {
               wallpaperParallaxGroups={current?.wallpaperParallaxGroups || []}
               setDoc={setDoc}
             />
+          )}
+          {activeTab === 'filters' && (
+            <FiltersTab {...tabProps} />
           )}
         </div>
 

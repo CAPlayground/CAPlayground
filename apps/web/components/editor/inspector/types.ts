@@ -11,7 +11,8 @@ export type TabId =
   'emitter' |
   'replicator' |
   'animations' |
-  'gyro';
+  'gyro' |
+  'filters';
 
 export interface InspectorTabProps {
   selected: AnyLayer;
