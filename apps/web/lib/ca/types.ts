@@ -1,4 +1,5 @@
 import { CAEmitterCell } from "@/components/editor/emitter/emitter";
+import { Filter } from "../filters";
 
 export type Vec2 = { x: number; y: number };
 export type Size = { w: number; h: number };
@@ -12,6 +13,7 @@ export type CAProject = {
   // Flip Geometry for the root layer (0 = bottom-left origin, 1 = top-left origin)
   geometryFlipped?: 0 | 1;
 };
+
 
 export type LayerBase = {
   id: string;
@@ -36,6 +38,8 @@ export type LayerBase = {
   // Clip contents for sublayers to this layer's bounds (0 = off, 1 = on)
   masksToBounds?: 0 | 1;
   animations?: Animations;
+  blendMode?: string;
+  filters?: Filter[];
 };
 
 export type BasicLayer = LayerBase & {

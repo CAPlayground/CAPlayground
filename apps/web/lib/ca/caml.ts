@@ -1,5 +1,7 @@
 import { CAEmitterCell } from '@/components/editor/emitter/emitter';
-import { AnyLayer, CAProject, TextLayer, VideoLayer, CAStateOverrides, CAStateTransitions, GyroParallaxDictionary, KeyPath, Animations, EmitterLayer, LayerBase, TransformLayer, ReplicatorLayer } from './types';
+import { AnyLayer, CAProject, TextLayer, VideoLayer, CAStateOverrides, CAStateTransitions, GyroParallaxDictionary, KeyPath, Animations, EmitterLayer, LayerBase, ReplicatorLayer } from './types';
+import { blendModes } from '../blending';
+import { Filter, SupportedFilterTypes } from '../filters';
 
 const CAML_NS = 'http://www.apple.com/CoreAnimation/1.0';
 
@@ -24,6 +26,10 @@ function isTopLevelRoot(el: Element): boolean {
 
 function radToDeg(radians: number): number {
   return (radians * 180) / Math.PI;
+}
+
+function degToRad(degrees: number): number {
+  return (degrees * Math.PI) / 180;
 }
 
 function parseNumericAttr(element: Element, attrName: string, fallback?: number): number | undefined {
@@ -284,6 +290,49 @@ function parseLayerBase(el: Element): LayerBase {
     if (rotations.y !== undefined) base.rotationY = base.rotationY || rotations.y;
   }
   
+  const compositingFilter = directChildByTagNS(el, 'compositingFilter');
+  if (compositingFilter) {
+    const blendMode = attr(compositingFilter, 'filter') || 'normal';
+    const isSupported = blendModes[blendMode];
+    if (isSupported) {
+      base.blendMode = blendMode;
+    }
+  }
+
+  const filters = directChildByTagNS(el, 'filters');
+  if (filters) {
+    const parsedFilters: Filter[] = []
+    const caFilters = filters.getElementsByTagNameNS(CAML_NS, 'CAFilter');
+    const cifilters = filters.getElementsByTagNameNS(CAML_NS, 'CIFilter');
+    for (const caFilter of [...caFilters, ...cifilters]) {
+      const filterType = attr(caFilter, 'filter');
+      if (!filterType) continue;
+      const filterName = attr(caFilter, 'name');
+      const enabled = attr(caFilter, 'enabled') !== '0';
+      let value = 0
+      if (filterType === "gaussianBlur") {
+        value = parseNumericAttr(caFilter, 'inputRadius') ?? 0;
+      }
+      if (filterType === "colorContrast" || filterType === "colorSaturate") {
+        value = parseNumericAttr(caFilter, 'inputAmount') ?? 1;
+      }
+      if (filterType === "colorHueRotate") {
+        value = radToDeg(parseNumericAttr(caFilter, 'inputAngle') ?? 0);
+      }
+      if (filterType === "CISepiaTone") {
+        const inputIntensity = caFilter.getElementsByTagNameNS(CAML_NS, 'inputIntensity')[0];
+        value = parseNumericAttr(inputIntensity, 'value') || 1;
+      }
+      parsedFilters.push({
+        name: filterName || 'Filter',
+        type: filterType as SupportedFilterTypes,
+        enabled,
+        value,
+      });
+    }
+
+    base.filters = parsedFilters;
+  }
   return base;
 }
 
@@ -916,6 +965,43 @@ function serializeLayer(doc: XMLDocument, layer: AnyLayer, project?: CAProject, 
     if (!(Math.abs(ax - 0.5) < 1e-6 && Math.abs(ay - 0.5) < 1e-6)) {
       setAttr(el, 'anchorPoint', `${ax} ${ay}`);
     }
+  }
+  if (layer.blendMode && layer.blendMode !== 'normal') {
+    const compositingFilter = doc.createElementNS(CAML_NS, 'compositingFilter');
+    compositingFilter.setAttribute('type', "CAFilter");
+    compositingFilter.setAttribute('filter', layer.blendMode);
+    compositingFilter.setAttribute('name', layer.blendMode);
+    el.appendChild(compositingFilter);
+  }
+  
+  if (layer.filters) {
+    const filters = doc.createElementNS(CAML_NS, 'filters');
+    for (const filter of layer.filters) {
+      const filterEl = filter.type === "CISepiaTone"
+        ? doc.createElementNS(CAML_NS, 'CIFilter')
+        : doc.createElementNS(CAML_NS, 'CAFilter');
+      filterEl.setAttribute('filter', filter.type);
+      filterEl.setAttribute('name', filter.name);
+      filterEl.setAttribute('enabled', String(filter.enabled));
+      if (filter.type === "gaussianBlur") {
+        filterEl.setAttribute('inputRadius', String(filter.value));
+      }
+      if (filter.type === "colorContrast" || filter.type === "colorSaturate") {
+        filterEl.setAttribute('inputAmount', String(filter.value));
+      }
+      if (filter.type === "colorHueRotate") {
+        const inputAngle = degToRad(filter.value);
+        filterEl.setAttribute('inputAngle', String(inputAngle));
+      }
+      if (filter.type === "CISepiaTone") {
+        const inputIntensity = doc.createElementNS(CAML_NS, 'inputIntensity')
+        inputIntensity.setAttribute('type', 'real');
+        inputIntensity.setAttribute('value', String(filter.value));
+        filterEl.appendChild(inputIntensity);
+      }
+      filters.appendChild(filterEl);
+    }
+    el.appendChild(filters);
   }
   const gf = (layer as any).geometryFlipped;
   if (gf === 0 || gf === 1) setAttr(el, 'geometryFlipped', String(gf));

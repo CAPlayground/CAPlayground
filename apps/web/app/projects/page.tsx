@@ -42,6 +42,7 @@ type TendiesBundle = {
   wallpaper?: { root: AnyLayer; assets?: Record<string, CAAsset>; states?: string[]; stateOverrides?: any; stateTransitions?: any };
 };
 import { ensureUniqueProjectName, createProject, updateProject, deleteProject, getProject, listFiles, listProjects, putBlobFile, putTextFile, isUsingOPFS } from "@/lib/storage";
+import { blendModes } from "@/lib/blending";
 import {
   Select,
   SelectContent,
@@ -130,6 +131,32 @@ const ProjectThumb = React.memo(function ProjectThumb({
       backfaceVisibility: 'hidden',
       transformStyle: 'preserve-3d',
     };
+    const blendCss = blendModes[(l as any).blendMode || 'normalBlendMode']?.css;
+    if (blendCss) {
+      common.mixBlendMode = blendCss;
+    }
+    if (Array.isArray((l as any).filters)) {
+      const filterParts: string[] = [];
+      for (const filter of (l as any).filters as Array<{ type: string; value: number; enabled?: boolean }>) {
+        if (filter?.enabled === false) continue;
+        if (filter.type === 'gaussianBlur') {
+          filterParts.push(`blur(${filter.value}px)`);
+        } else if (filter.type === 'colorContrast') {
+          filterParts.push(`contrast(${filter.value})`);
+        } else if (filter.type === 'colorHueRotate') {
+          filterParts.push(`hue-rotate(${filter.value}deg)`);
+        } else if (filter.type === 'colorInvert') {
+          filterParts.push('invert(100%)');
+        } else if (filter.type === 'colorSaturate') {
+          filterParts.push(`saturate(${filter.value})`);
+        } else if (filter.type === 'CISepiaTone') {
+          filterParts.push(`sepia(${filter.value})`);
+        }
+      }
+      if (filterParts.length) {
+        common.filter = filterParts.join(' ');
+      }
+    }
     if (l.type === 'text') {
       const t = l as any;
       return <div key={`${l.id}-${layerPath}`} style={{ ...common, color: t.color, fontSize: t.fontSize, textAlign: t.align ?? 'left' }}>
