@@ -103,12 +103,16 @@ const FilterItem = ({ filter, selected }: { filter: Filter; selected: AnyLayer }
           <XIcon className="h-4 w-4" />
         </Button>
       </div>
-      {supportedFilters[filter.type].valueLabel &&
-        <div className="space-y-1">
-          <Label>{supportedFilters[filter.type].valueLabel}</Label>
-          <Input type="number" value={filter.value} onChange={onChange} />
-        </div>
-      }
+      {(() => {
+        const def = supportedFilters[(filter as any).type as SupportedFilterTypes];
+        if (!def || !def.valueLabel) return null;
+        return (
+          <div className="space-y-1">
+            <Label>{def.valueLabel}</Label>
+            <Input type="number" value={filter.value} onChange={onChange} />
+          </div>
+        );
+      })()}
     </div>
   );
 }
