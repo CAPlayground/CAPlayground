@@ -19,6 +19,8 @@ export default function VideoRenderer({
       src={previewSrc}
       alt={layer.name}
       style={{
+        width: layer.size.w,
+        height: layer.size.h,
         objectFit: "fill",
         maxWidth: "none",
         maxHeight: "none",
