@@ -97,6 +97,7 @@ export function LayerRenderer({
           useGyroControls={useGyroControls}
           onStartDrag={onStartDrag}
           onEvalLayerAnimation={onEvalLayerAnimation}
+          disableHitTesting={layer.type === 'video'}
         />
       );
     });
