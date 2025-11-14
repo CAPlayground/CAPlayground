@@ -66,12 +66,13 @@ export function VideoTab({
             onCheckedChange={(checked) => {
               if (checked) {
                 const targetIds: string[] = [];
-                const values: number[] = [];
+                const initialValues: number[] = [];
+                const finalValues: number[] = [];
                 const children: AnyLayer[] = [];
                 for (let i = 0; i < (selected as any).frameCount; i++) {
                   const childId = `${selected.id}_frame_${i}`;
-                  targetIds.push(childId);
-                  values.push(-i * (i + 1) / 2);
+                  const initialZPosition = -i * (i + 1) / 2;
+                  const finalZPosition = i * (2 * selected.frameCount - 1 - i) / 2;
                   children.push({
                     id: childId,
                     name: childId,
@@ -85,15 +86,17 @@ export function VideoTab({
                       x: selected.size.w / 2,
                       y: selected.size.h / 2
                     },
-                    zPosition: -i * (i + 1) / 2,
+                    zPosition: initialZPosition,
                     fit: 'fill',
                     visible: true
                   });
-                  const zPosition = i * (2 * selected.frameCount - 1 - i) / 2
                   targetIds.push(childId);
-                  values.push(zPosition);
+                  initialValues.push(initialZPosition);
+                  finalValues.push(finalZPosition);
                 }
-                updateBatchSpecificStateOverride(targetIds, 'zPosition', values, 'Locked');
+                updateBatchSpecificStateOverride(targetIds, 'zPosition', initialValues, 'Locked');
+                updateBatchSpecificStateOverride(targetIds, 'zPosition', finalValues, 'Unlock');
+                updateBatchSpecificStateOverride(targetIds, 'zPosition', finalValues, 'Sleep');
                 updateLayer(selected.id, { syncWWithState: checked, children } as any)
               } else {
                 updateLayer(selected.id, { syncWWithState: checked, children: undefined } as any)
