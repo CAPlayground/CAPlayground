@@ -1,0 +1,68 @@
+import { TransformLayer } from "@/lib/ca/types";
+import { useEditor } from "../../editor-context";
+
+export function useTransform({
+  layer,
+  useGyroControls,
+  gyroX,
+  gyroY,
+}: {
+  layer: TransformLayer;
+  useGyroControls: boolean;
+  gyroX: number;
+  gyroY: number;
+}) {
+  const { doc } = useEditor();
+  const currentKey = doc?.activeCA ?? 'floating';
+  const current = doc?.docs?.[currentKey];
+
+  function mapRange(value: number, b1: number, b2: number) {
+    const a1 = -1;
+    const a2 = 1;
+    return b1 + ((value - a1) * (b2 - b1)) / (a2 - a1);
+  }
+  const parallaxTransform = current?.wallpaperParallaxGroups?.filter((g: any) => g.layerName === layer.name)
+  const radToDeg = (rad: number) => rad * (180 / Math.PI);
+  const transformRotationX = parallaxTransform?.filter((g: any) => g.keyPath === 'transform.rotation.x')[0]
+  const transformRotationY = parallaxTransform?.filter((g: any) => g.keyPath === 'transform.rotation.y')[0]
+  const transformTranslationX = parallaxTransform?.filter((g: any) => g.keyPath === 'transform.translation.x')[0]
+  const transformTranslationY = parallaxTransform?.filter((g: any) => g.keyPath === 'transform.translation.y')[0]
+
+  let rotationXDelta = 0;
+  let rotationYDelta = 0;
+  let translationXDelta = 0;
+  let translationYDelta = 0;
+
+  if (transformRotationX) {
+    let gyroValue = transformRotationX.axis === 'x' ? gyroX : gyroY;
+    gyroValue = -gyroValue;
+    const targetValue = mapRange(gyroValue, transformRotationX.mapMinTo, transformRotationX.mapMaxTo)
+    rotationXDelta = radToDeg(targetValue);
+  }
+
+  if (transformRotationY) {
+    let gyroValue = transformRotationY.axis === 'x' ? gyroX : gyroY;
+    gyroValue = -gyroValue;
+    const targetValue = mapRange(gyroValue, transformRotationY.mapMinTo, transformRotationY.mapMaxTo)
+    rotationYDelta = radToDeg(targetValue);
+  }
+
+  if (transformTranslationX) {
+    const gyroValue = transformTranslationX.axis === 'x' ? gyroX : gyroY;
+    const targetValue = mapRange(gyroValue, transformTranslationX.mapMinTo, transformTranslationX.mapMaxTo)
+    translationXDelta = -targetValue;
+  }
+
+  if (transformTranslationY) {
+    const gyroValue = transformTranslationY.axis === 'x' ? gyroX : gyroY;
+    const targetValue = mapRange(gyroValue, transformTranslationY.mapMinTo, transformTranslationY.mapMaxTo)
+    translationYDelta = -targetValue;
+  }
+
+  let transformString = '';
+  const e = { ...layer } as TransformLayer;
+  if (useGyroControls) {
+    transformString = `translate3d(${translationXDelta}px, ${translationYDelta}px, 0) rotate3d(0, 1, 0, ${(e.rotationY ?? 0) + rotationYDelta}deg) rotateX(${(e.rotationX ?? 0) + rotationXDelta}deg)`;
+  }
+  return transformString;
+}

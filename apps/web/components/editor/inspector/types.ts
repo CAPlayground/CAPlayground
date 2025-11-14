@@ -30,15 +30,3 @@ export interface InspectorTabProps {
 export const round2 = (n: number) => Math.round(n * 100) / 100;
 export const fmt2 = (n: number | undefined) => (typeof n === 'number' && Number.isFinite(n) ? round2(n).toFixed(2) : "");
 export const fmt0 = (n: number | undefined) => (typeof n === 'number' && Number.isFinite(n) ? Math.round(n).toString() : "");
-
-export const findById = (layers: AnyLayer[], id: string | null | undefined): AnyLayer | undefined => {
-  if (!id) return undefined;
-  for (const l of layers) {
-    if (l.id === id) return l;
-    if (l.children?.length) {
-      const found = findById(l.children, id);
-      if (found) return found;
-    }
-  }
-  return undefined;
-};

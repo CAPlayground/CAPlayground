@@ -58,6 +58,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { getAnchor } from "@/components/editor/canvas-preview/utils/coordinates";
 
 interface Project { id: string; name: string; createdAt: string; width?: number; height?: number }
 
@@ -98,7 +99,6 @@ const ProjectThumb = React.memo(function ProjectThumb({
   const ox = (wrapSize.w - w * s) / 2;
   const oy = (wrapSize.h - h * s) / 2;
 
-  const getAnchor = (l: AnyLayer) => ({ x: (l as any).anchorPoint?.x ?? 0.5, y: (l as any).anchorPoint?.y ?? 0.5 });
   const computeCssLT = (l: AnyLayer, containerH: number, useYUp: boolean) => {
     const a = getAnchor(l);
     const left = (l.position.x) - a.x * l.size.w;

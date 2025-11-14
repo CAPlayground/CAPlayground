@@ -3,6 +3,7 @@ import {
   CAEmitterLayer, CAEmitterCell,
 } from './emitter';
 import { EmitterLayer } from '@/lib/ca/types';
+import { useEditor } from '../editor-context';
 
 const loadImage = (src: string) =>
   new Promise((resolve, reject) => {
@@ -14,23 +15,22 @@ const loadImage = (src: string) =>
   });
 
 export function EmitterCanvas({
-  paused = false,
   layer: emitterLayer,
   assets,
-  docWidth,
-  docHeight,
 }: {
-  paused?: boolean;
   layer: EmitterLayer;
   assets?: Record<string, { dataURL?: string }>;
-  docWidth: number;
-  docHeight: number;
 }) {
+  const { doc, isAnimationPlaying } = useEditor();
+  const paused = !isAnimationPlaying;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafIdRef = useRef<number>(0);
   const runningRef = useRef(!paused);
   const layerRef = useRef<CAEmitterLayer>(null);
   const startAnimationRef = useRef<(() => void) | null>(null);
+  
+  const docHeight = doc?.meta.height ?? 0;
+  const docWidth = doc?.meta.width ?? 0;
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   useEffect(() => {
     runningRef.current = !paused;

@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { SquareSlash, Box, Layers, Palette, Type, Image as ImageIcon, Play, PanelLeft, PanelTop, PanelRight, Video, Smartphone, Blend, Cog, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocalStorage } from "@/hooks/use-local-storage";
-import { round2, fmt2, fmt0, findById, type TabId } from "./types";
+import { round2, fmt2, fmt0, type TabId } from "./types";
 import { GeometryTab } from "./tabs/GeometryTab";
 import { CompositingTab } from "./tabs/CompositingTab";
 import { ContentTab } from "./tabs/ContentTab";
@@ -25,6 +25,7 @@ import { GyroTab } from "./tabs/GyroTab";
 import { EmitterTab } from "./tabs/EmitterTab";
 import { ReplicatorTab } from "./tabs/ReplicatorTab";
 import { FiltersTab } from "./tabs/FiltersTab";
+import { findById } from "@/lib/editor/layer-utils";
 
 export function Inspector() {
   const { doc, setDoc, updateLayer, updateLayerTransient, replaceImageForLayer, addEmitterCellImage, isAnimationPlaying, animatedLayers, selectLayer } = useEditor();

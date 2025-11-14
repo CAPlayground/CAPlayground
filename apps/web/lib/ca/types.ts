@@ -83,6 +83,7 @@ export type VideoLayer = LayerBase & {
   framePrefix?: string;
   frameExtension?: string;
   calculationMode?: 'linear' | 'discrete';
+  currentFrameIndex?: number;
 };
 
 export type EmitterLayer = LayerBase & {
