@@ -76,7 +76,7 @@ export function VideoTab({
                     id: childId,
                     name: childId,
                     type: "image",
-                    src: `assets/${childId}.png`,
+                    src: `assets/${selected.framePrefix}${i}${selected.frameExtension}`,
                     size: {
                       w: selected.size.w,
                       h: selected.size.h

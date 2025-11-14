@@ -79,7 +79,7 @@ export type EditorContextValue = {
   updateStateOverrideTransient: (targetId: string, keyPath: 'position.x' | 'position.y' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'opacity' | 'cornerRadius', value: number) => void;
   updateBatchSpecificStateOverride: (
     targetIds: string[],
-    keyPath: 'position.x' | 'position.y' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'opacity' | 'cornerRadius',
+    keyPath: 'position.x' | 'position.y' | 'zPosition' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'opacity' | 'cornerRadius',
     values: number[],
     state: 'Base State' | 'Locked' | 'Unlock' | 'Sleep' | 'Locked Light' | 'Unlock Light' | 'Sleep Light' | 'Locked Dark' | 'Unlock Dark' | 'Sleep Dark'
   ) => void;
@@ -203,9 +203,6 @@ export function EditorProvider({
                 layers = rootLayer?.name === 'Root Layer' && Array.isArray(rootLayer.children) ? rootLayer.children : [rootLayer];
                 states = parseStates(main.data);
                 stateOverrides = parseStateOverrides(main.data) as any;
-                console.log(states);
-                
-                console.log(stateOverrides);
                 
                 if (caType === 'wallpaper') {
                   wallpaperParallaxGroups = parseWallpaperParallaxGroups(main.data);
@@ -594,7 +591,6 @@ export function EditorProvider({
         };
 
         const transitions = buildTransitions(outputStates as any, outputOverrides as any);
-        console.log(transitions);
         
         let caml = serializeCAML(
           root,
@@ -1630,7 +1626,7 @@ export function EditorProvider({
   
   const updateBatchSpecificStateOverride = useCallback((
     targetIds: string[],
-    keyPath: 'position.x' | 'position.y' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'opacity' | 'cornerRadius',
+    keyPath: 'position.x' | 'position.y' | 'zPosition' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'opacity' | 'cornerRadius',
     values: number[],
     state: string
   ) => {

@@ -398,6 +398,7 @@ function parseTransformRotations(transformAttr: string): { x?: number; y?: numbe
 
 function parseCAVideoLayer(el: Element): VideoLayer {
   const base = parseLayerBase(el);
+  const children = parseSublayers(el);
 
   const frameCountAttr = attr(el, 'caplayFrameCount') || attr(el, 'caplay.frameCount');
   const fpsAttr = attr(el, 'caplayFPS') || attr(el, 'caplay.fps');
@@ -474,6 +475,7 @@ function parseCAVideoLayer(el: Element): VideoLayer {
     framePrefix,
     frameExtension,
     syncWWithState,
+    children,
   };
 
   return layer;
@@ -1115,23 +1117,7 @@ function serializeLayer(
     setAttr(el, 'caplayFrameExtension', frameExtension);
     setAttr(el, 'caplaySyncWWithState', syncWWithState ? 1 : 0);
 
-    if (syncWWithState) {
-      const sublayers = doc.createElementNS(CAML_NS, 'sublayers');
-      for (let i = 0; i < frameCount; i++) {
-        const sublayer = doc.createElementNS(CAML_NS, 'CALayer');
-        sublayer.setAttribute('name', `frame_${i}`);
-        sublayer.setAttribute('id', `${layer.id}_frame_${i}`);
-        sublayer.setAttribute('bounds', `0 0 ${Math.max(0, layer.size.w)} ${Math.max(0, layer.size.h)}`);
-        sublayer.setAttribute('position', `${Math.round(layer.size.w / 2)} ${Math.round(layer.size.h / 2)}`);
-        sublayer.setAttribute('zPosition', String((-i * (i + 1)) / 2));
-        const contents = doc.createElementNS(CAML_NS, 'contents');
-        contents.setAttribute('type', 'CGImage');
-        contents.setAttribute('src', framePath(i));
-        sublayer.appendChild(contents);
-        sublayers.appendChild(sublayer);
-      }
-      el.appendChild(sublayers);
-    } else {
+    if (!syncWWithState) {
       if (frameCount > 0) {
         const contents = doc.createElementNS(CAML_NS, 'contents');
         contents.setAttribute('type', 'CGImage');
