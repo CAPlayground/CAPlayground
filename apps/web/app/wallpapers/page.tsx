@@ -21,7 +21,6 @@ export async function generateMetadata({
 
   if (wallpaperId) {
     try {
-      // Fetch wallpaper data
       const wallpapersRes = await fetch(WALLPAPERS_JSON_URL, {
         next: { revalidate },
         headers: { Accept: "application/json" },
@@ -32,7 +31,6 @@ export async function generateMetadata({
         const wallpaper = data.wallpapers.find(w => String(w.id) === wallpaperId)
         
         if (wallpaper) {
-          // Fetch download stats
           const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
           const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
           let downloads = 0
@@ -93,7 +91,6 @@ export async function generateMetadata({
     }
   }
 
-  // Default metadata for wallpapers page
   return {
     title: "CAPlayground - Wallpapers",
     description: "Browse wallpapers made by the CAPlayground community",
@@ -148,7 +145,6 @@ export default async function WallpapersPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <div className="relative">
-        <div className="squares-bg" aria-hidden="true" />
         <Navigation />
 
         <main className="relative">

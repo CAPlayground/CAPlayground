@@ -128,27 +128,10 @@
   }
 }
 
-.squares-bg {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  --grid-color: #e5e7eb80;
-  background-image:
-    linear-gradient(var(--grid-color) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
-  background-size: 40px 40px, 40px 40px;
-  background-position: 0 0, 0 0;
-}
-
-.dark .squares-bg {
-  --grid-color: #37415180;
-}
-
 button{
   @apply cursor-pointer;
 }
 
-/* Hide scrollbar for horizontal scroll */
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -156,4 +139,13 @@ button{
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+.wordmark-group path {
+  transition: stroke 90ms ease-out, filter 90ms ease-out;
+}
+
+.wordmark-group path:hover {
+  stroke: var(--accent);
+  filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.9));
 }

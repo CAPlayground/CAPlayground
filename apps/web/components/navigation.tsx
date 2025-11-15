@@ -18,6 +18,7 @@ import {
 
 export function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
   const { theme, setTheme } = useTheme()
   const [isSignedIn, setIsSignedIn] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -72,11 +73,28 @@ export function Navigation() {
     }
   }, [isMenuOpen])
 
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 0)
+    }
+
+    handleScroll()
+    window.addEventListener("scroll", handleScroll)
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll)
+    }
+  }, [])
+
 
   return (
-    <nav className="z-50 w-full">
-      <div className="w-full max-w-[1385px] mx-auto px-4 min-[1045px]:px-6 mt-4">
-        <div className="w-full rounded-2xl border border-border bg-background/80 backdrop-blur-md shadow-md">
+    <nav className="sticky top-4 z-50 w-full bg-background/60 backdrop-blur">
+      <div className="w-full max-w-[1385px] mx-auto px-4 min-[1045px]:px-6">
+        <div
+          className={`w-full rounded-2xl bg-background/80 backdrop-blur-md transition-all ${
+            scrolled ? "border border-border shadow-md" : "border border-transparent shadow-none"
+          }`}
+        >
           <div className="grid [grid-template-columns:auto_1fr_auto] h-14 items-center px-4 min-[1045px]:px-6">
           {/* Logo and App Name */}
           <div className="flex items-center space-x-3 justify-self-start">

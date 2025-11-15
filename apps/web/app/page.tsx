@@ -1,13 +1,35 @@
 import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
-import { FeaturedWallpapers } from "@/components/featured-wallpapers"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { AspectRatio } from "@/components/ui/aspect-ratio"
 import Link from "next/link"
-import { Send, BookOpen as NotificationIcon, Github, Star } from "lucide-react"
+import { Send, BookOpen as NotificationIcon, Github, Star, Download } from "lucide-react"
 import Image from "next/image"
+
+interface WallpaperItem {
+  id: string | number
+  name: string
+  creator: string
+  description: string
+  file: string
+  preview: string
+  from: string
+}
+
+interface WallpapersResponse {
+  base_url: string
+  wallpapers: WallpaperItem[]
+}
+
+function isVideo(src: string) {
+  const lower = src.toLowerCase()
+  return lower.endsWith(".mp4") || lower.endsWith(".mov") || lower.includes("/video/")
+}
 
 export default async function HomePage() {
   let stars: number | null = null
+  let mostDownloaded: { wallpaper: WallpaperItem; baseUrl: string; downloads: number } | null = null
   try {
     const res = await fetch(
       "https://api.github.com/repos/CAPlayground/CAPlayground",
@@ -17,13 +39,57 @@ export default async function HomePage() {
       const data = await res.json()
       stars = typeof data?.stargazers_count === "number" ? data.stargazers_count : null
     }
+    try {
+      const wallpapersRes = await fetch(
+        "https://raw.githubusercontent.com/CAPlayground/wallpapers/refs/heads/main/wallpapers.json",
+        {
+          next: { revalidate: 1800 },
+          headers: { Accept: "application/json" },
+        }
+      )
+
+      if (wallpapersRes.ok) {
+        const data = (await wallpapersRes.json()) as WallpapersResponse
+
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+        if (supabaseUrl && supabaseAnonKey && Array.isArray(data.wallpapers)) {
+          const statsRes = await fetch(
+            `${supabaseUrl}/rest/v1/wallpaper_stats?select=id,downloads&order=downloads.desc&limit=1`,
+            {
+              headers: {
+                apikey: supabaseAnonKey,
+                Authorization: `Bearer ${supabaseAnonKey}`,
+              },
+              cache: "no-store",
+            }
+          )
+
+          if (statsRes.ok) {
+            const stats = (await statsRes.json()) as Array<{ id: string; downloads: number }>
+            if (Array.isArray(stats) && stats.length > 0) {
+              const top = stats[0]
+              const wallpaper = data.wallpapers.find((w) => String(w.id) === String(top.id))
+              if (wallpaper) {
+                mostDownloaded = {
+                  wallpaper,
+                  baseUrl: data.base_url,
+                  downloads: top.downloads || 0,
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+    }
   } catch (e) {
     stars = null
   }
   return (
     <div className="min-h-screen flex flex-col">
       <div className="relative">
-        <div className="squares-bg" aria-hidden="true" />
         <Navigation />
 
         {/* Hero */}
@@ -149,36 +215,81 @@ export default async function HomePage() {
         </main>
       </div>
 
-      <FeaturedWallpapers />
-
-      {/* Ready to get started? */}
-      <section className="relative py-16 md:py-24 bg-background overflow-hidden">
-        <div className="squares-bg" aria-hidden="true" />
-        <div className="relative container mx-auto px-3 min-[600px]:px-4 lg:px-6">
-          <div className="max-w-3xl mx-auto text-center">
-            <h2 className="font-heading text-3xl md:text-4xl font-bold">Ready to get started?</h2>
-            <p className="text-muted-foreground mt-3">Build your first animated wallpaper in minutes.</p>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <Link href="/projects">
-                <Button size="lg" className="px-6 bg-accent hover:bg-accent/90 text-white font-semibold">
-                  <span className="inline-flex items-center gap-2">
-                    Get Started
-                    <Send className="h-5 w-5" aria-hidden="true" />
-                  </span>
-                </Button>
-              </Link>
-              <Link href="https://github.com/CAPlayground/CAPlayground" target="_blank" rel="noopener noreferrer">
-                <Button size="lg" variant="outline" className="px-6">
-                  <span className="inline-flex items-center gap-2">
-                    <Github className="h-5 w-5" aria-hidden="true" />
-                    <span>View GitHub</span>
-                  </span>
-                </Button>
-              </Link>
+      {mostDownloaded && (
+        <section className="py-16 md:py-24 bg-background">
+          <div className="container mx-auto px-3 min-[600px]:px-4 lg:px-6">
+            <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+              <div>
+                <Card className="overflow-hidden border-8 border-zinc-200/80 dark:border-white/30 shadow-lg">
+                  <CardContent className="p-4">
+                    <div className="mb-3 overflow-hidden rounded-md border bg-background">
+                      <AspectRatio ratio={1} className="flex items-center justify-center">
+                        {(() => {
+                          const previewUrl = `${mostDownloaded.baseUrl}${mostDownloaded.wallpaper.preview}`
+                          return isVideo(previewUrl) ? (
+                            <video
+                              src={previewUrl}
+                              className="w-full h-full object-contain"
+                              autoPlay
+                              muted
+                              loop
+                              playsInline
+                              aria-label={`${mostDownloaded.wallpaper.name} preview`}
+                            />
+                          ) : (
+                            <img
+                              src={previewUrl}
+                              alt={`${mostDownloaded.wallpaper.name} preview`}
+                              className="w-full h-full object-contain"
+                            />
+                          )
+                        })()}
+                      </AspectRatio>
+                    </div>
+                    <h3 className="font-semibold text-lg mb-1 line-clamp-1">
+                      {mostDownloaded.wallpaper.name}
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                      by {mostDownloaded.wallpaper.creator} (submitted on {mostDownloaded.wallpaper.from})
+                    </p>
+                    {mostDownloaded.downloads > 0 && (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
+                        <Download className="h-3.5 w-3.5" />
+                        <span>{mostDownloaded.downloads}</span>
+                        <span>{mostDownloaded.downloads === 1 ? "Download" : "Downloads"}</span>
+                      </div>
+                    )}
+                    <p className="text-sm text-muted-foreground line-clamp-3">
+                      {mostDownloaded.wallpaper.description}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+              <div className="space-y-4 text-center lg:text-left">
+                <h2 className="font-heading text-3xl md:text-4xl font-bold">
+                  Explore the most downloaded wallpaper
+                </h2>
+                <p className="text-muted-foreground text-lg max-w-xl mx-auto lg:mx-0">
+                  See what the community loves most, then dive into the full gallery to discover more animated
+                  wallpapers for your devices.
+                </p>
+                <div className="flex flex-wrap justify-center lg:justify-start gap-3 pt-2">
+                  <Link href={`/wallpapers?id=${mostDownloaded.wallpaper.id}`}>
+                    <Button size="lg" className="px-6 bg-accent hover:bg-accent/90 text-white font-semibold">
+                      View this wallpaper
+                    </Button>
+                  </Link>
+                  <Link href="/wallpapers">
+                    <Button size="lg" variant="outline" className="px-6">
+                      View wallpaper gallery
+                    </Button>
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <Footer />
     </div>
