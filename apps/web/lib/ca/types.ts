@@ -20,6 +20,7 @@ export type LayerBase = {
   name: string;
   children?: AnyLayer[];
   position: Vec2;
+  zPosition?: number;
   size: Size;
   opacity?: number;
   rotation?: number;
@@ -84,6 +85,7 @@ export type VideoLayer = LayerBase & {
   frameExtension?: string;
   calculationMode?: 'linear' | 'discrete';
   currentFrameIndex?: number;
+  syncWWithState?: boolean;
 };
 
 export type EmitterLayer = LayerBase & {

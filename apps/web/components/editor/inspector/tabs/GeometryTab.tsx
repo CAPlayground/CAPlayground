@@ -13,6 +13,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 interface GeometryTabProps extends InspectorTabProps {
   disablePosX: boolean;
   disablePosY: boolean;
+  disablePosZ: boolean;
   disableRotX: boolean;
   disableRotY: boolean;
   disableRotZ: boolean;
@@ -31,6 +32,7 @@ export function GeometryTab({
   fmt0,
   disablePosX,
   disablePosY,
+  disablePosZ,
   disableRotX,
   disableRotY,
   disableRotZ,
@@ -44,7 +46,6 @@ export function GeometryTab({
   const isStandardAnchor = standardValues.includes(selAx) && standardValues.includes(selAy);
   
   const [useCustomAnchor, setUseCustomAnchor] = useState(!isStandardAnchor);
-  
   return (
     <div>
       {(disablePosX || disablePosY || disableRotX || disableRotY || disableRotZ) && (
@@ -95,6 +96,27 @@ export function GeometryTab({
               const num = v === "" ? 0 : round2(Number(v));
               updateLayer(selected.id, { position: { ...selected.position, y: num } as any });
               clearBuf('pos-y');
+            }} />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="pos-z">Z</Label>
+          <Input id="pos-z" type="number" step="0.01" value={getBuf('pos-z', fmt2(selected.zPosition))}
+            disabled={disablePosZ}
+            onChange={(e) => {
+              setBuf('pos-z', e.target.value);
+              const v = e.target.value.trim();
+              if (v === "") return;
+              const num = round2(Number(v));
+              if (Number.isFinite(num)) {
+                updateLayerTransient(selected.id, { zPosition: num });
+              }
+            }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
+            onBlur={(e) => {
+              const v = e.target.value.trim();
+              const num = v === "" ? 0 : round2(Number(v));
+              updateLayer(selected.id, { zPosition: num });
+              clearBuf('pos-z');
             }} />
         </div>
         <div className="space-y-1">

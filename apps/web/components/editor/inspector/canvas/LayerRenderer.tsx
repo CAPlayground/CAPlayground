@@ -97,6 +97,7 @@ export function LayerRenderer({
           useGyroControls={useGyroControls}
           onStartDrag={onStartDrag}
           onEvalLayerAnimation={onEvalLayerAnimation}
+          disableHitTesting={layer.type === 'video'}
         />
       );
     });
@@ -112,7 +113,7 @@ export function LayerRenderer({
     top,
     width: layer.size.w,
     height: layer.size.h,
-    transform: `rotateX(${-(layer.rotationX ?? 0)}deg) rotateY(${-(layer.rotationY ?? 0)}deg) rotate(${-(layer.rotation ?? 0)}deg)`,
+    transform: `rotateX(${-(layer.rotationX ?? 0)}deg) rotateY(${-(layer.rotationY ?? 0)}deg) rotate(${-(layer.rotation ?? 0)}deg) translateZ(${layer.zPosition ?? 0}px)`,
     transformOrigin: `${anchor.x * 100}% ${transformOriginY}%`,
     backfaceVisibility: "visible",
     display: (layer.visible === false || hiddenLayerIds.has(layer.id)) ? "none" : undefined,
@@ -123,6 +124,7 @@ export function LayerRenderer({
     ...(typeof layer.cornerRadius === 'number' ? { borderRadius: layer.cornerRadius } : {}),
     overflow: layer.masksToBounds ? 'hidden' : 'visible',
     mixBlendMode: blendModes[layer.blendMode || 'normalBlendMode']?.css ?? 'normal',
+    transformStyle: 'preserve-3d',
   };
 
   if (layer.filters) {

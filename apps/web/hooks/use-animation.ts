@@ -138,6 +138,11 @@ export function useAnimation({
       const b = Number(values[seg + 1] ?? a);
       const ny = lerp(a, b, f);
       (l as any).position = { ...(l as any).position, y: ny };
+    } else if (keyPath === 'zPosition') {
+      const a = Number(values[seg] ?? (l as any).zPosition ?? 0);
+      const b = Number(values[seg + 1] ?? a);
+      const nz = lerp(a, b, f);
+      (l as any).zPosition = nz;
     } else if (keyPath === 'transform.rotation.z') {
       const a = Number(values[seg] ?? (l as any).rotation ?? 0);
       const b = Number(values[seg + 1] ?? a);
@@ -222,6 +227,7 @@ export function useAnimation({
   const getProp = (l: AnyLayer, keyPath: string): number | undefined => {
     if (keyPath === 'position.x') return (l as any).position?.x;
     if (keyPath === 'position.y') return (l as any).position?.y;
+    if (keyPath === 'zPosition') return (l as any).zPosition ?? 0;
     if (keyPath === 'bounds.size.width') return (l as any).size?.w;
     if (keyPath === 'bounds.size.height') return (l as any).size?.h;
     if (keyPath === 'transform.rotation.z') return (l as any).rotation ?? 0;
@@ -235,6 +241,7 @@ export function useAnimation({
   const setProp = (l: AnyLayer, keyPath: string, v: number) => {
     if (keyPath === 'position.x') (l as any).position = { ...(l as any).position, x: v };
     else if (keyPath === 'position.y') (l as any).position = { ...(l as any).position, y: v };
+    else if (keyPath === 'zPosition') (l as any).zPosition = v;
     else if (keyPath === 'bounds.size.width') (l as any).size = { ...(l as any).size, w: v };
     else if (keyPath === 'bounds.size.height') (l as any).size = { ...(l as any).size, h: v };
     else if (keyPath === 'transform.rotation.z') (l as any).rotation = v as any;
@@ -327,7 +334,7 @@ export function useAnimation({
     }
     
     const keys = [
-      'position.x', 'position.y', 'bounds.size.width', 'bounds.size.height', 'transform.rotation.z', 'transform.rotation.x', 'transform.rotation.y', 'opacity', 'cornerRadius'
+      'position.x', 'position.y', 'zPosition', 'bounds.size.width', 'bounds.size.height', 'transform.rotation.z', 'transform.rotation.x', 'transform.rotation.y', 'opacity', 'cornerRadius'
     ];
     const fromMap = byKey(fromList);
     const toMap = byKey(toList);
@@ -375,7 +382,7 @@ export function useAnimation({
     for (const tr of transitions) {
       for (const el of tr.elements) {
         const key = el.keyPath;
-        if (!['position.x', 'position.y', 'bounds.size.width', 'bounds.size.height', 'transform.rotation.z', 'transform.rotation.x', 'transform.rotation.y', 'opacity', 'cornerRadius'].includes(key)) continue;
+        if (!['position.x', 'position.y', 'zPosition', 'bounds.size.width', 'bounds.size.height', 'transform.rotation.z', 'transform.rotation.x', 'transform.rotation.y', 'opacity', 'cornerRadius'].includes(key)) continue;
         const dur = Math.max(0.1, el.animation?.duration || 0.5);
         addTrack(el.targetId, key, dur);
       }

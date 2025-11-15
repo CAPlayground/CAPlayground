@@ -30,6 +30,8 @@ export const applyOverrides = (
       target.position = { ...target.position, y: v };
     } else if (kp === 'position.x' && typeof v === 'number') {
       target.position = { ...target.position, x: v };
+    } else if (kp === 'zposition' && typeof v === 'number') {
+      target.zPosition = v;
     } else if (kp === 'bounds.size.width' && typeof v === 'number') {
       target.size = { ...target.size, w: v };
     } else if (kp === 'bounds.size.height' && typeof v === 'number') {

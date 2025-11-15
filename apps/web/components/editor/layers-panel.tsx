@@ -108,7 +108,7 @@ export function LayersPanel() {
 
   const renderItem = (l: AnyLayer, depth: number) => {
   const isProtected = l.name === 'FLOATING' || l.name === 'BACKGROUND';
-    const hasChildren = (l.children?.length ?? 0) > 0;
+    const hasChildren = l.type !== 'video' && (l.children?.length ?? 0) > 0;
     const isCollapsed = collapsed.has(l.id);
     const isChecked = multiSelectedIds.includes(l.id);
     const isHidden = hiddenLayerIds.has(l.id);
