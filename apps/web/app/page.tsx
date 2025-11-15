@@ -4,8 +4,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { AspectRatio } from "@/components/ui/aspect-ratio"
 import Link from "next/link"
-import { Send, BookOpen as NotificationIcon, Github, Star, Download } from "lucide-react"
+import { Send, Filter as NotificationIcon, Github, Star, Download } from "lucide-react"
 import Image from "next/image"
+
+export const runtime = 'edge'
 
 interface WallpaperItem {
   id: string | number
@@ -100,10 +102,10 @@ export default async function HomePage() {
                 {/* Left: content */}
                 <div className="space-y-8 text-center lg:text-left">
                   {/* notification */}
-                  <Link href="/docs">
+                  <Link href="/projects">
                     <div className="inline-flex items-center justify-center lg:justify-start px-6 py-2.5 rounded-full bg-accent/10 backdrop-blur-sm border border-accent/20 transition-all duration-200 hover:bg-accent/20 hover:border-accent/30 hover:shadow-sm cursor-pointer w-auto">
                       <NotificationIcon className="h-4 w-4 text-accent mr-2" aria-hidden="true" />
-                      <span className="text-accent font-sans font-medium text-sm">Docs have been hugely improved!</span>
+                      <span className="text-accent font-sans font-medium text-sm">Blending Modes and Filters are out!</span>
                     </div>
                   </Link>
 
