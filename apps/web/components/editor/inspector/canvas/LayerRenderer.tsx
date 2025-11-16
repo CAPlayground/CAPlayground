@@ -81,6 +81,24 @@ export function LayerRenderer({
   };
 
   const renderChildren = (layer: AnyLayer, nextUseYUp: boolean) => {
+    if (layer.type === 'video' && layer.children?.length) {
+      const imageToRender = layer.children.sort((a, b) => (b.zPosition ?? 0) - (a.zPosition ?? 0))[0];
+      return <LayerRenderer
+        layer={imageToRender}
+        containerH={layer.size.h}
+        useYUp={nextUseYUp}
+        siblings={layer.children}
+        assets={assets}
+        hiddenLayerIds={hiddenLayerIds}
+        timeSec={timeSec}
+        gyroX={gyroX}
+        gyroY={gyroY}
+        useGyroControls={useGyroControls}
+        onStartDrag={onStartDrag}
+        onEvalLayerAnimation={onEvalLayerAnimation}
+        disableHitTesting
+      />
+    };
     return layer.children?.map((c) => {
       return (
         <LayerRenderer
@@ -97,7 +115,6 @@ export function LayerRenderer({
           useGyroControls={useGyroControls}
           onStartDrag={onStartDrag}
           onEvalLayerAnimation={onEvalLayerAnimation}
-          disableHitTesting={layer.type === 'video'}
         />
       );
     });
@@ -113,7 +130,7 @@ export function LayerRenderer({
     top,
     width: layer.size.w,
     height: layer.size.h,
-    transform: `rotateX(${-(layer.rotationX ?? 0)}deg) rotateY(${-(layer.rotationY ?? 0)}deg) rotate(${-(layer.rotation ?? 0)}deg) translateZ(${layer.zPosition ?? 0}px)`,
+    transform: `rotateX(${-(layer.rotationX ?? 0)}deg) rotateY(${-(layer.rotationY ?? 0)}deg) rotate(${-(layer.rotation ?? 0)}deg)`,
     transformOrigin: `${anchor.x * 100}% ${transformOriginY}%`,
     backfaceVisibility: "visible",
     display: (layer.visible === false || hiddenLayerIds.has(layer.id)) ? "none" : undefined,
@@ -124,7 +141,6 @@ export function LayerRenderer({
     ...(typeof layer.cornerRadius === 'number' ? { borderRadius: layer.cornerRadius } : {}),
     overflow: layer.masksToBounds ? 'hidden' : 'visible',
     mixBlendMode: blendModes[layer.blendMode || 'normalBlendMode']?.css ?? 'normal',
-    transformStyle: 'preserve-3d',
   };
 
   if (layer.filters) {

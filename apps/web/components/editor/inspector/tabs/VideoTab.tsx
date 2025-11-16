@@ -94,9 +94,7 @@ export function VideoTab({
                   initialValues.push(initialZPosition);
                   finalValues.push(finalZPosition);
                 }
-                updateBatchSpecificStateOverride(targetIds, 'zPosition', initialValues, 'Locked');
                 updateBatchSpecificStateOverride(targetIds, 'zPosition', finalValues, 'Unlock');
-                updateBatchSpecificStateOverride(targetIds, 'zPosition', initialValues, 'Sleep');
                 updateLayer(selected.id, { syncWWithState: checked, children } as any)
               } else {
                 updateLayer(selected.id, { syncWWithState: checked, children: [] } as any)

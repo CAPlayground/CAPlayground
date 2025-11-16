@@ -245,6 +245,7 @@ export function EditorProvider({
                     matches.push(layer.id);
                   }
                 } else if (layer.type === "video") {
+                  if (layer.syncWWithState) continue;
                   const video = layer as VideoLayer;
                   const prefix = video.framePrefix || `${layer.id}_frame_`;
                   let ext = video.frameExtension || ".jpg";
@@ -287,6 +288,9 @@ export function EditorProvider({
                     if (filename.endsWith('.svg')) {
                       result = result.replace(/^data:application\/octet-stream/, 'data:image/svg+xml');
                     }
+                    if (filename.endsWith('.jpg')) {
+                      result = result.replace(/^data:application\/octet-stream/, 'data:image/jpeg');
+                    }
                     resolve(result);
                   }
                   r.readAsDataURL(blob);
@@ -304,22 +308,6 @@ export function EditorProvider({
             }
           }
 
-          // Replace image src with dataURL from assets so runtime <img> loads correctly
-          const applyAssetSrc = (arr: AnyLayer[]): AnyLayer[] => arr.map((l) => {
-            let newL: AnyLayer | undefined = { ...l };
-            if (l.children?.length) {
-              newL.children = applyAssetSrc(l.children);
-            }
-            if (l.type === 'image') {
-              const a = assets[l.id];
-              if (a && a.dataURL) {
-                (newL as ImageLayer).src = a.dataURL;
-              }
-            }
-            return newL as AnyLayer;
-          });
-          
-          layers = applyAssetSrc(layers);
           return {
             layers,
             selectedId: null,
@@ -355,7 +343,7 @@ export function EditorProvider({
         try {
           const applyAppearancePrefs = (docIn: ProjectDocument): ProjectDocument => {
             const keys: Array<'background' | 'floating' | 'wallpaper'> = ['background','floating','wallpaper'];
-            const out: ProjectDocument = JSON.parse(JSON.stringify(docIn));
+            const out: ProjectDocument = docIn;
             for (const k of keys) {
               const cur = out.docs[k];
               if (!cur) continue;

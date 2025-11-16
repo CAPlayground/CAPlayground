@@ -12,6 +12,7 @@ export default function ImageRenderer({
   const assetsMap = assets || {};
   const imgAsset = assetsMap[layer.id];
   const previewSrc = imgAsset?.dataURL || layer.src;
+  if (!previewSrc) return null;
   return (
     <img
       src={previewSrc}
