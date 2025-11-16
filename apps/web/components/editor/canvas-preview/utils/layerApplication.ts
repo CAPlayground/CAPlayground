@@ -58,6 +58,50 @@ export const applyOverrides = (
       (target as TextLayer).color = v as any;
     }
   }
+  const baseState = state.replace(/\s(Light|Dark)$/,'') as 'Locked' | 'Unlock' | 'Sleep' | string;
+  const applySyncVideoZ = (arr: AnyLayer[]) => {
+    for (const l of arr) {
+      if ((l as any).type === 'video' && (l as any).syncWWithState && Array.isArray((l as any).children)) {
+        const video: any = l;
+        const frameCount: number = typeof video.frameCount === 'number' && video.frameCount > 0
+          ? video.frameCount
+          : (video.children as AnyLayer[]).length;
+        if (!frameCount) {
+        } else {
+          const modeCfg = (video.syncStateFrameMode as { Locked?: 'beginning' | 'end'; Unlock?: 'beginning' | 'end'; Sleep?: 'beginning' | 'end' } | undefined) || {};
+          const resolveMode = (st: 'Locked' | 'Unlock' | 'Sleep'): 'beginning' | 'end' => {
+            const v = modeCfg[st];
+            if (v === 'beginning' || v === 'end') return v;
+            if (st === 'Locked') return 'beginning';
+            if (st === 'Unlock') return 'end';
+            return 'end';
+          };
+          const base: 'Locked' | 'Unlock' | 'Sleep' | null =
+            baseState === 'Locked' || baseState === 'Unlock' || baseState === 'Sleep'
+              ? (baseState as any)
+              : null;
+          if (base) {
+            const mode = resolveMode(base);
+            const useBeginning = mode === 'beginning';
+            (video.children as AnyLayer[]).forEach((child: AnyLayer) => {
+              const id = String((child as any).id || '');
+              const m = id.match(/_(\d+)$/);
+              const idx = m ? Number(m[1]) : NaN;
+              if (!Number.isFinite(idx)) return;
+              const i = idx;
+              const initialZ = -i * (i + 1) / 2;
+              const finalZ = i * (2 * frameCount - 1 - i) / 2;
+              (child as any).zPosition = useBeginning ? initialZ : finalZ;
+            });
+          }
+        }
+      }
+      if ((l as any).children?.length) {
+        applySyncVideoZ((l as any).children as AnyLayer[]);
+      }
+    }
+  };
+  applySyncVideoZ(rootCopy);
   return rootCopy;
 };
 

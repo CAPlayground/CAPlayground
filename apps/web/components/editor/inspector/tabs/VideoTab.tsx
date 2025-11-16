@@ -26,39 +26,6 @@ export function VideoTab({
     if (state === 'Unlock') return 'end';
     return 'end';
   };
-
-  const applyStateOverridesForModes = (modes?: { Locked?: 'beginning' | 'end'; Unlock?: 'beginning' | 'end'; Sleep?: 'beginning' | 'end' }) => {
-    const frameCount = (selected as any).frameCount || 0;
-    if (!frameCount) return;
-    const targetIds: string[] = [];
-    const initialValues: number[] = [];
-    const finalValues: number[] = [];
-    for (let i = 0; i < frameCount; i++) {
-      const childId = `${selected.id}_frame_${i}`;
-      const initialZPosition = -i * (i + 1) / 2;
-      const finalZPosition = i * (2 * frameCount - 1 - i) / 2;
-      targetIds.push(childId);
-      initialValues.push(initialZPosition);
-      finalValues.push(finalZPosition);
-    }
-
-    const resolveMode = (state: 'Locked' | 'Unlock' | 'Sleep'): 'beginning' | 'end' => {
-      const value = modes?.[state];
-      if (value === 'beginning' || value === 'end') return value;
-      if (state === 'Locked') return 'beginning';
-      if (state === 'Unlock') return 'end';
-      return 'end';
-    };
-
-    const baseStates: Array<'Locked' | 'Unlock' | 'Sleep'> = ['Locked', 'Unlock', 'Sleep'];
-    for (const st of baseStates) {
-      const mode = resolveMode(st);
-      const values = mode === 'beginning' ? initialValues : finalValues;
-      updateBatchSpecificStateOverride(targetIds, 'zPosition', values, st);
-      updateBatchSpecificStateOverride(targetIds, 'zPosition', values, `${st} Light` as any);
-      updateBatchSpecificStateOverride(targetIds, 'zPosition', values, `${st} Dark` as any);
-    }
-  };
   return (
     <div className="grid grid-cols-2 gap-x-1.5 gap-y-3">
       <div className="space-y-1 col-span-2">
@@ -125,13 +92,11 @@ export function VideoTab({
                       x: selected.size.w / 2,
                       y: selected.size.h / 2
                     },
-                    zPosition: -i * (i + 1) / 2,
                     fit: 'fill',
                     visible: true
                   });
                 }
                 updateLayer(selected.id, { syncWWithState: checked, children } as any);
-                applyStateOverridesForModes(syncStateFrameMode);
               } else {
                 updateLayer(selected.id, { syncWWithState: checked, children: [] } as any)
               }
@@ -154,9 +119,6 @@ export function VideoTab({
                       [stateName]: v as 'beginning' | 'end',
                     };
                     updateLayer(selected.id, { syncStateFrameMode: nextModes } as any);
-                    setTimeout(() => {
-                      applyStateOverridesForModes(nextModes);
-                    }, 0);
                   }}
                 >
                   <SelectTrigger className="w-28 h-7 px-2 py-1 text-xs">
