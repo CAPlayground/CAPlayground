@@ -38,7 +38,7 @@ export function LayersPanel() {
   const selectedLayer = layers.find(l => l.id === selectedId)
 
   const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const [dropPosition, setDropPosition] = useState<'before' | 'after' | null>(null);
+  const [dropPosition, setDropPosition] = useState<'before' | 'after' | 'into' | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState<string>("");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -107,7 +107,7 @@ export function LayersPanel() {
   };
 
   const renderItem = (l: AnyLayer, depth: number) => {
-  const isProtected = l.name === 'FLOATING' || l.name === 'BACKGROUND';
+    const isProtected = l.name === 'FLOATING' || l.name === 'BACKGROUND';
     const hasChildren = l.type !== 'video' && (l.children?.length ?? 0) > 0;
     const isCollapsed = collapsed.has(l.id);
     const isChecked = multiSelectedIds.includes(l.id);
@@ -124,11 +124,11 @@ export function LayersPanel() {
         {showDropLineBefore && (
           <div
             className="absolute left-0 right-0 h-0.5 bg-accent z-10"
-            style={{ top: 0, marginLeft: 8 + depth * 16 }}
+            style={{ top: 0, marginLeft: 8 + depth * 16, pointerEvents: 'none' }}
           />
         )}
         <div
-          className={`py-2 flex items-center justify-between cursor-pointer ${selectedId === l.id ? 'bg-accent/30' : 'hover:bg-muted/50'} ${isHidden ? 'opacity-50' : ''}`}
+          className={`py-2 flex items-center justify-between cursor-pointer ${selectedId === l.id && !dragOverId ? 'bg-accent/30' : 'hover:bg-muted/50'} ${dragOverId === l.id && dropPosition === 'into' ? 'bg-accent/30' : ''} ${isHidden ? 'opacity-50' : ''}`}
           onClick={(e) => {
             e.stopPropagation();
             if (isSelectMode) toggleMultiSelect(l.id);
@@ -148,7 +148,9 @@ export function LayersPanel() {
             const rect = e.currentTarget.getBoundingClientRect();
             const mouseY = e.clientY;
             const relativeY = mouseY - rect.top;
-            const position = relativeY < rect.height / 2 ? 'before' : 'after';
+            const isBefore = relativeY < rect.height / 4;
+            const isAfter = relativeY > rect.height * 3 / 4;
+            const position = isBefore ? 'before' : isAfter ? 'after' : 'into';
             setDragOverId(l.id);
             setDropPosition(position);
           }}
@@ -164,26 +166,7 @@ export function LayersPanel() {
             setDragOverId(null);
             setDropPosition(null);
             if (!src || src === l.id) return;
-            let beforeId = l.id;
-            if (position === 'after') {
-              const findNextSibling = (layers: AnyLayer[], targetId: string): string | null => {
-                for (let i = 0; i < layers.length; i++) {
-                  if (layers[i].id === targetId) {
-                    return i < layers.length - 1 ? layers[i + 1].id : null;
-                  }
-                  if (layers[i].children?.length) {
-                    const children = layers[i].children;
-                    if (!children) return null
-                    const result = findNextSibling(children, targetId);
-                    if (result !== undefined) return result;
-                  }
-                }
-                return undefined as any;
-              };
-              const nextId = findNextSibling(layers, l.id);
-              beforeId = nextId !== undefined ? nextId : null as any;
-            }
-            moveLayer(src, beforeId);
+            if (position) moveLayer(src, l.id, position);
           }}
         >
           <div className="truncate flex-1 min-w-0 flex items-center gap-1">
@@ -274,7 +257,7 @@ export function LayersPanel() {
         {showDropLineAfter && (
           <div
             className="absolute left-0 right-0 h-0.5 bg-accent z-10"
-            style={{ bottom: 0, marginLeft: 8 + depth * 16 }}
+            style={{ bottom: 0, marginLeft: 8 + depth * 16, pointerEvents: 'none' }}
           />
         )}
       </div>

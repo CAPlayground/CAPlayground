@@ -10,7 +10,7 @@ import {
   cloneLayerDeep,
   updateInTree,
   removeFromTree,
-  insertBeforeInTree,
+  insertInTree,
   deleteInTree,
   containsId,
   insertIntoSelected,
@@ -70,7 +70,7 @@ export type EditorContextValue = {
   copySelectedLayer: () => void;
   pasteFromClipboard: (payload?: any) => void;
   duplicateLayer: (id?: string) => void;
-  moveLayer: (sourceId: string, beforeId: string | null) => void;
+  moveLayer: (sourceId: string, beforeId: string | null, position?: 'before' | 'after' | 'into') => void;
   persist: () => void;
   undo: () => void;
   redo: () => void;
@@ -1226,7 +1226,7 @@ export function EditorProvider({
     });
   }, [addBase, pushHistory]);
 
-  const moveLayer = useCallback((sourceId: string, beforeId: string | null) => {
+  const moveLayer = useCallback((sourceId: string, beforeId: string | null, position: 'before' | 'after' | 'into' = 'before') => {
     if (!sourceId || sourceId === beforeId) return;
     setDoc((prev) => {
       if (!prev) return prev;
@@ -1237,10 +1237,14 @@ export function EditorProvider({
       if (!node) return prev;
       let nextLayers: AnyLayer[] = removedRes.layers;
       if (beforeId) {
-        const ins = insertBeforeInTree(nextLayers, beforeId, node);
-        nextLayers = ins.layers;
-        if (!ins.inserted) {
-          nextLayers = [...nextLayers, node];
+        if (position === 'into') {
+          nextLayers = insertIntoSelected(nextLayers, beforeId, node);
+        } else {
+          const ins = insertInTree(nextLayers, beforeId, node, position);
+          nextLayers = ins.layers;
+          if (!ins.inserted) {
+            nextLayers = [...nextLayers, node];
+          }
         }
       } else {
         nextLayers = [...nextLayers, node];
