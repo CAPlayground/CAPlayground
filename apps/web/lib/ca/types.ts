@@ -86,6 +86,11 @@ export type VideoLayer = LayerBase & {
   calculationMode?: 'linear' | 'discrete';
   currentFrameIndex?: number;
   syncWWithState?: boolean;
+  syncStateFrameMode?: {
+    Locked?: 'beginning' | 'end';
+    Unlock?: 'beginning' | 'end';
+    Sleep?: 'beginning' | 'end';
+  };
 };
 
 export type EmitterLayer = LayerBase & {
