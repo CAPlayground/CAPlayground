@@ -77,6 +77,12 @@ export type EditorContextValue = {
   setActiveState: (state: 'Base State' | 'Locked' | 'Unlock' | 'Sleep' | 'Locked Light' | 'Unlock Light' | 'Sleep Light' | 'Locked Dark' | 'Unlock Dark' | 'Sleep Dark') => void;
   updateStateOverride: (targetId: string, keyPath: 'position.x' | 'position.y' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'opacity' | 'cornerRadius', value: number) => void;
   updateStateOverrideTransient: (targetId: string, keyPath: 'position.x' | 'position.y' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'opacity' | 'cornerRadius', value: number) => void;
+  updateBatchSpecificStateOverride: (
+    targetIds: string[],
+    keyPath: 'position.x' | 'position.y' | 'zPosition' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'opacity' | 'cornerRadius',
+    values: number[],
+    state: 'Base State' | 'Locked' | 'Unlock' | 'Sleep' | 'Locked Light' | 'Unlock Light' | 'Sleep Light' | 'Locked Dark' | 'Unlock Dark' | 'Sleep Dark'
+  ) => void;
   isAnimationPlaying: boolean;
   setIsAnimationPlaying: React.Dispatch<React.SetStateAction<boolean>>;
   animatedLayers: AnyLayer[];
@@ -197,6 +203,7 @@ export function EditorProvider({
                 layers = rootLayer?.name === 'Root Layer' && Array.isArray(rootLayer.children) ? rootLayer.children : [rootLayer];
                 states = parseStates(main.data);
                 stateOverrides = parseStateOverrides(main.data) as any;
+                
                 if (caType === 'wallpaper') {
                   wallpaperParallaxGroups = parseWallpaperParallaxGroups(main.data);
                 }
@@ -238,6 +245,7 @@ export function EditorProvider({
                     matches.push(layer.id);
                   }
                 } else if (layer.type === "video") {
+                  if (layer.syncWWithState) continue;
                   const video = layer as VideoLayer;
                   const prefix = video.framePrefix || `${layer.id}_frame_`;
                   let ext = video.frameExtension || ".jpg";
@@ -280,6 +288,9 @@ export function EditorProvider({
                     if (filename.endsWith('.svg')) {
                       result = result.replace(/^data:application\/octet-stream/, 'data:image/svg+xml');
                     }
+                    if (filename.endsWith('.jpg')) {
+                      result = result.replace(/^data:application\/octet-stream/, 'data:image/jpeg');
+                    }
                     resolve(result);
                   }
                   r.readAsDataURL(blob);
@@ -297,22 +308,6 @@ export function EditorProvider({
             }
           }
 
-          // Replace image src with dataURL from assets so runtime <img> loads correctly
-          const applyAssetSrc = (arr: AnyLayer[]): AnyLayer[] => arr.map((l) => {
-            let newL: AnyLayer | undefined = { ...l };
-            if (l.children?.length) {
-              newL.children = applyAssetSrc(l.children);
-            }
-            if (l.type === 'image') {
-              const a = assets[l.id];
-              if (a && a.dataURL) {
-                (newL as ImageLayer).src = a.dataURL;
-              }
-            }
-            return newL as AnyLayer;
-          });
-          
-          layers = applyAssetSrc(layers);
           return {
             layers,
             selectedId: null,
@@ -348,7 +343,7 @@ export function EditorProvider({
         try {
           const applyAppearancePrefs = (docIn: ProjectDocument): ProjectDocument => {
             const keys: Array<'background' | 'floating' | 'wallpaper'> = ['background','floating','wallpaper'];
-            const out: ProjectDocument = JSON.parse(JSON.stringify(docIn));
+            const out: ProjectDocument = docIn;
             for (const k of keys) {
               const cur = out.docs[k];
               if (!cur) continue;
@@ -572,7 +567,7 @@ export function EditorProvider({
         const buildTransitions = (stateNames: string[], overrides: Record<string, Array<{ targetId: string; keyPath: string; value: string | number }>> | undefined) => {
           const result: Array<{ fromState: string; toState: string; elements: Array<{ targetId: string; keyPath: string; animation?: any }> }> = [];
           if (!overrides) return result;
-          const allowed = new Set(['opacity','cornerRadius']);
+          const allowed = new Set(['opacity','cornerRadius', 'zPosition']);
           const names = (stateNames || []).filter((n) => n && n !== 'Base State');
           for (const st of names) {
             const ovs = (overrides[st] || []).filter((o) => allowed.has(o.keyPath));
@@ -584,7 +579,7 @@ export function EditorProvider({
         };
 
         const transitions = buildTransitions(outputStates as any, outputOverrides as any);
-
+        
         let caml = serializeCAML(
           root,
           {
@@ -1339,17 +1334,24 @@ export function EditorProvider({
       if (!prev) return prev;
       const key = prev.activeCA;
       const cur = prev.docs[key];
-      if (cur.activeState && cur.activeState !== 'Base State') {
+      const shouldOnlyAffectState =
+        !!cur.activeState &&
+        cur.activeState !== 'Base State' &&
+        !('syncStateFrameMode' in patch) &&
+        !('syncWWithState' in patch) &&
+        !('children' in patch);
+      if (shouldOnlyAffectState) {
         const p: any = patch;
         const nextState = { ...(cur.stateOverrides || {}) } as Record<string, Array<{ targetId: string; keyPath: string; value: number | string }>>;
-        const list = [...(nextState[cur.activeState] || [])];
-        const upd = (keyPath: 'position.x' | 'position.y' | 'opacity' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'cornerRadius', value: number) => {
+        const list = [...(nextState[cur.activeState!] || [])];
+        const upd = (keyPath: 'position.x' | 'position.y' | 'zPosition' | 'opacity' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'cornerRadius', value: number) => {
           const idx = list.findIndex((o) => o.targetId === id && o.keyPath === keyPath);
           if (idx >= 0) list[idx] = { ...list[idx], value };
           else list.push({ targetId: id, keyPath, value });
         };
         if (p.position && typeof p.position.x === 'number') upd('position.x', p.position.x);
         if (p.position && typeof p.position.y === 'number') upd('position.y', p.position.y);
+        if (p.zPosition && typeof p.zPosition === 'number') upd('zPosition', p.zPosition);
         if (p.size && typeof p.size.w === 'number') upd('bounds.size.width', p.size.w);
         if (p.size && typeof p.size.h === 'number') upd('bounds.size.height', p.size.h);
         if (typeof p.rotation === 'number') upd('transform.rotation.z', p.rotation as number);
@@ -1357,7 +1359,7 @@ export function EditorProvider({
         if (typeof (p as any).rotationY === 'number') upd('transform.rotation.y', (p as any).rotationY as number);
         if (typeof p.opacity === 'number') upd('opacity', p.opacity as number);
         if (typeof (p as any).cornerRadius === 'number') upd('cornerRadius', (p as any).cornerRadius as number);
-        nextState[cur.activeState] = list;
+        nextState[cur.activeState!] = list;
         pushHistory(prev);
         const nextCur = { ...cur, stateOverrides: nextState } as CADoc;
         return { ...prev, docs: { ...prev.docs, [key]: nextCur } } as ProjectDocument;
@@ -1379,13 +1381,14 @@ export function EditorProvider({
         const p: any = patch;
         const nextState = { ...(cur.stateOverrides || {}) } as Record<string, Array<{ targetId: string; keyPath: string; value: number | string }>>;
         const list = [...(nextState[cur.activeState] || [])];
-        const upd = (keyPath: 'position.x' | 'position.y' | 'opacity' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'cornerRadius', value: number) => {
+        const upd = (keyPath: 'position.x' | 'position.y' | 'zPosition' | 'opacity' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'cornerRadius', value: number) => {
           const idx = list.findIndex((o) => o.targetId === id && o.keyPath === keyPath);
           if (idx >= 0) list[idx] = { ...list[idx], value };
           else list.push({ targetId: id, keyPath, value });
         };
         if (p.position && typeof p.position.x === 'number') upd('position.x', p.position.x);
         if (p.position && typeof p.position.y === 'number') upd('position.y', p.position.y);
+        if (p.zPosition && typeof p.zPosition === 'number') upd('zPosition', p.zPosition);
         if (p.size && typeof p.size.w === 'number') upd('bounds.size.width', p.size.w);
         if (p.size && typeof p.size.h === 'number') upd('bounds.size.height', p.size.h);
         if (typeof p.rotation === 'number') upd('transform.rotation.z', p.rotation as number);
@@ -1614,6 +1617,33 @@ export function EditorProvider({
       return { ...prev, docs: { ...prev.docs, [key]: nextCur } } as ProjectDocument;
     });
   }, []);
+  
+  const updateBatchSpecificStateOverride = useCallback((
+    targetIds: string[],
+    keyPath: 'position.x' | 'position.y' | 'zPosition' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'opacity' | 'cornerRadius',
+    values: number[],
+    state: string
+  ) => {
+    setDoc((prev) => {
+      if (!prev) return prev;
+      const key = prev.activeCA;
+      const cur = prev.docs[key];
+      if (!state) return prev;
+      const next = { ...(cur.stateOverrides || {}) } as Record<string, Array<{ targetId: string; keyPath: string; value: number | string }>>;
+      const list = [...(next[state] || [])];
+      for (let i = 0; i < targetIds.length; i++) {
+        const targetId = targetIds[i];
+        const value = values[i];
+        const idx = list.findIndex((o) => o.targetId === targetId && o.keyPath === keyPath);
+        if (idx >= 0) list[idx] = { ...list[idx], value };
+        else list.push({ targetId, keyPath, value });
+      }
+      next[state] = list;
+      pushHistory(prev);
+      const nextCur = { ...cur, stateOverrides: next } as CADoc;
+      return { ...prev, docs: { ...prev.docs, [key]: nextCur } } as ProjectDocument;
+    });
+  }, [pushHistory]);
 
   const toggleLayerVisibility = useCallback((id: string) => {
     setHiddenLayerIds((prev) => {
@@ -1662,6 +1692,7 @@ export function EditorProvider({
     setActiveState,
     updateStateOverride,
     updateStateOverrideTransient,
+    updateBatchSpecificStateOverride,
     isAnimationPlaying,
     setIsAnimationPlaying,
     animatedLayers,
@@ -1701,6 +1732,7 @@ export function EditorProvider({
     setActiveState,
     updateStateOverride,
     updateStateOverrideTransient,
+    updateBatchSpecificStateOverride,
     isAnimationPlaying,
     setIsAnimationPlaying,
     animatedLayers,

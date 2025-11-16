@@ -2,6 +2,7 @@ import { CAEmitterCell } from '@/components/editor/emitter/emitter';
 import { AnyLayer, CAProject, TextLayer, VideoLayer, CAStateOverrides, CAStateTransitions, GyroParallaxDictionary, KeyPath, Animations, EmitterLayer, LayerBase, ReplicatorLayer } from './types';
 import { blendModes } from '../blending';
 import { Filter, SupportedFilterTypes } from '../filters';
+import { findById } from '../editor/layer-utils';
 
 const CAML_NS = 'http://www.apple.com/CoreAnimation/1.0';
 
@@ -141,43 +142,60 @@ export function parseStateOverrides(xml: string): CAStateOverrides {
     const doc = new DOMParser().parseFromString(xml, 'application/xml');
     const caml = doc.getElementsByTagNameNS(CAML_NS, 'caml')[0] || doc.documentElement;
     if (!caml) return result;
-    const statesEl = caml.getElementsByTagNameNS(CAML_NS, 'states')[0];
-    if (!statesEl) return result;
-    const stateNodes = Array.from(statesEl.getElementsByTagNameNS(CAML_NS, 'LKState'));
-    for (const stateNode of stateNodes) {
-      const name = stateNode.getAttribute('name') || '';
-      const elements = stateNode.getElementsByTagNameNS(CAML_NS, 'elements')[0];
-      const arr: { targetId: string; keyPath: string; value: string | number }[] = [];
-      if (elements) {
-        const setNodes = Array.from(elements.getElementsByTagNameNS(CAML_NS, 'LKStateSetValue'));
-        for (const sn of setNodes) {
-          const targetId = sn.getAttribute('targetId') || '';
-          const keyPath = sn.getAttribute('keyPath') || '';
-          let val: string | number = '';
-          const valueNodes = sn.getElementsByTagNameNS(CAML_NS, 'value');
-          if (valueNodes && valueNodes[0]) {
-            const type = valueNodes[0].getAttribute('type') || '';
-            const vAttr = valueNodes[0].getAttribute('value') || '';
-            if (vAttr === "undefined") {
-              continue;
-            }
-            if (/^(integer|float|real|number)$/i.test(type)) {
-              const n = Number(vAttr);
-              val = Number.isFinite(n) ? n : vAttr;
-            } else {
-              val = vAttr;
-            }
-          }
-          if (typeof val === 'number') {
-            const kp = keyPath || '';
-            if (kp === 'transform.rotation.z' || kp === 'transform.rotation.x' || kp === 'transform.rotation.y') {
-              val = radToDeg(val);
-            }
-          }
-          if (targetId && keyPath) arr.push({ targetId, keyPath, value: val });
-        }
+    const wallpaperPropertyGroups = caml.getElementsByTagNameNS(CAML_NS, 'wallpaperPropertyGroups')[0];
+    if (wallpaperPropertyGroups) {
+      const dictionaries = wallpaperPropertyGroups.getElementsByTagNameNS(CAML_NS, 'NSDictionary');
+      for (const dict of dictionaries) {
+        const layerName = directChildByTagNS(dict, 'layerName')?.getAttribute('value') || '';
+        const layer = doc.querySelector(`[name="${layerName}"]`);
+        const targetId = layer?.getAttribute('id') || '';
+        const keyPath = directChildByTagNS(dict, 'keyPath')?.getAttribute('value') || '';
+        const lockedValue = directChildByTagNS(dict, 'v_lock')?.getAttribute('value') || '';
+        const homeValue = directChildByTagNS(dict, 'v_home')?.getAttribute('value') || '';
+        const sleepValue = directChildByTagNS(dict, 'v_sleep')?.getAttribute('value') || '';
+        result.Locked = [...(result.Locked || []), { targetId, keyPath, value: Number(lockedValue) }];
+        result.Unlock = [...(result.Unlock || []), { targetId, keyPath, value: Number(homeValue) }];
+        result.Sleep = [...(result.Sleep || []), { targetId, keyPath, value: Number(sleepValue) }];
       }
-      result[name] = arr;
+    } else {
+      const statesEl = caml.getElementsByTagNameNS(CAML_NS, 'states')[0];
+      if (!statesEl) return result;
+      const stateNodes = Array.from(statesEl.getElementsByTagNameNS(CAML_NS, 'LKState'));
+      for (const stateNode of stateNodes) {
+        const name = stateNode.getAttribute('name') || '';
+        const elements = stateNode.getElementsByTagNameNS(CAML_NS, 'elements')[0];
+        const arr: { targetId: string; keyPath: string; value: string | number }[] = [];
+        if (elements) {
+          const setNodes = Array.from(elements.getElementsByTagNameNS(CAML_NS, 'LKStateSetValue'));
+          for (const sn of setNodes) {
+            const targetId = sn.getAttribute('targetId') || '';
+            const keyPath = sn.getAttribute('keyPath') || '';
+            let val: string | number = '';
+            const valueNodes = sn.getElementsByTagNameNS(CAML_NS, 'value');
+            if (valueNodes && valueNodes[0]) {
+              const type = valueNodes[0].getAttribute('type') || '';
+              const vAttr = valueNodes[0].getAttribute('value') || '';
+              if (vAttr === "undefined") {
+                continue;
+              }
+              if (/^(integer|float|real|number)$/i.test(type)) {
+                const n = Number(vAttr);
+                val = Number.isFinite(n) ? n : vAttr;
+              } else {
+                val = vAttr;
+              }
+            }
+            if (typeof val === 'number') {
+              const kp = keyPath || '';
+              if (kp === 'transform.rotation.z' || kp === 'transform.rotation.x' || kp === 'transform.rotation.y') {
+                val = radToDeg(val);
+              }
+            }
+            if (targetId && keyPath) arr.push({ targetId, keyPath, value: val });
+          }
+        }
+        result[name] = arr;
+      }
     }
   } catch {
     // ignore
@@ -238,6 +256,11 @@ export function parseStates(xml: string): string[] {
     const doc = new DOMParser().parseFromString(xml, 'application/xml');
     const caml = doc.getElementsByTagNameNS(CAML_NS, 'caml')[0] || doc.documentElement;
     if (!caml) return [];
+    const wallpaperPropertyGroups = caml.getElementsByTagNameNS(CAML_NS, 'wallpaperPropertyGroups')[0];
+    if (wallpaperPropertyGroups) {
+      return ['Locked', 'Unlock', 'Sleep']
+    }
+    
     const statesEl = caml.getElementsByTagNameNS(CAML_NS, 'states')[0];
     if (!statesEl) return [];
     const arr: string[] = [];
@@ -257,6 +280,7 @@ function parseLayerBase(el: Element): LayerBase {
   const name = attr(el, 'name') || 'Layer';
   const bounds = parseNumberList(attr(el, 'bounds'));
   const position = parseNumberList(attr(el, 'position'));
+  const zPosition = parseNumericAttr(el, 'zPosition') || 0;
   const anchorPt = parseNumberList(attr(el, 'anchorPoint'));
   const cornerRadius = parseNumericAttr(el, 'cornerRadius') || 0;
 
@@ -269,6 +293,7 @@ function parseLayerBase(el: Element): LayerBase {
     name,
     position: { x: position[0] ?? 0, y: position[1] ?? 0 },
     size: { w: bounds[2] ?? 0, h: bounds[3] ?? 0 },
+    zPosition,
     opacity: parseNumericAttr(el, 'opacity') || 1,
     cornerRadius,
     rotation: radToDeg(rotationZ || 0),
@@ -373,6 +398,7 @@ function parseTransformRotations(transformAttr: string): { x?: number; y?: numbe
 
 function parseCAVideoLayer(el: Element): VideoLayer {
   const base = parseLayerBase(el);
+  const children = parseSublayers(el);
 
   const frameCountAttr = attr(el, 'caplayFrameCount') || attr(el, 'caplay.frameCount');
   const fpsAttr = attr(el, 'caplayFPS') || attr(el, 'caplay.fps');
@@ -380,11 +406,13 @@ function parseCAVideoLayer(el: Element): VideoLayer {
   const autoReversesAttr = attr(el, 'caplayAutoReverses') || attr(el, 'caplay.autoReverses');
   const prefixAttr = attr(el, 'caplayFramePrefix') || attr(el, 'caplay.framePrefix');
   const extAttr = attr(el, 'caplayFrameExtension') || attr(el, 'caplay.frameExtension');
+  const syncWWithStateAttr = attr(el, 'caplaySyncWWithState')
 
   let frameCount = frameCountAttr ? Number(frameCountAttr) : undefined;
   let fps = fpsAttr ? Number(fpsAttr) : undefined;
   let duration = durationAttr ? Number(durationAttr) : undefined;
   const autoReverses = autoReversesAttr === '1' || autoReversesAttr === 'true';
+  const syncWWithState = syncWWithStateAttr === '1' || syncWWithStateAttr === 'true';
 
   const animationsEl = directChildByTagNS(el, 'animations');
   const animNode = animationsEl?.getElementsByTagNameNS(CAML_NS, 'animation')[0];
@@ -446,6 +474,8 @@ function parseCAVideoLayer(el: Element): VideoLayer {
     autoReverses,
     framePrefix,
     frameExtension,
+    syncWWithState,
+    children,
   };
 
   return layer;
@@ -744,6 +774,7 @@ export function serializeCAML(
     isWallpaperCA ? root : capRootLayer,
     project,
     isWallpaperCA ? wallpaperParallaxGroupsInput : undefined,
+    isWallpaperCA ? stateOverridesInput : undefined,
   );
 
   const scriptComponents = doc.createElementNS(CAML_NS, 'scriptComponents');
@@ -799,6 +830,9 @@ export function serializeCAML(
             break;
           case "cornerRadius":
             defaultVal = (layerIndex as any)[override.targetId]?.cornerRadius;
+            break;
+          case "zPosition":
+            defaultVal = (layerIndex as any)[override.targetId]?.zPosition;
             break;
         }
         stateNames.forEach((checkState) => {
@@ -892,8 +926,10 @@ export function serializeCAML(
   // Append all elements
   const modules = doc.createElementNS(CAML_NS, 'modules');
   rootEl.appendChild(modules);
-  rootEl.appendChild(statesEl);
-  rootEl.appendChild(stateTransitions);
+  if (!isWallpaperCA) {
+    rootEl.appendChild(statesEl);
+    rootEl.appendChild(stateTransitions);
+  }
   caml.appendChild(rootEl);
 
   const xml = new XMLSerializer().serializeToString(doc);
@@ -943,7 +979,13 @@ function setAttr(el: Element, name: string, value: string | number | undefined) 
   el.setAttribute(name, String(value));
 }
 
-function serializeLayer(doc: XMLDocument, layer: AnyLayer, project?: CAProject, wallpaperParallaxGroupsInput?: GyroParallaxDictionary[]): Element {
+function serializeLayer(
+  doc: XMLDocument,
+  layer: AnyLayer,
+  project?: CAProject,
+  wallpaperParallaxGroupsInput?: GyroParallaxDictionary[],
+  stateOverridesInput?: Record<string, Array<{ targetId: string; keyPath: string; value: string | number }>>,
+): Element {
   const elementTypes: Record<string, string> = {
     text: 'CATextLayer',
     gradient: 'CAGradientLayer',
@@ -959,6 +1001,7 @@ function serializeLayer(doc: XMLDocument, layer: AnyLayer, project?: CAProject, 
   setAttr(el, 'name', layer.name);
   setAttr(el, 'bounds', `0 0 ${Math.max(0, layer.size.w)} ${Math.max(0, layer.size.h)}`);
   setAttr(el, 'position', `${Math.round(layer.position.x)} ${Math.round(layer.position.y)}`);
+  setAttr(el, 'zPosition', String(layer.zPosition));
   const ax = (layer as any).anchorPoint?.x;
   const ay = (layer as any).anchorPoint?.y;
   if (typeof ax === 'number' && typeof ay === 'number') {
@@ -1059,6 +1102,7 @@ function serializeLayer(doc: XMLDocument, layer: AnyLayer, project?: CAProject, 
     const fps = typeof videoLayer.fps === 'number' && videoLayer.fps > 0 ? videoLayer.fps : 30;
     const duration = typeof videoLayer.duration === 'number' && videoLayer.duration > 0 ? videoLayer.duration : (frameCount / fps);
     const autoReverses = !!videoLayer.autoReverses;
+    const syncWWithState = !!videoLayer.syncWWithState;
     let framePrefix = videoLayer.framePrefix || `${layer.id}_frame_`;
     let frameExtension = videoLayer.frameExtension || '.jpg';
     if (!frameExtension.startsWith('.')) frameExtension = `.${frameExtension}`;
@@ -1071,40 +1115,43 @@ function serializeLayer(doc: XMLDocument, layer: AnyLayer, project?: CAProject, 
     setAttr(el, 'caplayAutoReverses', autoReverses ? 1 : 0);
     setAttr(el, 'caplayFramePrefix', framePrefix);
     setAttr(el, 'caplayFrameExtension', frameExtension);
+    setAttr(el, 'caplaySyncWWithState', syncWWithState ? 1 : 0);
 
-    if (frameCount > 0) {
-      const contents = doc.createElementNS(CAML_NS, 'contents');
-      contents.setAttribute('type', 'CGImage');
-      contents.setAttribute('src', framePath(0));
-      el.appendChild(contents);
-    }
-    
-    if (frameCount > 1) {
-      const animationsEl = doc.createElementNS(CAML_NS, 'animations');
-      const a = doc.createElementNS(CAML_NS, 'animation');
-      a.setAttribute('type', 'CAKeyframeAnimation');
-      const calcMode = (layer as any).calculationMode === 'discrete' ? 'discrete' : 'linear';
-      a.setAttribute('calculationMode', calcMode);
-      a.setAttribute('keyPath', 'contents');
-      a.setAttribute('beginTime', '1e-100');
-      a.setAttribute('duration', String(duration));
-      a.setAttribute('removedOnCompletion', '0');
-      a.setAttribute('repeatCount', 'inf');
-      a.setAttribute('repeatDuration', '0');
-      a.setAttribute('speed', '1');
-      a.setAttribute('timeOffset', '0');
-      a.setAttribute('autoreverses', autoReverses ? '1' : '0');
-      
-      const valuesEl = doc.createElementNS(CAML_NS, 'values');
-      for (let i = 0; i < frameCount; i++) {
-        const cgImage = doc.createElementNS(CAML_NS, 'CGImage');
-        cgImage.setAttribute('src', framePath(i));
-        valuesEl.appendChild(cgImage);
+    if (!syncWWithState) {
+      if (frameCount > 0) {
+        const contents = doc.createElementNS(CAML_NS, 'contents');
+        contents.setAttribute('type', 'CGImage');
+        contents.setAttribute('src', framePath(0));
+        el.appendChild(contents);
       }
       
-      a.appendChild(valuesEl);
-      animationsEl.appendChild(a);
-      el.appendChild(animationsEl);
+      if (frameCount > 1) {
+        const animationsEl = doc.createElementNS(CAML_NS, 'animations');
+        const a = doc.createElementNS(CAML_NS, 'animation');
+        a.setAttribute('type', 'CAKeyframeAnimation');
+        const calcMode = (layer as any).calculationMode === 'discrete' ? 'discrete' : 'linear';
+        a.setAttribute('calculationMode', calcMode);
+        a.setAttribute('keyPath', 'contents');
+        a.setAttribute('beginTime', '1e-100');
+        a.setAttribute('duration', String(duration));
+        a.setAttribute('removedOnCompletion', '0');
+        a.setAttribute('repeatCount', 'inf');
+        a.setAttribute('repeatDuration', '0');
+        a.setAttribute('speed', '1');
+        a.setAttribute('timeOffset', '0');
+        a.setAttribute('autoreverses', autoReverses ? '1' : '0');
+        
+        const valuesEl = doc.createElementNS(CAML_NS, 'values');
+        for (let i = 0; i < frameCount; i++) {
+          const cgImage = doc.createElementNS(CAML_NS, 'CGImage');
+          cgImage.setAttribute('src', framePath(i));
+          valuesEl.appendChild(cgImage);
+        }
+        
+        a.appendChild(valuesEl);
+        animationsEl.appendChild(a);
+        el.appendChild(animationsEl);
+      }
     }
   }
 
@@ -1299,6 +1346,44 @@ function serializeLayer(doc: XMLDocument, layer: AnyLayer, project?: CAProject, 
     
     const wallpaperPropertyGroups = doc.createElementNS(CAML_NS, 'wallpaperPropertyGroups');
     wallpaperPropertyGroups.setAttribute('type', 'NSArray');
+    
+    for (const dict of stateOverridesInput?.Locked ?? []) {
+      const currentLayer = findById(layer.children || [], dict.targetId);
+      if (!currentLayer) continue;
+      console.log(dict);
+      const nsDict = doc.createElementNS(CAML_NS, 'NSDictionary');
+      const image = doc.createElementNS(CAML_NS, 'image');
+      image.setAttribute('type', 'null');
+      nsDict.appendChild(image);
+      const keyPath = doc.createElementNS(CAML_NS, 'keyPath');
+      keyPath.setAttribute('type', 'string');
+      keyPath.setAttribute('value', dict.keyPath);
+      nsDict.appendChild(keyPath);
+      const layerName = doc.createElementNS(CAML_NS, 'layerName');
+      layerName.setAttribute('type', 'string');
+      layerName.setAttribute('value', currentLayer.name);
+      nsDict.appendChild(layerName);
+      
+      const HomeValue = stateOverridesInput?.Unlock.find((d) => d.keyPath === dict.keyPath && d.targetId === dict.targetId)?.value;
+      const SleepValue = stateOverridesInput?.Sleep.find((d) => d.keyPath === dict.keyPath && d.targetId === dict.targetId)?.value;
+      const v_home = doc.createElementNS(CAML_NS, 'v_home');
+      v_home.setAttribute('type', 'integer');
+      v_home.setAttribute('value', String(HomeValue));
+      nsDict.appendChild(v_home);
+      const v_lock = doc.createElementNS(CAML_NS, 'v_lock');
+      v_lock.setAttribute('type', 'integer');
+      v_lock.setAttribute('value', String(dict.value));
+      nsDict.appendChild(v_lock);
+      const v_sleep = doc.createElementNS(CAML_NS, 'v_sleep');
+      v_sleep.setAttribute('type', 'integer');
+      v_sleep.setAttribute('value', String(SleepValue));
+      nsDict.appendChild(v_sleep);
+      const view = doc.createElementNS(CAML_NS, 'view');
+      view.setAttribute('type', 'string');
+      view.setAttribute('value', 'Floating');
+      nsDict.appendChild(view);
+      wallpaperPropertyGroups.appendChild(nsDict);
+    }
     style.appendChild(wallpaperPropertyGroups);
     
     el.appendChild(style);

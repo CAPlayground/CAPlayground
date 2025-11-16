@@ -64,7 +64,25 @@ export function cloneLayerDeep(layer: AnyLayer): AnyLayer {
 
 export function updateInTree(layers: AnyLayer[], id: string, patch: Partial<AnyLayer>): AnyLayer[] {
   return layers.map((l) => {
-    if (l.id === id) return { ...l, ...patch } as AnyLayer;
+    if (l.id === id) {
+      if (l.type === 'video') {
+        if (patch.size && l.children?.length) {
+          const newChildren = l.children?.map((c) => {
+            const newPosition = {
+              x: (patch.size?.w ?? l.size.w) / 2,
+              y: (patch.size?.h ?? l.size.h) / 2
+            };
+            return {
+              ...c,
+              ...patch,
+              position: newPosition
+            } as AnyLayer;
+          }) || [];
+          return { ...l, ...patch, children: newChildren } as AnyLayer;
+        }
+      }
+      return { ...l, ...patch } as AnyLayer;
+    }
     if (l.children?.length) {
       return { ...l, children: updateInTree(l.children, id, patch) } as AnyLayer;
     }

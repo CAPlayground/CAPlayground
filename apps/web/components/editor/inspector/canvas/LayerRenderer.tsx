@@ -81,6 +81,24 @@ export function LayerRenderer({
   };
 
   const renderChildren = (layer: AnyLayer, nextUseYUp: boolean) => {
+    if (layer.type === 'video' && layer.children?.length) {
+      const imageToRender = layer.children.sort((a, b) => (b.zPosition ?? 0) - (a.zPosition ?? 0))[0];
+      return <LayerRenderer
+        layer={imageToRender}
+        containerH={layer.size.h}
+        useYUp={nextUseYUp}
+        siblings={layer.children}
+        assets={assets}
+        hiddenLayerIds={hiddenLayerIds}
+        timeSec={timeSec}
+        gyroX={gyroX}
+        gyroY={gyroY}
+        useGyroControls={useGyroControls}
+        onStartDrag={onStartDrag}
+        onEvalLayerAnimation={onEvalLayerAnimation}
+        disableHitTesting
+      />
+    };
     return layer.children?.map((c) => {
       return (
         <LayerRenderer

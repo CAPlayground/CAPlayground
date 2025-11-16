@@ -44,7 +44,6 @@ export function GeometryTab({
   const isStandardAnchor = standardValues.includes(selAx) && standardValues.includes(selAy);
   
   const [useCustomAnchor, setUseCustomAnchor] = useState(!isStandardAnchor);
-  
   return (
     <div>
       {(disablePosX || disablePosY || disableRotX || disableRotY || disableRotZ) && (
