@@ -1,11 +1,11 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Upload, FileText, CheckCircle2, XCircle, Info, Loader2 } from "lucide-react"
+import { Upload, FileText, CheckCircle2, XCircle, Info, Loader2, ChevronLeft, ChevronRight } from "lucide-react"
 import type { TendiesBundle } from "@/lib/ca/ca-file"
 import type { AnyLayer } from "@/lib/ca/types"
 
@@ -233,17 +233,35 @@ function buildLayerTreeLines(root: AnyLayer | undefined, maxDepth: number = 4, m
   return lines
 }
 
-function collectImageUrls(assets: TendiesBundle["floating"] | TendiesBundle["background"] | TendiesBundle["wallpaper"]): string[] {
-  const urls: string[] = []
-  if (!assets || !assets.assets) return urls
-  for (const asset of Object.values(assets.assets)) {
+interface ImageInfo {
+  url: string
+  filename: string
+  isImage: boolean
+}
+
+function collectImageInfos(
+  assets: TendiesBundle["floating"] | TendiesBundle["background"] | TendiesBundle["wallpaper"],
+): ImageInfo[] {
+  const infos: ImageInfo[] = []
+  if (!assets || !assets.assets) return infos
+  for (const [name, asset] of Object.entries(assets.assets)) {
     const data = asset.data instanceof Blob ? asset.data : new Blob([(asset.data as any) || new ArrayBuffer(0)])
     try {
       const url = URL.createObjectURL(data)
-      urls.push(url)
+      const filename = name || "asset"
+      const lower = filename.toLowerCase()
+      const isImage =
+        data.type.startsWith("image/") ||
+        lower.endsWith(".png") ||
+        lower.endsWith(".jpg") ||
+        lower.endsWith(".jpeg") ||
+        lower.endsWith(".webp") ||
+        lower.endsWith(".gif") ||
+        lower.endsWith(".svg")
+      infos.push({ url, filename, isImage })
     } catch {}
   }
-  return urls
+  return infos
 }
 
 function hasVideoFrameSequence(root: AnyLayer | undefined): boolean {
@@ -278,6 +296,8 @@ export default function TendiesChecker() {
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [projectSize, setProjectSize] = useState<{ width: number; height: number } | null>(null)
   const [bundle, setBundle] = useState<TendiesBundle | null>(null)
+  const [previewImages, setPreviewImages] = useState<ImageInfo[] | null>(null)
+  const [previewIndex, setPreviewIndex] = useState<number>(0)
 
   const handleFiles = useCallback(async (files: FileList | null) => {
     if (!files || files.length === 0) return
@@ -312,6 +332,45 @@ export default function TendiesChecker() {
       setIsAnalysing(false)
     }
   }, [])
+
+  const closePreview = useCallback(() => {
+    setPreviewImages(null)
+    setPreviewIndex(0)
+  }, [])
+
+  const showPreview = useCallback((images: ImageInfo[], index: number) => {
+    if (!images.length) return
+    setPreviewImages(images)
+    setPreviewIndex(Math.max(0, Math.min(index, images.length - 1)))
+  }, [])
+
+  const showNext = useCallback(() => {
+    if (!previewImages || previewImages.length === 0) return
+    setPreviewIndex((prev) => (prev + 1) % previewImages.length)
+  }, [previewImages])
+
+  const showPrev = useCallback(() => {
+    if (!previewImages || previewImages.length === 0) return
+    setPreviewIndex((prev) => (prev - 1 + previewImages.length) % previewImages.length)
+  }, [previewImages])
+
+  useEffect(() => {
+    if (!previewImages || previewImages.length === 0) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault()
+        closePreview()
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault()
+        showNext()
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault()
+        showPrev()
+      }
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [previewImages, closePreview, showNext, showPrev])
 
   const capStatus = useMemo(() => {
     if (!result) return null
@@ -476,7 +535,7 @@ export default function TendiesChecker() {
                     kind === "background" ? (bundle?.background?.root as AnyLayer | undefined) :
                     (bundle?.wallpaper?.root as AnyLayer | undefined),
                   )
-                  const imageUrls = collectImageUrls(
+                  const imageInfos = collectImageInfos(
                     kind === "floating" ? bundle?.floating : kind === "background" ? bundle?.background : bundle?.wallpaper,
                   )
 
@@ -513,14 +572,25 @@ export default function TendiesChecker() {
                       </div>
                       <div className="space-y-1 text-xs">
                         <div className="font-semibold uppercase text-muted-foreground">Images</div>
-                        {imageUrls.length === 0 ? (
+                        {imageInfos.length === 0 ? (
                           <div className="text-muted-foreground">No images detected</div>
                         ) : (
                           <div className="flex gap-2 overflow-x-auto py-1">
-                            {imageUrls.map((url, idx) => (
-                              <div key={idx} className="w-16 h-16 rounded border bg-background flex-shrink-0 overflow-hidden">
-                                <img src={url} alt="asset" className="w-full h-full object-cover" />
-                              </div>
+                            {imageInfos.map((img, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => showPreview(imageInfos, idx)}
+                                className="w-16 h-16 rounded border bg-background flex-shrink-0 overflow-hidden focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring"
+                              >
+                                {img.isImage ? (
+                                  <img src={img.url} alt="asset" className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-[10px] font-mono text-muted-foreground bg-muted/40">
+                                    {img.filename.split(".").pop() || "file"}
+                                  </div>
+                                )}
+                              </button>
                             ))}
                           </div>
                         )}
@@ -549,6 +619,70 @@ export default function TendiesChecker() {
           </div>
         )}
       </CardContent>
+      {previewImages && previewImages.length > 0 && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+          onClick={closePreview}
+        >
+          <div
+            className="bg-background rounded-lg p-4 max-w-[90vw] max-h-[90vh] flex flex-col items-center gap-3 shadow-lg border"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-center gap-3 w-[min(90vw,640px)] h-[min(90vh,420px)]">
+              {previewImages.length > 1 && (
+                <button
+                  type="button"
+                  onClick={showPrev}
+                  className="p-2 rounded-full border bg-muted hover:bg-muted/80 flex items-center justify-center"
+                  aria-label="Previous asset"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+              )}
+              <div className="flex-1 h-full flex items-center justify-center">
+                {previewImages[previewIndex]?.isImage ? (
+                  <img
+                    src={previewImages[previewIndex]?.url}
+                    alt={previewImages[previewIndex]?.filename || "expanded asset"}
+                    className="max-h-full max-w-full rounded object-contain"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center w-full h-full">
+                    <div className="px-4 py-2 rounded border bg-muted text-sm font-mono">
+                      {(previewImages[previewIndex]?.filename.split(".").pop() || "file").toUpperCase()}
+                    </div>
+                  </div>
+                )}
+              </div>
+              {previewImages.length > 1 && (
+                <button
+                  type="button"
+                  onClick={showNext}
+                  className="p-2 rounded-full border bg-muted hover:bg-muted/80 flex items-center justify-center"
+                  aria-label="Next asset"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              )}
+            </div>
+            <div className="flex flex-col items-center gap-2 mt-2">
+              <div className="text-xs text-muted-foreground break-all">
+                {previewImages[previewIndex]?.filename}
+              </div>
+              <div className="flex gap-2">
+                <Button asChild size="sm">
+                  <a href={previewImages[previewIndex]?.url} download={previewImages[previewIndex]?.filename}>
+                    Download
+                  </a>
+                </Button>
+                <Button variant="outline" size="sm" type="button" onClick={closePreview}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   )
 }
