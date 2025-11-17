@@ -62,6 +62,12 @@ export function Footer() {
               <Link href="/roadmap" className="block text-sm text-muted-foreground hover:text-accent transition-colors">
                 Roadmap
               </Link>
+              <Link
+                href="/tendies-check"
+                className="block text-sm text-muted-foreground hover:text-accent transition-colors"
+              >
+                Tendies Checker
+              </Link>
             </div>
           </div>
 
