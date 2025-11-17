@@ -658,6 +658,7 @@ export function EditorProvider({
     id: genId(),
     name,
     position: { x: 50, y: 50 },
+    zPosition: 0,
     size: { w: 120, h: 40 },
     rotation: 0,
     rotationX: 0,

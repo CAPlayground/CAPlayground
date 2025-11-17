@@ -1004,7 +1004,7 @@ function serializeLayer(
   setAttr(el, 'name', layer.name);
   setAttr(el, 'bounds', `0 0 ${Math.max(0, layer.size.w)} ${Math.max(0, layer.size.h)}`);
   setAttr(el, 'position', `${Math.round(layer.position.x)} ${Math.round(layer.position.y)}`);
-  setAttr(el, 'zPosition', String(layer.zPosition));
+  setAttr(el, 'zPosition', layer.zPosition ?? 0);
   const ax = (layer as any).anchorPoint?.x;
   const ay = (layer as any).anchorPoint?.y;
   if (typeof ax === 'number' && typeof ay === 'number') {
