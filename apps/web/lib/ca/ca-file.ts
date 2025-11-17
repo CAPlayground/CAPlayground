@@ -448,7 +448,83 @@ export async function unpackTendies(file: Blob): Promise<TendiesBundle> {
   if (hasMercuryPoster) {
     throw new Error('MERCURY_POSTER_NOT_SUPPORTED: Mercury Poster wallpapers cannot be imported as their assets are stored in system files and cannot be modified.');
   }
-  
+
+  let floatingPath: string | null = null;
+  let backgroundPath: string | null = null;
+  let wallpaperPath: string | null = null;
+
+  try {
+    const plistPath = paths.find(p => p.toLowerCase().endsWith('wallpaper.plist'));
+    if (plistPath) {
+      const plistEntry = zip.file(plistPath);
+      const xml = plistEntry ? await plistEntry.async('string') : null;
+      if (xml) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(xml, 'application/xml');
+        const stringEls = Array.from(doc.getElementsByTagName('string')) as Element[];
+        const caNames: string[] = [];
+        for (const el of stringEls) {
+          const text = (el.textContent || '').trim();
+          if (!text.toLowerCase().endsWith('.ca')) continue;
+          if (!caNames.includes(text)) caNames.push(text);
+        }
+
+        const resolveCaDir = (caRef: string): string | null => {
+          const normRef = caRef.replace(/\\/g, '/');
+          const lowerRef = normRef.toLowerCase();
+
+          const direct = paths.find(p => p.toLowerCase().startsWith(lowerRef + '/'));
+          if (direct) {
+            const parts = direct.split('/');
+            const idx = parts.findIndex(seg => seg.toLowerCase().endsWith('.ca'));
+            if (idx >= 0) return parts.slice(0, idx + 1).join('/') + '/';
+          }
+
+          const base = normRef.split('/').pop() || normRef;
+          const candidate = paths.find(p => {
+            const segs = p.toLowerCase().split('/');
+            return segs.some(seg => seg === base.toLowerCase());
+          });
+          if (!candidate) return null;
+          const parts = candidate.split('/');
+          const idx = parts.findIndex(seg => seg.toLowerCase().endsWith('.ca'));
+          if (idx < 0) return null;
+          return parts.slice(0, idx + 1).join('/') + '/';
+        };
+
+        const resolvedDirs: string[] = [];
+        for (const caRef of caNames) {
+          const dir = resolveCaDir(caRef);
+          if (dir && !resolvedDirs.includes(dir)) resolvedDirs.push(dir);
+        }
+
+        if (resolvedDirs.length === 1) {
+          wallpaperPath = resolvedDirs[0];
+        } else if (resolvedDirs.length >= 2) {
+          const pickBy = (keyword: string): string | null => {
+            const hit = resolvedDirs.find(d => d.toLowerCase().includes(keyword));
+            return hit || null;
+          };
+
+          floatingPath = pickBy('floating');
+          backgroundPath = pickBy('background');
+          wallpaperPath = pickBy('wallpaper.ca');
+
+          const remaining = resolvedDirs.filter(d => d !== floatingPath && d !== backgroundPath && d !== wallpaperPath);
+          const pickOr = (current: string | null, fallbackIndex: number): string | null => {
+            if (current) return current;
+            return resolvedDirs[fallbackIndex] || remaining[0] || null;
+          };
+
+          backgroundPath = pickOr(backgroundPath, 0);
+          floatingPath = pickOr(floatingPath, 1);
+          if (!wallpaperPath && resolvedDirs.length > 2) wallpaperPath = resolvedDirs[2];
+        }
+      }
+    }
+  } catch {
+  }
+
   const findCAPath = (pattern: 'floating' | 'background' | 'wallpaper.ca'): string | null => {
     if (pattern === 'wallpaper.ca') {
       const candidate = paths.find((p) => {
@@ -472,10 +548,9 @@ export async function unpackTendies(file: Blob): Promise<TendiesBundle> {
       return parts.slice(0, idx + 1).join('/') + '/';
     }
   };
-
-  const floatingPath = findCAPath('floating');
-  const backgroundPath = findCAPath('background');
-  const wallpaperPath = findCAPath('wallpaper.ca');
+  if (!floatingPath) floatingPath = findCAPath('floating');
+  if (!backgroundPath) backgroundPath = findCAPath('background');
+  if (!wallpaperPath) wallpaperPath = findCAPath('wallpaper.ca');
 
   if (!floatingPath && !backgroundPath && !wallpaperPath) {
     throw new Error('TENDIES_MISSING_CA_FILES: No floating.ca, background.ca, or wallpaper.ca found');
