@@ -38,12 +38,10 @@ export function Navigation() {
     setMounted(true)
     const supabase = getSupabaseBrowserClient()
 
-    // initial check
     supabase.auth.getSession().then(({ data }) => {
       setIsSignedIn(!!data.session)
     })
 
-    // subscribe to auth changes
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsSignedIn(!!session)
     })
@@ -88,7 +86,7 @@ export function Navigation() {
 
 
   return (
-    <nav className="sticky top-4 z-50 w-full bg-background/60 backdrop-blur">
+    <nav className="sticky top-4 z-50 w-full">
       <div className="w-full max-w-[1385px] mx-auto px-4 min-[1045px]:px-6">
         <div
           className={`w-full rounded-2xl bg-background/80 backdrop-blur-md transition-all ${
@@ -216,7 +214,13 @@ export function Navigation() {
             isMenuOpen ? "max-h-120 opacity-100" : "max-h-0 opacity-0"
           }`}
         >
-          <div className="rounded-b-2xl border border-t-0 border-border bg-background/95 backdrop-blur-sm shadow-md">
+          <div
+            className={`rounded-b-2xl bg-background/95 backdrop-blur-sm transition-all ${
+              scrolled
+                ? "border border-t-0 border-border shadow-md"
+                : "border border-t-0 border-transparent shadow-none"
+            }`}
+          >
             <div className="flex flex-col space-y-1 py-2">
               {/* top quick links */}
               <Link
