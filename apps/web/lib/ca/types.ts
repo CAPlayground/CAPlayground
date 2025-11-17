@@ -75,6 +75,10 @@ export type ShapeLayer = LayerBase & {
   radius?: number;
 };
 
+export enum SyncStateFrameMode {
+  BEGINNING = 'beginning',
+  END = 'end'
+}
 export type VideoLayer = LayerBase & {
   type: 'video';
   frameCount: number;
@@ -87,9 +91,9 @@ export type VideoLayer = LayerBase & {
   currentFrameIndex?: number;
   syncWWithState?: boolean;
   syncStateFrameMode?: {
-    Locked?: 'beginning' | 'end';
-    Unlock?: 'beginning' | 'end';
-    Sleep?: 'beginning' | 'end';
+    Locked?: SyncStateFrameMode;
+    Unlock?: SyncStateFrameMode;
+    Sleep?: SyncStateFrameMode;
   };
 };
 

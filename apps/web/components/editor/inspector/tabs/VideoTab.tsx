@@ -5,7 +5,19 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { InspectorTabProps } from "../types";
 import { useEditor } from "../../editor-context";
-import { AnyLayer } from "@/lib/ca/types";
+import { AnyLayer, SyncStateFrameMode } from "@/lib/ca/types";
+import { useMemo } from "react";
+
+const {
+  BEGINNING,
+  END
+} = SyncStateFrameMode;
+
+const defaultSyncStateFrameMode = {
+  Locked: BEGINNING,
+  Unlock: END,
+  Sleep: BEGINNING
+}
 
 export function VideoTab({
   selected,
@@ -14,32 +26,48 @@ export function VideoTab({
   const { updateBatchSpecificStateOverride } = useEditor();
   if (selected.type !== 'video') return null;
 
-  const isSyncWithState = (selected as any).syncWWithState;
-  const syncStateFrameMode = (selected as any).syncStateFrameMode as
-    | { Locked?: 'beginning' | 'end'; Unlock?: 'beginning' | 'end'; Sleep?: 'beginning' | 'end' }
-    | undefined;
+  const isSyncWithState = selected.syncWWithState;
+  const syncStateFrameMode = selected.syncStateFrameMode
 
-  const getModeForState = (state: 'Locked' | 'Unlock' | 'Sleep'): 'beginning' | 'end' => {
-    const value = syncStateFrameMode?.[state];
-    if (value === 'beginning' || value === 'end') return value;
-    if (state === 'Locked') return 'beginning';
-    if (state === 'Unlock') return 'end';
-    return 'end';
+  const modeByState = {
+    Locked: syncStateFrameMode?.Locked || defaultSyncStateFrameMode.Locked,
+    Unlock: syncStateFrameMode?.Unlock || defaultSyncStateFrameMode.Unlock,
+    Sleep: syncStateFrameMode?.Sleep || defaultSyncStateFrameMode.Sleep
   };
+
+  const {
+    targetIds,
+    initialZValues,
+    finalZValues
+  } = useMemo(() => {
+    const targetIds: string[] = [];
+    const initialZValues: number[] = [];
+    const finalZValues: number[] = [];
+    for (let i = 0; i < selected.frameCount; i++) {
+      const childId = `${selected.id}_frame_${i}`;
+      const initialZPosition = -i * (i + 1) / 2;
+      const finalZPosition = i * (2 * selected.frameCount - 1 - i) / 2;
+      targetIds.push(childId);
+      initialZValues.push(initialZPosition);
+      finalZValues.push(finalZPosition);
+    }
+    return { targetIds, initialZValues, finalZValues };
+  }, [selected.frameCount]);
+
   return (
     <div className="grid grid-cols-2 gap-x-1.5 gap-y-3">
       <div className="space-y-1 col-span-2">
         <Label>Video Properties</Label>
         <div className="text-sm text-muted-foreground space-y-1">
-          <div>Frames: {(selected as any).frameCount || 0}</div>
-          <div>FPS: {(selected as any).fps || 30}</div>
-          <div>Duration: {((selected as any).duration || 0).toFixed(2)}s</div>
+          <div>Frames: {selected.frameCount || 0}</div>
+          <div>FPS: {selected.fps || 30}</div>
+          <div>Duration: {((selected.duration || 0).toFixed(2))}s</div>
         </div>
       </div>
       <div className="space-y-1 col-span-2">
         <Label htmlFor="video-calculation-mode">Calculation Mode</Label>
         <Select
-          value={(selected as any).calculationMode || 'linear'}
+          value={selected.calculationMode || 'linear'}
           onValueChange={(v) => updateLayer(selected.id, { calculationMode: (v as 'linear' | 'discrete') } as any)}
           disabled={isSyncWithState}
         >
@@ -59,7 +87,7 @@ export function VideoTab({
         <div className="flex items-center justify-between">
           <Label>Auto Reverses</Label>
           <Switch
-            checked={!!(selected as any).autoReverses}
+            checked={!!selected.autoReverses}
             onCheckedChange={(checked) => updateLayer(selected.id, { autoReverses: checked } as any)}
             disabled={isSyncWithState}
           />
@@ -68,16 +96,16 @@ export function VideoTab({
           When enabled, the video will play forward then backward in a loop.
         </p>
       </div>
-      
+
       <div className="space-y-1 col-span-2">
         <div className="flex items-center justify-between">
           <Label>Sync with state transition</Label>
           <Switch
-            checked={!!(selected as any).syncWWithState}
+            checked={!!selected.syncWWithState}
             onCheckedChange={(checked) => {
               if (checked) {
                 const children: AnyLayer[] = [];
-                for (let i = 0; i < (selected as any).frameCount; i++) {
+                for (let i = 0; i < selected.frameCount; i++) {
                   const childId = `${selected.id}_frame_${i}`;
                   children.push({
                     id: childId,
@@ -92,13 +120,23 @@ export function VideoTab({
                       x: selected.size.w / 2,
                       y: selected.size.h / 2
                     },
+                    zPosition: -i * (i + 1) / 2,
                     fit: 'fill',
                     visible: true
                   });
                 }
                 updateLayer(selected.id, { syncWWithState: checked, children } as any);
+                updateBatchSpecificStateOverride(
+                  targetIds,
+                  'zPosition',
+                  {
+                    Locked: initialZValues,
+                    Unlock: finalZValues,
+                    Sleep: initialZValues
+                  },
+                );
               } else {
-                updateLayer(selected.id, { syncWWithState: checked, children: [] } as any)
+                updateLayer(selected.id, { syncWWithState: checked, children: [], syncStateFrameMode: {} } as any)
               }
             }}
           />
@@ -112,12 +150,17 @@ export function VideoTab({
               <div key={stateName} className="flex items-center justify-between gap-2 text-xs">
                 <span>{stateName}</span>
                 <Select
-                  value={getModeForState(stateName)}
+                  value={modeByState[stateName]}
                   onValueChange={(v) => {
                     const nextModes = {
                       ...(syncStateFrameMode || {}),
-                      [stateName]: v as 'beginning' | 'end',
+                      [stateName]: v as SyncStateFrameMode,
                     };
+                    updateBatchSpecificStateOverride(
+                      targetIds,
+                      'zPosition',
+                      { [stateName]: v === BEGINNING ? initialZValues : finalZValues }
+                    );
                     updateLayer(selected.id, { syncStateFrameMode: nextModes } as any);
                   }}
                 >
@@ -125,8 +168,8 @@ export function VideoTab({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="beginning">Beginning</SelectItem>
-                    <SelectItem value="end">End</SelectItem>
+                    <SelectItem value={BEGINNING}>Beginning</SelectItem>
+                    <SelectItem value={END}>End</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

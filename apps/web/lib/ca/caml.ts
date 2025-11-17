@@ -407,12 +407,14 @@ function parseCAVideoLayer(el: Element): VideoLayer {
   const prefixAttr = attr(el, 'caplayFramePrefix') || attr(el, 'caplay.framePrefix');
   const extAttr = attr(el, 'caplayFrameExtension') || attr(el, 'caplay.frameExtension');
   const syncWWithStateAttr = attr(el, 'caplaySyncWWithState')
+  const syncStateFrameModeAttr = attr(el, 'caplaySyncStateFrameMode')
 
   let frameCount = frameCountAttr ? Number(frameCountAttr) : undefined;
   let fps = fpsAttr ? Number(fpsAttr) : undefined;
   let duration = durationAttr ? Number(durationAttr) : undefined;
   const autoReverses = autoReversesAttr === '1' || autoReversesAttr === 'true';
   const syncWWithState = syncWWithStateAttr === '1' || syncWWithStateAttr === 'true';
+  const syncStateFrameMode = syncStateFrameModeAttr ? JSON.parse(syncStateFrameModeAttr) : {};
 
   const animationsEl = directChildByTagNS(el, 'animations');
   const animNode = animationsEl?.getElementsByTagNameNS(CAML_NS, 'animation')[0];
@@ -475,6 +477,7 @@ function parseCAVideoLayer(el: Element): VideoLayer {
     framePrefix,
     frameExtension,
     syncWWithState,
+    syncStateFrameMode,
     children,
   };
 
@@ -1103,6 +1106,7 @@ function serializeLayer(
     const duration = typeof videoLayer.duration === 'number' && videoLayer.duration > 0 ? videoLayer.duration : (frameCount / fps);
     const autoReverses = !!videoLayer.autoReverses;
     const syncWWithState = !!videoLayer.syncWWithState;
+    const syncStateFrameMode = videoLayer.syncStateFrameMode || {};
     let framePrefix = videoLayer.framePrefix || `${layer.id}_frame_`;
     let frameExtension = videoLayer.frameExtension || '.jpg';
     if (!frameExtension.startsWith('.')) frameExtension = `.${frameExtension}`;
@@ -1116,6 +1120,7 @@ function serializeLayer(
     setAttr(el, 'caplayFramePrefix', framePrefix);
     setAttr(el, 'caplayFrameExtension', frameExtension);
     setAttr(el, 'caplaySyncWWithState', syncWWithState ? 1 : 0);
+    setAttr(el, 'caplaySyncStateFrameMode', JSON.stringify(syncStateFrameMode));
 
     if (!syncWWithState) {
       if (frameCount > 0) {

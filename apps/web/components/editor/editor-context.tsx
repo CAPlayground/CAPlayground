@@ -80,8 +80,9 @@ export type EditorContextValue = {
   updateBatchSpecificStateOverride: (
     targetIds: string[],
     keyPath: 'position.x' | 'position.y' | 'zPosition' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'opacity' | 'cornerRadius',
-    values: number[],
-    state: 'Base State' | 'Locked' | 'Unlock' | 'Sleep' | 'Locked Light' | 'Unlock Light' | 'Sleep Light' | 'Locked Dark' | 'Unlock Dark' | 'Sleep Dark'
+    valuesByState: Partial<{
+      [state in 'Base State' | 'Locked' | 'Unlock' | 'Sleep' | 'Locked Light' | 'Unlock Light' | 'Sleep Light' | 'Locked Dark' | 'Unlock Dark' | 'Sleep Dark']: number[];
+    }>,
   ) => void;
   isAnimationPlaying: boolean;
   setIsAnimationPlaying: React.Dispatch<React.SetStateAction<boolean>>;
@@ -1339,6 +1340,8 @@ export function EditorProvider({
         cur.activeState !== 'Base State' &&
         !('syncStateFrameMode' in patch) &&
         !('syncWWithState' in patch) &&
+        !('blendMode' in patch) &&
+        !('filters' in patch) &&
         !('children' in patch);
       if (shouldOnlyAffectState) {
         const p: any = patch;
@@ -1621,24 +1624,35 @@ export function EditorProvider({
   const updateBatchSpecificStateOverride = useCallback((
     targetIds: string[],
     keyPath: 'position.x' | 'position.y' | 'zPosition' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'opacity' | 'cornerRadius',
-    values: number[],
-    state: string
+    valuesByState: Partial<Record<'Base State' | 'Locked' | 'Unlock' | 'Sleep' | 'Locked Light' | 'Unlock Light' | 'Sleep Light' | 'Locked Dark' | 'Unlock Dark' | 'Sleep Dark', number[]>>,
   ) => {
     setDoc((prev) => {
       if (!prev) return prev;
       const key = prev.activeCA;
       const cur = prev.docs[key];
-      if (!state) return prev;
       const next = { ...(cur.stateOverrides || {}) } as Record<string, Array<{ targetId: string; keyPath: string; value: number | string }>>;
-      const list = [...(next[state] || [])];
-      for (let i = 0; i < targetIds.length; i++) {
-        const targetId = targetIds[i];
-        const value = values[i];
-        const idx = list.findIndex((o) => o.targetId === targetId && o.keyPath === keyPath);
-        if (idx >= 0) list[idx] = { ...list[idx], value };
-        else list.push({ targetId, keyPath, value });
+      for (const state of Object.keys(valuesByState)) {
+        const values = valuesByState[state as keyof typeof valuesByState];
+        if (!values) continue;
+        const hasAppearanceSplit = cur.appearanceSplit;
+        let nextState = next[hasAppearanceSplit ? `${state} Dark` : state];
+        if (!nextState) return prev;
+  
+        const list = [...(nextState || [])];
+        for (let i = 0; i < targetIds.length; i++) {
+          const targetId = targetIds[i];
+          const value = values[i];
+          const idx = list.findIndex((o) => o.targetId === targetId && o.keyPath === keyPath);
+          if (idx >= 0) list[idx] = { ...list[idx], value };
+          else list.push({ targetId, keyPath, value });
+        }
+        if (hasAppearanceSplit) {
+          next[`${state} Dark`] = list;
+          next[`${state} Light`] = list;
+        } else {
+          next[state] = list;
+        }
       }
-      next[state] = list;
       pushHistory(prev);
       const nextCur = { ...cur, stateOverrides: next } as CADoc;
       return { ...prev, docs: { ...prev.docs, [key]: nextCur } } as ProjectDocument;
