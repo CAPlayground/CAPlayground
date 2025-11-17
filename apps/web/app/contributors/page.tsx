@@ -142,9 +142,6 @@ export default async function ContributorsPage() {
                             alt={`${contributor.login}'s avatar`}
                             className="w-full h-full rounded-full border-2 border-border group-hover:border-accent/50 transition-colors"
                           />
-                          <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-accent rounded-full flex items-center justify-center">
-                            <Github className="w-3 h-3 text-accent-foreground" />
-                          </div>
                         </div>
 
                         {/* Username */}
