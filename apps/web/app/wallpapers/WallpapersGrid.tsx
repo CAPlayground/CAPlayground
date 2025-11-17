@@ -300,7 +300,7 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="default">Default Order</SelectItem>
+              <SelectItem value="default">Oldest to Newest</SelectItem>
               <SelectItem value="downloads">Most Downloads</SelectItem>
             </SelectContent>
           </Select>

@@ -5,11 +5,11 @@ import React from "react";
 export const Wordmark = () => {
 	return (
 		<div className="w-full">
-			<div className="flex flex-col items-center gap-8 px-8 py-0 lg:gap-12">
+			<div className="flex flex-col items-center gap-2 px-2 py-0 lg:gap-6">
 				<div className="flex w-full items-center justify-center overflow-hidden">
 					<div className="max-w-full">
 						<svg
-							className="h-auto w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl"
+							className="h-auto w-full max-w-5xl lg:max-w-6xl xl:max-w-7xl"
 							viewBox="0 0 2100 300"
 							width={2100}
 							height={300}

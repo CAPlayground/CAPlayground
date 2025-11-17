@@ -6,10 +6,10 @@ import { Wordmark } from "@/components/wordmark"
 export function Footer() {
   return (
     <footer className="border-t border-border bg-muted/30">
-      <div className="container mx-auto px-12 md:px-30 py-12 space-y-16">
+      <div className="container mx-auto px-8 md:px-16 py-12 space-y-16">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="font-heading text-3xl md:text-4xl font-bold">Ready to get started?</h2>
-          <p className="text-muted-foreground mt-3">Build your first animated wallpaper in minutes.</p>
+          <p className="text-muted-foreground mt-3">Build your first animated wallpaper in minutes. No sign in required.</p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link href="/projects">
               <Button className="px-6 bg-accent hover:bg-accent/90 text-white font-semibold">
@@ -61,6 +61,12 @@ export function Footer() {
               </Link>
               <Link href="/roadmap" className="block text-sm text-muted-foreground hover:text-accent transition-colors">
                 Roadmap
+              </Link>
+              <Link
+                href="/tendies-check"
+                className="block text-sm text-muted-foreground hover:text-accent transition-colors"
+              >
+                Tendies Checker
               </Link>
             </div>
           </div>
