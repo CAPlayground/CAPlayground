@@ -21,7 +21,7 @@ export default function RoadmapPage() {
         <section className="container mx-auto px-3 min-[600px]:px-4 lg:px-6 py-16 md:py-24">
         <header className="mb-10 space-y-2">
           <h1 className="font-heading text-4xl md:text-5xl font-bold">Project Roadmap</h1>
-          <p className="text-muted-foreground">What's cooking in CAPlayground? (Last Updated: 28th October, 2025)</p>
+          <p className="text-muted-foreground">What's cooking in CAPlayground? (Last Updated: 17th November, 2025)</p>
           <div className="flex gap-2 pt-4">
             <Button
               variant={selectedMonth === 1 ? "default" : "outline"}
@@ -96,11 +96,20 @@ export default function RoadmapPage() {
         )}
         {selectedMonth === 3 && (
           <div className="space-y-6">
-            <RoadmapItem index={1} title="Blending Modes" status={<Badge variant="secondary" className="align-middle mx-1">In Progress</Badge>}>
-              Create layers with blending modes.
-            </RoadmapItem>
-            <RoadmapItem index={2} title="Replicator Layers" status={<Badge variant="outline">Coming Soon</Badge>}>
+            <RoadmapItem index={1} title="Replicator Layers" status={<Badge>Done: 3rd November, 2025</Badge>}>
               Create replicator layers to duplicate and arrange layers in patterns.
+            </RoadmapItem>
+            <RoadmapItem index={2} title="Blending Modes" status={<Badge>Done: 12th November, 2025</Badge>}>
+              Create a blending effect between 2+ layers such as darken, lighten and more.
+            </RoadmapItem>
+            <RoadmapItem index={3} title="Filters" status={<Badge>Done: 12th November, 2025</Badge>}>
+              Add filters to layers for effects, such as guassin blur, contrast, and more.
+            </RoadmapItem>
+            <RoadmapItem index={4} title="Sync Video with State" status={<Badge>Done: 17th November, 2025</Badge>}>
+              Sync video with state transitions to have a video start on a state and end on another.
+            </RoadmapItem>
+            <RoadmapItem index={5} title="Performance Improvements" status={<Badge variant="secondary" className="align-middle mx-1">In Progress</Badge>}>
+              Fix bugs, improve performance, reducing crashes and lagging on devices with optimisation settings.
             </RoadmapItem>
           </div>
         )}
