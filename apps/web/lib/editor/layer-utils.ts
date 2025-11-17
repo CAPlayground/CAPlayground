@@ -109,17 +109,23 @@ export function removeFromTree(layers: AnyLayer[], id: string): { removed: AnyLa
   return { removed, layers: next };
 }
 
-export function insertBeforeInTree(layers: AnyLayer[], targetId: string, node: AnyLayer): { inserted: boolean; layers: AnyLayer[] } {
+export function insertInTree(
+  layers: AnyLayer[],
+  targetId: string,
+  node: AnyLayer,
+  position: 'before' | 'after' | 'into' = 'before'
+): { inserted: boolean; layers: AnyLayer[] } {
   let inserted = false;
   const next: AnyLayer[] = [];
   for (let i = 0; i < layers.length; i++) {
     const l = layers[i];
     if (!inserted && l.id === targetId) {
-      next.push(node);
+      if (position === 'before') next.push(node);
       next.push(l);
+      if (position === 'after') next.push(node);
       inserted = true;
     } else if (l.children?.length) {
-      const res = insertBeforeInTree(l.children, targetId, node);
+      const res = insertInTree(l.children, targetId, node, position);
       if (res.inserted) {
         inserted = true;
         next.push({ ...l, children: res.layers } as AnyLayer);
