@@ -199,10 +199,10 @@ function summarizeLayerTypes(root: AnyLayer | undefined) {
   const counts: Record<string, number> = {}
   if (!root) return counts
   const visit = (l: AnyLayer) => {
-    const t = (l as any).type || "unknown"
+    const t = l.type || "unknown"
     counts[t] = (counts[t] || 0) + 1
-    if (Array.isArray((l as any).children)) {
-      for (const child of (l as any).children as AnyLayer[]) visit(child)
+    if (Array.isArray(l.children)) {
+      for (const child of l.children) visit(child)
     }
   }
   visit(root)
@@ -216,13 +216,13 @@ function buildLayerTreeLines(root: AnyLayer | undefined, maxDepth: number = 4, m
 
   const visit = (l: AnyLayer, depth: number) => {
     if (count >= maxNodes) return
-    const name = (l as any).name || (l as any).id || (l as any).type || "Layer"
+    const name = l.name || l.id || l.type || "Layer"
     const indent = "  ".repeat(depth)
     lines.push(`${indent}- ${name}`)
     count++
     if (depth >= maxDepth) return
-    if (Array.isArray((l as any).children)) {
-      for (const child of (l as any).children as AnyLayer[]) {
+    if (Array.isArray(l.children)) {
+      for (const child of l.children) {
         if (count >= maxNodes) break
         visit(child, depth + 1)
       }
@@ -269,16 +269,15 @@ function hasVideoFrameSequence(root: AnyLayer | undefined): boolean {
   const frameRe = /_frame_\d+$/
 
   const visit = (l: AnyLayer): boolean => {
-    const any = l as any
-    if (any.caplayKind === "video" && Array.isArray(any.children)) {
-      const frames = (any.children as AnyLayer[]).filter((c) => {
-        const n = (c as any).name || (c as any).id || ""
+    if ((l as unknown as { caplayKind?: string }).caplayKind === "video" && Array.isArray(l.children)) {
+      const frames = l.children.filter((c) => {
+        const n = c.name || c.id || ""
         return frameRe.test(String(n))
       })
       if (frames.length >= 5) return true
     }
-    if (Array.isArray(any.children)) {
-      for (const child of any.children as AnyLayer[]) {
+    if (Array.isArray(l.children)) {
+      for (const child of l.children) {
         if (visit(child)) return true
       }
     }
