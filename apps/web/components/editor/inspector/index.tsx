@@ -389,6 +389,7 @@ export function Inspector() {
               updateLayer={updateLayer}
               replaceImageForLayer={replaceImageForLayer}
               activeState={current?.activeState}
+              assets={current?.assets}
             />
           )}
 
