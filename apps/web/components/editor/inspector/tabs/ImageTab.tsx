@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useEffect, useRef, useState } from "react";
 import type { InspectorTabProps } from "../types";
+import type { ImageLayer } from "@/lib/ca/types";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -25,11 +26,12 @@ export function ImageTab({
   const inState = !!activeState && activeState !== 'Base State';
   const [cropOpen, setCropOpen] = useState(false);
 
-  const asset = assets?.[selected.id];
-  const imageSrc = (asset?.dataURL || (selected as any).src) as string | undefined;
-  const canCrop = !!imageSrc && !inState;
-
   if (selected.type !== 'image') return null;
+
+  const imageLayer = selected as ImageLayer;
+  const asset = assets?.[imageLayer.id];
+  const imageSrc = asset?.dataURL ?? imageLayer.src;
+  const canCrop = !!imageSrc && !inState;
 
   return (
     <div className="grid grid-cols-2 gap-x-1.5 gap-y-3">
@@ -57,7 +59,7 @@ export function ImageTab({
             onClick={async () => {
               try {
                 const img = new Image();
-                const src = (selected as any).src as string;
+                const src = imageLayer.src;
                 await new Promise<void>((resolve, reject) => {
                   img.onload = () => resolve();
                   img.onerror = reject;
@@ -66,7 +68,7 @@ export function ImageTab({
                 const w = img.naturalWidth || 0;
                 const h = img.naturalHeight || 0;
                 if (w > 0 && h > 0) {
-                  updateLayer(selected.id, { size: { ...selected.size, w, h } as any });
+                  updateLayer(selected.id, { size: { ...selected.size, w, h } });
                 }
               } catch (e) {
               }
@@ -107,12 +109,12 @@ export function ImageTab({
               open={cropOpen}
               onOpenChange={setCropOpen}
               src={imageSrc}
-              filename={(asset && asset.filename) || ((selected as any).name as string) || "image.png"}
+              filename={asset?.filename ?? selected.name ?? "image.png"}
               onApply={async (file, dims, maintainBounds) => {
                 await replaceImageForLayer(selected.id, file);
                 if (!maintainBounds && dims) {
                   updateLayer(selected.id, {
-                    size: { ...selected.size, w: dims.width, h: dims.height } as any,
+                    size: { ...selected.size, w: dims.width, h: dims.height },
                   });
                 }
               }}
