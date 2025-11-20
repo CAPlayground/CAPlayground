@@ -1,5 +1,4 @@
-import { MouseEvent as ReactMouseEvent } from 'react';
-import { AnyLayer, EmitterLayer, ShapeLayer, TransformLayer } from '@/lib/ca/types';
+import { AnyLayer, ShapeLayer, TransformLayer } from '@/lib/ca/types';
 import { LayerContextMenu } from '../../layer-context-menu';
 import { EmitterCanvas } from '../../emitter/EmitterCanvas';
 import { blendModes } from '@/lib/blending';
@@ -10,11 +9,12 @@ import ImageRenderer from './ImageRenderer';
 import VideoRenderer from './VideoRenderer';
 import { useTransform } from './TransformRenderer';
 import ReplicatorRenderer from './ReplicatorRenderer';
-import { computeCssLT, getAnchor } from '../../canvas-preview/utils/coordinates';
+import { getAnchor } from '../../canvas-preview/utils/coordinates';
+import Moveable from 'react-moveable';
+import { useMoveablePointerDrag } from '../../hooks/use-moveable-pointer-drag';
 
 interface LayerRendererProps {
   layer: AnyLayer;
-  containerH: number;
   useYUp: boolean;
   siblings: AnyLayer[];
   assets?: Record<string, { dataURL?: string }>;
@@ -24,8 +24,8 @@ interface LayerRendererProps {
   gyroX: number;
   gyroY: number;
   useGyroControls: boolean;
-  onStartDrag: (l: AnyLayer, e: ReactMouseEvent, containerH: number, useYUp: boolean) => void;
   onEvalLayerAnimation: (l: AnyLayer, t: number) => void;
+  moveableRef?: React.RefObject<Moveable | null>;
 }
 
 const hexToRgba = (hex?: string, alpha?: number): string | undefined => {
@@ -47,18 +47,9 @@ const bgStyleFor = (layer: AnyLayer): React.CSSProperties => {
   const css = hexToRgba(hex, a);
   return css ? { background: css } : {};
 };
-const touchToMouseLike = (t: any) => ({
-  clientX: t.clientX,
-  clientY: t.clientY,
-  button: 0,
-  shiftKey: false,
-  preventDefault: () => {},
-  stopPropagation: () => {},
-} as any);
 
 export function LayerRenderer({
   layer,
-  containerH,
   useYUp,
   siblings,
   assets,
@@ -68,24 +59,21 @@ export function LayerRenderer({
   gyroX,
   gyroY,
   useGyroControls,
-  onStartDrag,
   onEvalLayerAnimation,
+  moveableRef
 }: LayerRendererProps) {
+  const {
+    selectLayer,
+  } = useEditor();
   const anchor = getAnchor(layer);
-  const { left, top } = computeCssLT(layer, containerH, useYUp);
   const transformOriginY = useYUp ? (1 - anchor.y) * 100 : anchor.y * 100;
   const isWrappedContent = (layer as any).__wrappedContent === true || disableHitTesting === true;
-
-  const startDrag = (layer: AnyLayer, e: ReactMouseEvent) => {
-    onStartDrag(layer, e, containerH, useYUp);
-  };
 
   const renderChildren = (layer: AnyLayer, nextUseYUp: boolean) => {
     if (layer.type === 'video' && layer.children?.length) {
       const imageToRender = layer.children.sort((a, b) => (b.zPosition ?? 0) - (a.zPosition ?? 0))[0];
       return <LayerRenderer
         layer={imageToRender}
-        containerH={layer.size.h}
         useYUp={nextUseYUp}
         siblings={layer.children}
         assets={assets}
@@ -94,7 +82,6 @@ export function LayerRenderer({
         gyroX={gyroX}
         gyroY={gyroY}
         useGyroControls={useGyroControls}
-        onStartDrag={onStartDrag}
         onEvalLayerAnimation={onEvalLayerAnimation}
         disableHitTesting
       />
@@ -104,7 +91,6 @@ export function LayerRenderer({
         <LayerRenderer
           key={c.id}
           layer={c}
-          containerH={layer.size.h}
           useYUp={nextUseYUp}
           siblings={layer.children || []}
           assets={assets}
@@ -113,8 +99,8 @@ export function LayerRenderer({
           gyroX={gyroX}
           gyroY={gyroY}
           useGyroControls={useGyroControls}
-          onStartDrag={onStartDrag}
           onEvalLayerAnimation={onEvalLayerAnimation}
+          moveableRef={moveableRef}
         />
       );
     });
@@ -124,13 +110,15 @@ export function LayerRenderer({
     ? { border: `${layer.borderWidth}px solid ${layer.borderColor || '#000000'}` }
     : {};
 
+  const translateX = layer.position.x - (layer.anchorPoint?.x ?? 0.5 * layer.size.w);
+  const translateY = (useYUp ? -layer.position.y : layer.position.y) - (layer.anchorPoint?.y ?? 0.5 * layer.size.h);
   const common: React.CSSProperties = {
     position: "absolute",
-    left,
-    top,
+    left: 0,
+    top: useYUp ? '100%' : 0,
     width: layer.size.w,
     height: layer.size.h,
-    transform: `rotateX(${-(layer.rotationX ?? 0)}deg) rotateY(${-(layer.rotationY ?? 0)}deg) rotate(${-(layer.rotation ?? 0)}deg)`,
+    transform: `translateX(${translateX}px) translateY(${translateY}px) rotateX(${-(layer.rotationX ?? 0)}deg) rotateY(${-(layer.rotationY ?? 0)}deg) rotate(${-(layer.rotation ?? 0)}deg)`,
     transformOrigin: `${anchor.x * 100}% ${transformOriginY}%`,
     backfaceVisibility: "visible",
     display: (layer.visible === false || hiddenLayerIds.has(layer.id)) ? "none" : undefined,
@@ -199,18 +187,20 @@ export function LayerRenderer({
       transformStyle: 'preserve-3d',
     };
   }
+  const { onPointerDown, onPointerMove, onPointerUp } = useMoveablePointerDrag({
+    layerId: layer.id,
+    moveableRef,
+  });
 
   return (
     <LayerContextMenu layer={layer} siblings={siblings}>
       <div
+        id={layer.id}
         style={style}
-        onMouseDown={isWrappedContent ? undefined : (e) => startDrag(layer, e)}
-        onTouchStart={isWrappedContent ? undefined : ((e) => {
-          if (e.touches.length === 1) {
-            e.preventDefault();
-            startDrag(layer, touchToMouseLike(e.touches[0]));
-          }
-        })}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        data-y-up={useYUp}
       >
         {layer.type === "text" && (
           <TextRenderer layer={layer} />
@@ -238,7 +228,6 @@ export function LayerRenderer({
             assets={assets}
             hiddenLayerIds={hiddenLayerIds}
             useGyroControls={useGyroControls}
-            onStartDrag={onStartDrag}
             onEvalLayerAnimation={onEvalLayerAnimation}
             transformOriginY={transformOriginY}
             anchor={anchor}

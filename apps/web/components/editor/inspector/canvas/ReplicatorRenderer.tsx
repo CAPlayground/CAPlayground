@@ -7,7 +7,6 @@ export default function ReplicatorRenderer({
   gyroX,
   gyroY,
   useGyroControls,
-  onStartDrag,
   onEvalLayerAnimation,
   transformOriginY,
   nextUseYUp,
@@ -20,7 +19,6 @@ export default function ReplicatorRenderer({
   gyroX: number;
   gyroY: number;
   useGyroControls: boolean;
-  onStartDrag: (l: AnyLayer, e: React.MouseEvent, containerH: number, useYUp: boolean) => void;
   onEvalLayerAnimation: (l: AnyLayer, t: number) => void;
   transformOriginY: number;
   nextUseYUp: boolean;
