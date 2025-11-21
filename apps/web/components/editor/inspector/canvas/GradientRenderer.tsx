@@ -54,8 +54,8 @@ export default function GradientRenderer({
     <div
       style={{
         background,
-        width: layer.size.w,
-        height: layer.size.h,
+        width: "100%",
+        height: "100%",
       }}
     />
   );

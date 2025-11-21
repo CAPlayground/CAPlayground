@@ -78,7 +78,6 @@ export default function ReplicatorRenderer({
               <LayerRenderer
                 key={c.id}
                 layer={c}
-                containerH={layer.size.h}
                 useYUp={nextUseYUp}
                 siblings={animatedChildren}
                 assets={assets}
@@ -88,7 +87,6 @@ export default function ReplicatorRenderer({
                 gyroX={gyroX}
                 gyroY={gyroY}
                 useGyroControls={useGyroControls}
-                onStartDrag={onStartDrag}
                 onEvalLayerAnimation={onEvalLayerAnimation}
               />
             );

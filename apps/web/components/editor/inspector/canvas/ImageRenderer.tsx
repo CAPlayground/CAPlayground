@@ -18,8 +18,8 @@ export default function ImageRenderer({
       src={previewSrc}
       alt={layer.name}
       style={{
-        width: layer.size.w,
-        height: layer.size.h,
+        width: "100%",
+        height: "100%",
         left: 0,
         top: 0,
         transform: 'none',
