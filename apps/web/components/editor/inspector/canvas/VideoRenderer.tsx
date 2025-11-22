@@ -26,6 +26,7 @@ export default function VideoRenderer({
         objectFit: "fill",
         maxWidth: "none",
         maxHeight: "none",
+        borderRadius: layer.cornerRadius,
       }}
       draggable={false}
     />
