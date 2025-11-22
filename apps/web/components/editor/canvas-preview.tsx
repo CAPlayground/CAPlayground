@@ -13,7 +13,6 @@ import { useCanvasSize } from "@/hooks/use-canvas-size";
 import { useCanvasZoom } from "@/hooks/use-canvas-zoom";
 import { useCanvasPan } from "@/hooks/use-canvas-pan";
 import { useClipboard } from "@/hooks/use-clipboard";
-import { useLayerDrag } from "@/hooks/use-layer-drag";
 import { useAnimation } from "@/hooks/use-animation";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { useTouchGestures } from "@/hooks/use-touch-gestures";
@@ -23,8 +22,9 @@ import { getRootFlip } from "./canvas-preview/utils/coordinates";
 import { applyOverrides, applyGyroTransforms } from "./canvas-preview/utils/layerApplication";
 import GyroControls from "./gyro/GyroControls";
 import { LayerRenderer } from "./inspector/canvas/LayerRenderer";
-import SelectionOverlay from "./inspector/canvas/SelectionOverlay";
 import { findById } from "@/lib/editor/layer-utils";
+import { MoveableOverlay } from "./inspector/canvas/MoveableOverlay";
+import Moveable from "react-moveable";
 
 export function CanvasPreview() {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -181,17 +181,8 @@ export function CanvasPreview() {
     pinchZoomSensitivity,
   });
 
-  const { startDrag } = useLayerDrag({
-    scale,
-    snapEdgesEnabled,
-    snapLayersEnabled,
-    SNAP_THRESHOLD,
-    renderedLayers,
-    docRef,
-    setSnapState,
-  });
-
-  const selectedLayer = findById(renderedLayers, current?.selectedId ?? null);
+  const selectedLayer = findById(renderedLayers, current?.selectedId);
+  const moveableRef = useRef<Moveable>(null);
 
   return (
     <Card
@@ -273,11 +264,6 @@ export function CanvasPreview() {
           overflow: clipToCanvas ? "hidden" : "visible",
           boxShadow: "0 0 0 1px rgba(0,0,0,0.05), 0 10px 30px rgba(0,0,0,0.08)",
         }}
-        onMouseDown={(e) => {
-          if (e.shiftKey || e.button === 1) return;
-
-          selectLayer(null);
-        }}
       >
         {currentKey === 'floating' && showBackground ? (
           <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
@@ -285,7 +271,6 @@ export function CanvasPreview() {
               <LayerRenderer
                 key={layer.id}
                 layer={layer}
-                containerH={doc?.meta.height ?? 0}
                 useYUp={getRootFlip(doc?.meta.geometryFlipped) === 0}
                 siblings={renderedLayers}
                 assets={other?.assets}
@@ -294,8 +279,8 @@ export function CanvasPreview() {
                 useGyroControls={useGyroControls}
                 hiddenLayerIds={hiddenLayerIds}
                 timeSec={timeSec}
-                onStartDrag={startDrag}
                 onEvalLayerAnimation={evalLayerAnimation}
+                moveableRef={moveableRef}
               />
             )}
           </div>
@@ -305,7 +290,6 @@ export function CanvasPreview() {
               <LayerRenderer
                 key={layer.id}
                 layer={layer}
-                containerH={doc?.meta.height ?? 0}
                 useYUp={getRootFlip(doc?.meta.geometryFlipped) === 0}
                 siblings={renderedLayers}
                 assets={current?.assets}
@@ -314,8 +298,8 @@ export function CanvasPreview() {
                 useGyroControls={useGyroControls}
                 hiddenLayerIds={hiddenLayerIds}
                 timeSec={timeSec}
-                onStartDrag={startDrag}
                 onEvalLayerAnimation={evalLayerAnimation}
+                moveableRef={moveableRef}
               />
             ))}
           </div>
@@ -325,7 +309,6 @@ export function CanvasPreview() {
               <LayerRenderer
                 key={layer.id}
                 layer={layer}
-                containerH={doc?.meta.height ?? 0}
                 useYUp={getRootFlip(doc?.meta.geometryFlipped) === 0}
                 siblings={renderedLayers}
                 assets={current?.assets}
@@ -334,8 +317,8 @@ export function CanvasPreview() {
                 useGyroControls={useGyroControls}
                 hiddenLayerIds={hiddenLayerIds}
                 timeSec={timeSec}
-                onStartDrag={startDrag}
                 onEvalLayerAnimation={evalLayerAnimation}
+                moveableRef={moveableRef}
               />
             ))}
           </div>
@@ -372,7 +355,6 @@ export function CanvasPreview() {
                 <LayerRenderer
                   key={layer.id}
                   layer={layer}
-                  containerH={doc?.meta.height ?? 0}
                   useYUp={getRootFlip(doc?.meta.geometryFlipped) === 0}
                   siblings={renderedLayers}
                   assets={current?.assets}
@@ -381,15 +363,14 @@ export function CanvasPreview() {
                   useGyroControls={useGyroControls}
                   hiddenLayerIds={hiddenLayerIds}
                   timeSec={timeSec}
-                  onStartDrag={startDrag}
                   onEvalLayerAnimation={evalLayerAnimation}
+                  moveableRef={moveableRef}
                 />
               ))
               : renderedLayers.map((layer) => (
                 <LayerRenderer
                   key={layer.id}
                   layer={layer}
-                  containerH={doc?.meta.height ?? 0}
                   useYUp={getRootFlip(doc?.meta.geometryFlipped) === 0}
                   siblings={renderedLayers}
                   assets={current?.assets}
@@ -398,8 +379,8 @@ export function CanvasPreview() {
                   useGyroControls={useGyroControls}
                   hiddenLayerIds={hiddenLayerIds}
                   timeSec={timeSec}
-                  onStartDrag={startDrag}
                   onEvalLayerAnimation={evalLayerAnimation}
+                  moveableRef={moveableRef}
                 />
               ))
             }
@@ -419,42 +400,17 @@ export function CanvasPreview() {
             }}
           />
         )}
-        {selectedLayer &&
-          <SelectionOverlay
-            layer={selectedLayer}
-            renderedLayers={renderedLayers}
-            scale={scale}
-            showAnchorPoint={showAnchorPoint}
-            docRef={docRef}
-            canvasRef={ref}
-            baseOffsetX={baseOffsetX}
-            baseOffsetY={baseOffsetY}
-            pan={pan}
-            snapRotationEnabled={snapRotationEnabled}
-            snapResizeEnabled={snapResizeEnabled}
-            snapEdgesEnabled={snapEdgesEnabled}
-            snapLayersEnabled={snapLayersEnabled}
-            SNAP_THRESHOLD={SNAP_THRESHOLD}
-          />
-        }
-        {(() => {
-          const w = doc?.meta.width ?? 0;
-          const h = doc?.meta.height ?? 0;
-          if (!w || !h) return null;
-          const sx = snapState.x;
-          const sy = snapState.y;
-          if (sx == null && sy == null) return null;
-          const lineColor = 'rgba(59,130,246,0.9)';
-          const lineShadow = '0 0 0 1px rgba(59,130,246,0.25)';
-          const guides: React.ReactNode[] = [];
-          if (typeof sx === 'number') {
-            guides.push(<div key="v" style={{ position: 'absolute', left: sx, top: 0, bottom: 0, width: 2, background: lineColor, boxShadow: lineShadow, transform: 'translateX(-1px)', zIndex: 1000, pointerEvents: 'none' }} />);
-          }
-          if (typeof sy === 'number') {
-            guides.push(<div key="h" style={{ position: 'absolute', top: sy, left: 0, right: 0, height: 2, background: lineColor, boxShadow: lineShadow, transform: 'translateY(-1px)', zIndex: 1000, pointerEvents: 'none' }} />);
-          }
-          return <>{guides}</>;
-        })()}
+        <MoveableOverlay
+          moveableRef={moveableRef}
+          selectedLayer={selectedLayer}
+          renderedLayers={renderedLayers}
+          showAnchorPoint={showAnchorPoint}
+          snapThreshold={SNAP_THRESHOLD}
+          snapEdgesEnabled={snapEdgesEnabled}
+          snapRotationEnabled={snapRotationEnabled}
+          snapLayersEnabled={snapLayersEnabled}
+          snapResizeEnabled={snapResizeEnabled}
+        />
       </div>
       {useGyroControls && (
         <GyroControls
