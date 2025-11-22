@@ -2,6 +2,7 @@ import Moveable, { MoveableManagerInterface, Renderer } from "react-moveable";
 import { useEditor } from "../../editor-context";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnyLayer } from "@/lib/ca/types";
+import { findPathTo } from "../../canvas-preview/utils/layerTree";
 
 const DimensionViewable = {
   name: "dimensionViewable",
@@ -90,10 +91,12 @@ export function MoveableOverlay({
   });
   const [initialTransform, setInitialTransform] = useState('');
 
+  const path = findPathTo(renderedLayers, selectedLayer?.id ?? '');
+
   useEffect(() => {
     if (!selectedLayer) return;
     targetRef.current = document.getElementById(selectedLayer.id);
-  }, [selectedLayer]);
+  }, [selectedLayer, path]);
 
   if (!selectedLayer) return null;
 
@@ -103,8 +106,7 @@ export function MoveableOverlay({
       ables={[DimensionViewable]}
       ref={moveableRef}
       target={targetRef}
-      key={JSON.stringify(selectedLayer)}
-      container={null}
+      key={JSON.stringify(selectedLayer) + JSON.stringify(path)}
       origin={showAnchorPoint}
       verticalGuidelines={snapEdgesEnabled ? [0, canvasW / 2, canvasW] : []}
       horizontalGuidelines={snapEdgesEnabled ? [0, canvasH / 2, canvasH] : []}
