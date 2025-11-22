@@ -26,6 +26,7 @@ export default function ImageRenderer({
         objectFit: "fill",
         maxWidth: "none",
         maxHeight: "none",
+        borderRadius: layer.cornerRadius,
       }}
       draggable={false}
     />
