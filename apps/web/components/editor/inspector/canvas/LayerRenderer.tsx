@@ -179,7 +179,7 @@ export function LayerRenderer({
   if (layer.type === "transform") {
     style = {
       ...style,
-      transform: style.transform + transformString,
+      transform: [style.transform, transformString].filter(Boolean).join(' '),
       transformStyle: 'preserve-3d',
     };
   }
