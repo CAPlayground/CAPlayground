@@ -18,7 +18,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { getSupabaseBrowserClient } from "@/lib/supabase"
-import type { CAAsset } from "@/lib/ca/types"
+import type { AnyLayer, CAAsset, CAProjectBundle } from "@/lib/ca/types"
 import { ensureUniqueProjectName, createProject, listProjects, putBlobFile, putTextFile } from "@/lib/storage"
 import { useToast } from "@/hooks/use-toast"
 
@@ -208,17 +208,24 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
       const name = await ensureUniqueProjectName(item.name || "Imported Wallpaper")
       const width = Math.round(tendies.project.width)
       const height = Math.round(tendies.project.height)
-      await createProject({ id, name, createdAt: new Date().toISOString(), width, height })
+      await createProject({
+        id,
+        name,
+        createdAt: new Date().toISOString(),
+        width,
+        height,
+        gyroEnabled: !!tendies.wallpaper,
+      })
       const folder = `${name}.ca`
       const indexXml = `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n  <key>rootDocument</key>\n  <string>main.caml</string>\n</dict>\n</plist>`
       const assetManifest = `<?xml version="1.0" encoding="UTF-8"?>\n\n<caml xmlns="http://www.apple.com/CoreAnimation/1.0">\n  <MicaAssetManifest>\n    <modules type="NSArray"/>\n  </MicaAssetManifest>\n</caml>`
       
       const { serializeCAML } = await import('@/lib/ca/caml')
       
-      const mkCaml = async (doc: { root: any; assets?: Record<string, CAAsset>; states?: string[]; stateOverrides?: any; stateTransitions?: any }, docName: string) => {
-        const root = doc.root as any
+      const mkCaml = async (doc: CAProjectBundle, docName: string) => {
+        const root = doc.root
         const layers = Array.isArray(root.children) ? root.children : (root ? [root] : [])
-        const group = {
+        const group: AnyLayer = {
           id: `${id}-${docName}`,
           name: `Root Layer`,
           type: 'basic',
@@ -227,55 +234,78 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
           backgroundColor: root?.backgroundColor ?? '#e5e7eb',
           geometryFlipped: tendies.project.geometryFlipped,
           children: layers,
-        } as any
-        return serializeCAML(group, { id, name, width, height, background: root?.backgroundColor ?? '#e5e7eb', geometryFlipped: tendies.project.geometryFlipped } as any, doc.states as any, doc.stateOverrides as any, doc.stateTransitions as any)
+        }
+        return serializeCAML(
+          group,
+          { id, name, width, height, background: root?.backgroundColor ?? '#e5e7eb', geometryFlipped: tendies.project.geometryFlipped },
+          doc.states,
+          doc.stateOverrides,
+          doc.stateTransitions,
+          doc.wallpaperParallaxGroups
+        )
       }
 
       const creditComment = `<!--\n  Original wallpaper: ${item.name}\n  Created by: ${item.creator}\n  Imported from CAPlayground Gallery\n-->\n`
       
-      const floatingDoc = tendies.wallpaper || tendies.floating
-      if (floatingDoc) {
-        const camlFloating = await mkCaml(floatingDoc, 'Floating')
-        const camlWithCredit = camlFloating.replace('<?xml version="1.0" encoding="UTF-8"?>', `<?xml version="1.0" encoding="UTF-8"?>\n${creditComment}`)
-        await putTextFile(id, `${folder}/Floating.ca/main.caml`, camlWithCredit)
-        await putTextFile(id, `${folder}/Floating.ca/index.xml`, indexXml)
-        await putTextFile(id, `${folder}/Floating.ca/assetManifest.caml`, assetManifest)
+      if (tendies.wallpaper) {
+        const camlWallpaper = await mkCaml(tendies.wallpaper as CAProjectBundle, 'Wallpaper');
+        const camlWithCredit = camlWallpaper.replace('<?xml version="1.0" encoding="UTF-8"?>', `<?xml version="1.0" encoding="UTF-8"?>\n${creditComment}`)
+        
+        await putTextFile(id, `${folder}/Wallpaper.ca/main.caml`, camlWithCredit);
+        await putTextFile(id, `${folder}/Wallpaper.ca/index.xml`, indexXml);
+        await putTextFile(id, `${folder}/Wallpaper.ca/assetManifest.caml`, assetManifest);
 
-        const flAssets = (floatingDoc.assets || {}) as Record<string, CAAsset>
+        const flAssets = (tendies.wallpaper.assets || {}) as Record<string, CAAsset>;
         for (const [filename, asset] of Object.entries(flAssets)) {
           try {
-            const data = asset.data instanceof Blob ? asset.data : new Blob([asset.data as ArrayBuffer])
-            await putBlobFile(id, `${folder}/Floating.ca/assets/${filename}`, data)
+            const data = asset.data instanceof Blob ? asset.data : new Blob([asset.data as ArrayBuffer]);
+            await putBlobFile(id, `${folder}/Wallpaper.ca/assets/${filename}`, data);
           } catch {}
         }
       } else {
-        const emptyFloatingCaml = `<?xml version="1.0" encoding="UTF-8"?><caml xmlns="http://www.apple.com/CoreAnimation/1.0"/>`
-        await putTextFile(id, `${folder}/Floating.ca/main.caml`, emptyFloatingCaml)
-        await putTextFile(id, `${folder}/Floating.ca/index.xml`, indexXml)
-        await putTextFile(id, `${folder}/Floating.ca/assetManifest.caml`, assetManifest)
-      }
-      
-      if (tendies.background) {
-        const camlBackground = await mkCaml(tendies.background, 'Background')
-        const camlBackgroundWithCredit = camlBackground.replace('<?xml version="1.0" encoding="UTF-8"?>', `<?xml version="1.0" encoding="UTF-8"?>\n${creditComment}`)
-        await putTextFile(id, `${folder}/Background.ca/main.caml`, camlBackgroundWithCredit)
-        await putTextFile(id, `${folder}/Background.ca/index.xml`, indexXml)
-        await putTextFile(id, `${folder}/Background.ca/assetManifest.caml`, assetManifest)
+        const floatingDoc = tendies.floating
+        if (floatingDoc) {
+          const camlFloating = await mkCaml(floatingDoc as CAProjectBundle, 'Floating')
+          const camlWithCredit = camlFloating.replace('<?xml version="1.0" encoding="UTF-8"?>', `<?xml version="1.0" encoding="UTF-8"?>\n${creditComment}`)
+          await putTextFile(id, `${folder}/Floating.ca/main.caml`, camlWithCredit)
+          await putTextFile(id, `${folder}/Floating.ca/index.xml`, indexXml)
+          await putTextFile(id, `${folder}/Floating.ca/assetManifest.caml`, assetManifest)
+
+          const flAssets = (floatingDoc.assets || {}) as Record<string, CAAsset>
+          for (const [filename, asset] of Object.entries(flAssets)) {
+            try {
+              const data = asset.data instanceof Blob ? asset.data : new Blob([asset.data as ArrayBuffer])
+              await putBlobFile(id, `${folder}/Floating.ca/assets/${filename}`, data)
+            } catch {}
+          }
+        } else {
+          const emptyFloatingCaml = `<?xml version="1.0" encoding="UTF-8"?><caml xmlns="http://www.apple.com/CoreAnimation/1.0"/>`
+          await putTextFile(id, `${folder}/Floating.ca/main.caml`, emptyFloatingCaml)
+          await putTextFile(id, `${folder}/Floating.ca/index.xml`, indexXml)
+          await putTextFile(id, `${folder}/Floating.ca/assetManifest.caml`, assetManifest)
+        }
         
-        const bgAssets = (tendies.background.assets || {}) as Record<string, CAAsset>
-        for (const [filename, asset] of Object.entries(bgAssets)) {
-          try {
-            const data = asset.data instanceof Blob ? asset.data : new Blob([asset.data as ArrayBuffer])
-            await putBlobFile(id, `${folder}/Background.ca/assets/${filename}`, data)
-          } catch {}
+        if (tendies.background) {
+          const camlBackground = await mkCaml(tendies.background as CAProjectBundle, 'Background')
+          const camlBackgroundWithCredit = camlBackground.replace('<?xml version="1.0" encoding="UTF-8"?>', `<?xml version="1.0" encoding="UTF-8"?>\n${creditComment}`)
+          await putTextFile(id, `${folder}/Background.ca/main.caml`, camlBackgroundWithCredit)
+          await putTextFile(id, `${folder}/Background.ca/index.xml`, indexXml)
+          await putTextFile(id, `${folder}/Background.ca/assetManifest.caml`, assetManifest)
+          
+          const bgAssets = (tendies.background.assets || {}) as Record<string, CAAsset>
+          for (const [filename, asset] of Object.entries(bgAssets)) {
+            try {
+              const data = asset.data instanceof Blob ? asset.data : new Blob([asset.data as ArrayBuffer])
+              await putBlobFile(id, `${folder}/Background.ca/assets/${filename}`, data)
+            } catch {}
+          }
+        } else {
+          const emptyBackgroundCaml = `<?xml version="1.0" encoding="UTF-8"?><caml xmlns="http://www.apple.com/CoreAnimation/1.0"/>`
+          await putTextFile(id, `${folder}/Background.ca/main.caml`, emptyBackgroundCaml)
+          await putTextFile(id, `${folder}/Background.ca/index.xml`, indexXml)
+          await putTextFile(id, `${folder}/Background.ca/assetManifest.caml`, assetManifest)
         }
-      } else {
-        const emptyBackgroundCaml = `<?xml version="1.0" encoding="UTF-8"?><caml xmlns="http://www.apple.com/CoreAnimation/1.0"/>`
-        await putTextFile(id, `${folder}/Background.ca/main.caml`, emptyBackgroundCaml)
-        await putTextFile(id, `${folder}/Background.ca/index.xml`, indexXml)
-        await putTextFile(id, `${folder}/Background.ca/assetManifest.caml`, assetManifest)
       }
-      
       router.push(`/editor/${id}`)
     } catch (err) {
       console.error('Failed to open wallpaper in editor', err)
