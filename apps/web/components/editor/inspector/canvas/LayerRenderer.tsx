@@ -2,7 +2,6 @@ import { AnyLayer, ShapeLayer, TransformLayer } from '@/lib/ca/types';
 import { LayerContextMenu } from '../../layer-context-menu';
 import { EmitterCanvas } from '../../emitter/EmitterCanvas';
 import { blendModes } from '@/lib/blending';
-import { useEditor } from '../../editor-context';
 import GradientRenderer from './GradientRenderer';
 import TextRenderer from './TextRenderer';
 import ImageRenderer from './ImageRenderer';
@@ -62,9 +61,6 @@ export function LayerRenderer({
   onEvalLayerAnimation,
   moveableRef
 }: LayerRendererProps) {
-  const {
-    selectLayer,
-  } = useEditor();
   const anchor = getAnchor(layer);
   const transformOriginY = useYUp ? (1 - anchor.y) * 100 : anchor.y * 100;
   const isWrappedContent = (layer as any).__wrappedContent === true || disableHitTesting === true;
@@ -183,7 +179,7 @@ export function LayerRenderer({
   if (layer.type === "transform") {
     style = {
       ...style,
-      transform: transformString,
+      transform: style.transform + transformString,
       transformStyle: 'preserve-3d',
     };
   }
