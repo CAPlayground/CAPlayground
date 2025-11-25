@@ -7,9 +7,9 @@ function formatXML(xml: string): string {
   const PADDING = '  ';
   const reg = /(>)(<)(\/*)/g;
   let pad = 0;
-  
+
   xml = xml.replace(reg, '$1\n$2$3');
-  
+
   return xml.split('\n').map((node) => {
     let indent = 0;
     if (node.match(/.+<\/\w[^>]*>$/)) {
@@ -21,10 +21,10 @@ function formatXML(xml: string): string {
     } else {
       indent = 0;
     }
-    
+
     const padding = PADDING.repeat(pad);
     pad += indent;
-    
+
     return padding + node;
   }).join('\n');
 }
@@ -61,12 +61,16 @@ export function serializeCAML(
   const layerIndex: Record<string, AnyLayer> = {};
   const indexWalk = (l: AnyLayer) => {
     layerIndex[l.id] = l as AnyLayer;
+    if (l.type === 'liquidGlass') {
+      layerIndex[l.id + '_sdfLayer'] = l as AnyLayer;
+      layerIndex[l.id + '_elementLayer'] = l as AnyLayer;
+    }
     if (Array.isArray((l as any).children)) {
       ((l as any).children as AnyLayer[]).forEach(indexWalk);
     }
   };
   indexWalk(root);
-  
+
   const filtered = (stateNamesInput || []).filter((n) => !/^base(\s*state)?$/i.test(n.trim()));
   const stateNames = (filtered.length ? filtered : ['Locked', 'Unlock', 'Sleep']);
   stateNames.forEach(stateName => {
@@ -132,6 +136,111 @@ export function serializeCAML(
       }
     });
 
+    let liquidGlassOverrides = (stateOverridesInput || {})[stateName] || [];
+    for (const override of liquidGlassOverrides) {
+      if (layerIndex[override.targetId]?.type === 'liquidGlass') {
+        if (override.keyPath === 'bounds.size.width') {
+          const sdfLayerBoundOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_sdfLayer' && o.keyPath === 'bounds.size.width');
+          if (sdfLayerBoundOverride) {
+            sdfLayerBoundOverride.value = override.value;
+          } else {
+            liquidGlassOverrides.push({
+              targetId: override.targetId + '_sdfLayer',
+              keyPath: 'bounds.size.width',
+              value: override.value,
+            });
+          }
+          const sdfLayerPositionOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_sdfLayer' && o.keyPath === 'position.x');
+          if (sdfLayerPositionOverride) {
+            sdfLayerPositionOverride.value = Number(override.value) / 2;
+          } else {
+            liquidGlassOverrides.push({
+              targetId: override.targetId + '_sdfLayer',
+              keyPath: 'position.x',
+              value: Number(override.value) / 2,
+            });
+          }
+          const elementLayerBoundOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_elementLayer' && o.keyPath === 'bounds.size.width');
+
+          if (elementLayerBoundOverride) {
+            elementLayerBoundOverride.value = Number(override.value);
+          } else {
+            liquidGlassOverrides.push({
+              targetId: override.targetId + '_elementLayer',
+              keyPath: 'bounds.size.width',
+              value: Number(override.value),
+            });
+          }
+          const elementLayerPositionOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_elementLayer' && o.keyPath === 'position.x');
+          if (elementLayerPositionOverride) {
+            elementLayerPositionOverride.value = Number(override.value) / 2;
+          } else {
+            liquidGlassOverrides.push({
+              targetId: override.targetId + '_elementLayer',
+              keyPath: 'position.x',
+              value: Number(override.value) / 2,
+            });
+          }
+        }
+
+        if (override.keyPath === 'bounds.size.height') {
+          const sdfLayerBoundOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_sdfLayer' && o.keyPath === 'bounds.size.height');
+          if (sdfLayerBoundOverride) {
+            sdfLayerBoundOverride.value = Number(override.value);
+          } else {
+            liquidGlassOverrides.push({
+              targetId: override.targetId + '_sdfLayer',
+              keyPath: 'bounds.size.height',
+              value: Number(override.value),
+            });
+          }
+          const sdfLayerPositionOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_sdfLayer' && o.keyPath === 'position.y');
+          if (sdfLayerPositionOverride) {
+            sdfLayerPositionOverride.value = Number(override.value) / 2;
+          } else {
+            liquidGlassOverrides.push({
+              targetId: override.targetId + '_sdfLayer',
+              keyPath: 'position.y',
+              value: Number(override.value) / 2,
+            });
+          }
+          const elementLayerBoundOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_elementLayer' && o.keyPath === 'bounds.size.height');
+
+          if (elementLayerBoundOverride) {
+            elementLayerBoundOverride.value = Number(override.value);
+          } else {
+            liquidGlassOverrides.push({
+              targetId: override.targetId + '_elementLayer',
+              keyPath: 'bounds.size.height',
+              value: Number(override.value),
+            });
+          }
+          const elementLayerPositionOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_elementLayer' && o.keyPath === 'position.y');
+          if (elementLayerPositionOverride) {
+            elementLayerPositionOverride.value = Number(override.value) / 2;
+          } else {
+            liquidGlassOverrides.push({
+              targetId: override.targetId + '_elementLayer',
+              keyPath: 'position.y',
+              value: Number(override.value) / 2,
+            });
+          }
+        }
+        if (override.keyPath === 'cornerRadius') {
+          const elementLayerOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_elementLayer' && o.keyPath === 'cornerRadius');
+          if (elementLayerOverride) {
+            elementLayerOverride.value = override.value;
+          } else {
+            liquidGlassOverrides.push({
+              targetId: override.targetId + '_elementLayer',
+              keyPath: 'cornerRadius',
+              value: override.value,
+            });
+          }
+        }
+      }
+    }
+
     const ovs = ((stateOverridesInput || {})[stateName] || []).filter((ov) => !!layerIndex[ov.targetId]);
     for (const ov of ovs) {
       const el = doc.createElementNS(CAML_NS, 'LKStateSetValue');
@@ -166,13 +275,13 @@ export function serializeCAML(
   const transitionsToWrite = (stateTransitionsInput && stateTransitionsInput.length
     ? stateTransitionsInput
     : [
-        { fromState: '*', toState: 'Unlock', elements: [] },
-        { fromState: 'Unlock', toState: '*', elements: [] },
-        { fromState: '*', toState: 'Locked', elements: [] },
-        { fromState: 'Locked', toState: '*', elements: [] },
-        { fromState: '*', toState: 'Sleep', elements: [] },
-        { fromState: 'Sleep', toState: '*', elements: [] },
-      ]);
+      { fromState: '*', toState: 'Unlock', elements: [] },
+      { fromState: 'Unlock', toState: '*', elements: [] },
+      { fromState: '*', toState: 'Locked', elements: [] },
+      { fromState: 'Locked', toState: '*', elements: [] },
+      { fromState: '*', toState: 'Sleep', elements: [] },
+      { fromState: 'Sleep', toState: '*', elements: [] },
+    ]);
 
   transitionsToWrite.forEach((t) => {
     const transition = doc.createElementNS(CAML_NS, 'LKStateTransition');
@@ -224,7 +333,5 @@ export function serializeCAML(
   ║                                                               ║
   ╚═══════════════════════════════════════════════════════════════╝
 -->`;
-  console.log(formatted);
-  
   return '<?xml version="1.0" encoding="UTF-8"?>\n' + asciiArt + '\n' + formatted;
 }
