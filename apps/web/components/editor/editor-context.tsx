@@ -1,8 +1,8 @@
 "use client";
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import type { AnyLayer, CAProject, ImageLayer, LayerBase, ShapeLayer, TextLayer, VideoLayer, GyroParallaxDictionary, EmitterLayer, TransformLayer, ReplicatorLayer } from "@/lib/ca/types";
-import { serializeCAML } from "@/lib/ca/caml";
+import type { AnyLayer, CAProject, ImageLayer, LayerBase, ShapeLayer, TextLayer, VideoLayer, GyroParallaxDictionary, EmitterLayer, TransformLayer, ReplicatorLayer, LiquidGlassLayer } from "@/lib/ca/types";
+import { serializeCAML } from "@/lib/ca/serialize/serializeCAML";
 import { deleteFile, getProject, listFiles, putBlobFile, putBlobFilesBatch, putTextFile } from "@/lib/storage";
 import {
   genId,
@@ -62,6 +62,7 @@ export type EditorContextValue = {
   addEmitterLayer: () => void;
   addTransformLayer: () => void;
   addReplicatorLayer: () => void;
+  addLiquidGlassLayer: () => void;
   removeEmitterCell: (layerId: string, index: number) => void;
   updateLayer: (id: string, patch: Partial<AnyLayer>) => void;
   updateLayerTransient: (id: string, patch: Partial<AnyLayer>) => void;
@@ -1045,6 +1046,37 @@ export function EditorProvider({
       return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
   }, [addBase]);
+  
+  const addLiquidGlassLayer = useCallback(() => {
+    setDoc((prev) => {
+      if (!prev) return prev;
+      const canvasW = prev.meta.width || 390;
+      const canvasH = prev.meta.height || 844;
+      const key = prev.activeCA;
+      const cur = prev.docs[key];
+      const selId = cur.selectedId || null;
+      const sig = `liquidGlass:${selId || '__root__'}`;
+      const now = Date.now();
+      if (lastAddRef.current && lastAddRef.current.key === sig && (now - lastAddRef.current.ts) < 400) {
+        return prev;
+      }
+      lastAddRef.current = { key: sig, ts: now };
+      pushHistory(prev);
+      const parentLayer = findById(cur.layers, cur.selectedId)
+      const x = (parentLayer?.size.w || canvasW) / 2;
+      const y = (parentLayer?.size.h || canvasH) / 2;
+      const layer: LiquidGlassLayer = {
+        ...addBase("Liquid Glass Layer"),
+        type: "liquidGlass",
+        position: { x, y },
+        size: { w: 200, h: 200 },
+      };
+      const nextLayers = insertIntoSelected(cur.layers, selId, layer);
+
+      const next = { ...cur, layers: nextLayers, selectedId: layer.id };
+      return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
+    });
+  }, [addBase]);
 
   const addVideoLayerFromFile = useCallback(async (file: File) => {
     const isGif = /image\/gif/i.test(file.type || '') || /\.gif$/i.test(file.name || '');
@@ -1697,6 +1729,7 @@ export function EditorProvider({
     addEmitterLayer,
     addTransformLayer,
     addReplicatorLayer,
+    addLiquidGlassLayer,
     updateLayer,
     updateLayerTransient,
     selectLayer,
@@ -1737,6 +1770,7 @@ export function EditorProvider({
     addEmitterLayer,
     addTransformLayer,
     addReplicatorLayer,
+    addLiquidGlassLayer,
     updateLayer,
     updateLayerTransient,
     selectLayer,

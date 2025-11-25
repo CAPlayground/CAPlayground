@@ -11,6 +11,7 @@ import ReplicatorRenderer from './ReplicatorRenderer';
 import { getAnchor } from '../../canvas-preview/utils/coordinates';
 import Moveable from 'react-moveable';
 import { useMoveablePointerDrag } from '../../hooks/use-moveable-pointer-drag';
+import LiquidGlassRenderer from './LiquidGlassRenderer';
 
 interface LayerRendererProps {
   layer: AnyLayer;
@@ -198,6 +199,13 @@ export function LayerRenderer({
         onPointerUp={onPointerUp}
         data-y-up={useYUp}
       >
+        {layer.type === "liquidGlass" && (
+          <LiquidGlassRenderer
+            width={layer.size.w}
+            height={layer.size.h}
+            radius={layer.cornerRadius || 0}
+          />
+        )}
         {layer.type === "text" && (
           <TextRenderer layer={layer} />
         )}

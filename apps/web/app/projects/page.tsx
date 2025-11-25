@@ -511,7 +511,7 @@ function ProjectsContent() {
                 geometryFlipped: 0,
                 children: (doc.layers || []) as any[],
               } as any;
-              const { serializeCAML } = await import('@/lib/ca/caml');
+              const { serializeCAML } = await import('@/lib/ca/serialize/serializeCAML');
               const caml = serializeCAML(root, { id: meta.id, name: meta.name, width: meta.width, height: meta.height, background: '#e5e7eb', geometryFlipped: 0 } as any, doc.states as any, doc.stateOverrides as any, doc.stateTransitions as any);
               await putTextFile(meta.id, `${folder}/${caKey}/main.caml`, caml);
             }
@@ -1232,7 +1232,7 @@ function ProjectsContent() {
       const assetManifest = `<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<caml xmlns=\"http://www.apple.com/CoreAnimation/1.0\">\n  <MicaAssetManifest>\n    <modules type=\"NSArray\"/>\n  </MicaAssetManifest>\n</caml>`;
       const root = (dual ? (dual.floating.root as any) : (bundle.root as any));
       const mkCaml = async (layers: AnyLayer[]) => {
-        const { serializeCAML } = await import('@/lib/ca/caml');
+        const { serializeCAML } = await import('@/lib/ca/serialize/serializeCAML');
         const group = {
           id,
           name: 'Root Layer',
@@ -1259,7 +1259,7 @@ function ProjectsContent() {
         // Background from dual
         const bgRoot = dual.background.root as any;
         const bgLayers = Array.isArray(bgRoot.children) ? bgRoot.children : (bgRoot ? [bgRoot] : []);
-        const { serializeCAML } = await import('@/lib/ca/caml');
+        const { serializeCAML } = await import('@/lib/ca/serialize/serializeCAML');
         const bgGroup = {
           id: `${id}-bg`,
           name: 'Root Layer',
@@ -1340,7 +1340,7 @@ function ProjectsContent() {
       const indexXml = `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n  <key>rootDocument</key>\n  <string>main.caml</string>\n</dict>\n</plist>`;
       const assetManifest = `<?xml version="1.0" encoding="UTF-8"?>\n\n<caml xmlns="http://www.apple.com/CoreAnimation/1.0">\n  <MicaAssetManifest>\n    <modules type="NSArray"/>\n  </MicaAssetManifest>\n</caml>`;
       
-      const { serializeCAML } = await import('@/lib/ca/caml');
+      const { serializeCAML } = await import('@/lib/ca/serialize/serializeCAML');
       
       const mkCaml = async (doc: { root: AnyLayer; assets?: Record<string, CAAsset>; states?: string[]; stateOverrides?: any; stateTransitions?: any; wallpaperParallaxGroups?: any }, docName: string) => {
         const root = doc.root as any;
