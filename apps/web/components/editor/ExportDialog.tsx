@@ -11,6 +11,8 @@ import { ArrowLeft, Star, Youtube } from "lucide-react";
 import { useEditor } from "./editor-context";
 import { getProject, listFiles } from "@/lib/storage";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type ExportLicense = "none" | "cc-by-4.0" | "cc-by-sa-4.0" | "cc-by-nc-4.0";
 
@@ -46,6 +48,8 @@ export function ExportDialog() {
   const [exportFilename, setExportFilename] = useState("");
   const [exportFormat, setExportFormat] = useState<"ca" | "tendies">("ca");
   const [exportLicense, setExportLicense] = useState<ExportLicense>("none");
+  const [exportConfirmed, setExportConfirmed] = useState(false);
+  const requiresLicenseConfirmation = exportLicense !== "none";
 
   const starMessage = useMemo(() => {
     const messages = [
@@ -379,23 +383,31 @@ export function ExportDialog() {
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor="export-format">Format</Label>
-                    <Select
+                    <ToggleGroup
+                      type="single"
                       value={exportFormat}
-                      onValueChange={(value) =>
-                        setExportFormat(value as "ca" | "tendies")
-                      }
+                      onValueChange={(value) => {
+                        if (!value) return;
+                        setExportFormat(value as "ca" | "tendies");
+                      }}
+                      className="w-full"
+                      aria-label="Choose export format"
                     >
-                      <SelectTrigger className="w-full" id="export-format">
-                        <SelectValue
-                          placeholder="Select format"
-                          aria-label={exportFormat === "ca" ? "CA bundle" : "Tendies file"}
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ca">.ca bundle (.zip)</SelectItem>
-                        <SelectItem value="tendies">Tendies file (.tendies)</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      <ToggleGroupItem
+                        value="ca"
+                        aria-label="Export CA bundle"
+                        className="flex-1 text-xs sm:text-sm"
+                      >
+                        .ca bundle
+                      </ToggleGroupItem>
+                      <ToggleGroupItem
+                        value="tendies"
+                        aria-label="Export tendies file"
+                        className="flex-1 text-xs sm:text-sm"
+                      >
+                        Tendies
+                      </ToggleGroupItem>
+                    </ToggleGroup>
                     <p className="text-xs text-muted-foreground mt-1">
                       {exportFormat === "ca"
                         ? "Download a .zip containing your Background.ca and Floating.ca files."
@@ -431,12 +443,39 @@ export function ExportDialog() {
                         "Requires attribution. Non-commercial use only; adaptations are allowed with the same terms. This license is recommended to prevent work from being sold."}
                     </p>
                   </div>
-                  <div className="pt-2">
+                  <div className="space-y-2 pt-2">
+                    {requiresLicenseConfirmation ? (
+                      <div className="flex items-start gap-2">
+                        <Checkbox
+                          id="export-confirmation"
+                          checked={exportConfirmed}
+                          onCheckedChange={(checked) =>
+                            setExportConfirmed(checked === true)
+                          }
+                          aria-invalid={!exportConfirmed}
+                        />
+                        <label
+                          htmlFor="export-confirmation"
+                          className="text-xs text-muted-foreground leading-snug cursor-pointer select-none"
+                        >
+                          I confirm that I created or have permission to use all content in this wallpaper and that I grant the selected license to the exported file.
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground leading-snug">
+                        By exporting, you confirm that you created or have permission to use all content in this wallpaper.
+                      </p>
+                    )}
                     <Button
                       className="w-full"
-                      disabled={!doc || exportingTendies}
+                      disabled={
+                        !doc ||
+                        exportingTendies ||
+                        (requiresLicenseConfirmation && !exportConfirmed)
+                      }
                       onClick={async () => {
                         if (!doc) return;
+                        if (requiresLicenseConfirmation && !exportConfirmed) return;
                         const base =
                           exportFilename.trim() || doc.meta.name || "Project";
                         if (exportFormat === "ca") {
