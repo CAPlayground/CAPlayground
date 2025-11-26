@@ -49,6 +49,7 @@ export function SettingsPanel({
   const [showAnchorPoint, setShowAnchorPoint] = useLocalStorage<boolean>("caplay_preview_anchor_point", false);
   const [autoClosePanels, setAutoClosePanels] = useLocalStorage<boolean>("caplay_settings_auto_close_panels", true);
   const [pinchZoomSensitivity, setPinchZoomSensitivity] = useLocalStorage<number>("caplay_settings_pinch_zoom_sensitivity", 1);
+  const [showGeometryResize, setShowGeometryResize] = useLocalStorage<boolean>("caplay_settings_show_geometry_resize", true);
 
   useEffect(() => setMounted(true), []);
 
@@ -65,7 +66,7 @@ export function SettingsPanel({
       const timeout = setTimeout(() => {
         setShouldRender(false);
         setIsClosing(false);
-      }, 300); 
+      }, 300);
       return () => clearTimeout(timeout);
     }
   }, [open, shouldRender]);
@@ -147,7 +148,7 @@ export function SettingsPanel({
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-3">
                   <Label htmlFor="snap-threshold" className="text-sm">Sensitivity</Label>
-                  <Button variant="outline" size="sm" onClick={()=>{setSnapThreshold(12)}}>Reset</Button>
+                  <Button variant="outline" size="sm" onClick={() => { setSnapThreshold(12) }}>Reset</Button>
                 </div>
                 <Slider id="snap-threshold" value={[SNAP_THRESHOLD]} min={3} max={25} onValueChange={([c]) => setSnapThreshold(c)} />
               </div>
@@ -165,11 +166,11 @@ export function SettingsPanel({
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-3">
                   <Label htmlFor="pinch-zoom-sensitivity" className="text-sm">Pinch to zoom sensitivity</Label>
-                  <Button variant="outline" size="sm" onClick={()=>{setPinchZoomSensitivity(1)}}>Reset</Button>
+                  <Button variant="outline" size="sm" onClick={() => { setPinchZoomSensitivity(1) }}>Reset</Button>
                 </div>
                 <Slider id="pinch-zoom-sensitivity" value={[pinchZoomSensitivity]} min={0.5} max={2} step={0.1} onValueChange={([c]) => setPinchZoomSensitivity(c)} />
               </div>
-            </div> 
+            </div>
           </div>
 
           {/* Keyboard Shortcuts */}
@@ -212,6 +213,10 @@ export function SettingsPanel({
               <div className="flex items-center justify-between">
                 <span>States panel height</span>
                 <span className="font-mono text-muted-foreground text-xs">{statesHeight ?? '—'} px</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="show-geometry-resize" className="text-sm">Show geometry resize buttons</Label>
+                <Switch id="show-geometry-resize" checked={!!showGeometryResize} onCheckedChange={(c) => setShowGeometryResize(!!c)} />
               </div>
               <div className="pt-2">
                 <Button
