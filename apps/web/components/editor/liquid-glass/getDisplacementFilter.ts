@@ -45,46 +45,6 @@ export const getDisplacementFilter = ({
           xChannelSelector="R"
           yChannelSelector="G"
         />
-        <feColorMatrix
-          type="matrix"
-          values="1 0 0 0 0
-                  0 0 0 0 0
-                  0 0 0 0 0
-                  0 0 0 1 0"
-          result="displacedR"
-        />
-        <feDisplacementMap
-          in="SourceGraphic"
-          in2="displacementMap"
-          scale="${strength + chromaticAberration}"
-          xChannelSelector="R"
-          yChannelSelector="G"
-        />
-        <feColorMatrix
-          type="matrix"
-          values="0 0 0 0 0
-                  0 1 0 0 0
-                  0 0 0 0 0
-                  0 0 0 1 0"
-          result="displacedG"
-        />
-        <feDisplacementMap
-          in="SourceGraphic"
-          in2="displacementMap"
-          scale="${strength}"
-          xChannelSelector="R"
-          yChannelSelector="G"
-        />
-        <feColorMatrix
-          type="matrix"
-          values="0 0 0 0 0
-                  0 0 0 0 0
-                  0 0 1 0 0
-                  0 0 0 1 0"
-          result="displacedB"
-        />
-        <feBlend in="displacedR" in2="displacedG" mode="screen"/>
-        <feBlend in2="displacedB" mode="screen"/>
       </filter>
     </defs>
 </svg>`) +
