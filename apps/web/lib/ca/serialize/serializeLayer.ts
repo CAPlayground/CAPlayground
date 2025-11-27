@@ -84,7 +84,7 @@ export function serializeLayer(
   setAttr(el, 'id', layer.id);
   setAttr(el, 'name', layer.name);
   setAttr(el, 'bounds', `0 0 ${Math.max(0, layer.size.w)} ${Math.max(0, layer.size.h)}`);
-  setAttr(el, 'position', `${Math.round(layer.position.x)} ${Math.round(layer.position.y)}`);
+  setAttr(el, 'position', `${layer.position.x} ${layer.position.y}`);
   setAttr(el, 'zPosition', layer.zPosition ?? 0);
   const ax = (layer as any).anchorPoint?.x;
   const ay = (layer as any).anchorPoint?.y;
@@ -164,7 +164,7 @@ export function serializeLayer(
       if (floatTriplet) setAttr(el, 'backgroundColor', floatTriplet);
     }
   }
-  setAttr(el, 'cornerRadius', layer.cornerRadius);
+  setAttr(el, 'cornerRadius', Math.min(layer.cornerRadius || 0, layer.size.w / 2, layer.size.h / 2));
   setAttr(el, 'borderColor', layer.borderColor);
   setAttr(el, 'borderWidth', layer.borderWidth);
   setAttr(el, 'allowsEdgeAntialiasing', '1');

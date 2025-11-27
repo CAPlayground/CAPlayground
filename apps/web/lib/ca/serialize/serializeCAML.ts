@@ -60,13 +60,13 @@ export function serializeCAML(
   const statesEl = doc.createElementNS(CAML_NS, 'states');
   const layerIndex: Record<string, AnyLayer> = {};
   const indexWalk = (l: AnyLayer) => {
-    layerIndex[l.id] = l as AnyLayer;
+    layerIndex[l.id] = l;
     if (l.type === 'liquidGlass') {
-      layerIndex[l.id + '_sdfLayer'] = l as AnyLayer;
-      layerIndex[l.id + '_elementLayer'] = l as AnyLayer;
+      layerIndex[l.id + '_sdfLayer'] = l;
+      layerIndex[l.id + '_elementLayer'] = l;
     }
-    if (Array.isArray((l as any).children)) {
-      ((l as any).children as AnyLayer[]).forEach(indexWalk);
+    if (Array.isArray(l.children)) {
+      l.children.forEach(indexWalk);
     }
   };
   indexWalk(root);
@@ -103,19 +103,19 @@ export function serializeCAML(
             defaultVal = layerIndex[override.targetId].rotation;
             break;
           case "transform.rotation.x":
-            defaultVal = (layerIndex as any)[override.targetId]?.rotationX;
+            defaultVal = layerIndex[override.targetId]?.rotationX;
             break;
           case "transform.rotation.y":
-            defaultVal = (layerIndex as any)[override.targetId]?.rotationY;
+            defaultVal = layerIndex[override.targetId]?.rotationY;
             break;
           case "opacity":
             defaultVal = layerIndex[override.targetId].opacity;
             break;
           case "cornerRadius":
-            defaultVal = (layerIndex as any)[override.targetId]?.cornerRadius;
+            defaultVal = layerIndex[override.targetId]?.cornerRadius;
             break;
           case "zPosition":
-            defaultVal = (layerIndex as any)[override.targetId]?.zPosition;
+            defaultVal = layerIndex[override.targetId]?.zPosition;
             break;
         }
         stateNames.forEach((checkState) => {
@@ -136,110 +136,9 @@ export function serializeCAML(
       }
     });
 
-    let liquidGlassOverrides = (stateOverridesInput || {})[stateName] || [];
-    for (const override of liquidGlassOverrides) {
-      if (layerIndex[override.targetId]?.type === 'liquidGlass') {
-        if (override.keyPath === 'bounds.size.width') {
-          const sdfLayerBoundOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_sdfLayer' && o.keyPath === 'bounds.size.width');
-          if (sdfLayerBoundOverride) {
-            sdfLayerBoundOverride.value = override.value;
-          } else {
-            liquidGlassOverrides.push({
-              targetId: override.targetId + '_sdfLayer',
-              keyPath: 'bounds.size.width',
-              value: override.value,
-            });
-          }
-          const sdfLayerPositionOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_sdfLayer' && o.keyPath === 'position.x');
-          if (sdfLayerPositionOverride) {
-            sdfLayerPositionOverride.value = Number(override.value) / 2;
-          } else {
-            liquidGlassOverrides.push({
-              targetId: override.targetId + '_sdfLayer',
-              keyPath: 'position.x',
-              value: Number(override.value) / 2,
-            });
-          }
-          const elementLayerBoundOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_elementLayer' && o.keyPath === 'bounds.size.width');
+    serializeLiquidGlassTransitions(stateName, layerIndex, stateOverridesInput);
 
-          if (elementLayerBoundOverride) {
-            elementLayerBoundOverride.value = Number(override.value);
-          } else {
-            liquidGlassOverrides.push({
-              targetId: override.targetId + '_elementLayer',
-              keyPath: 'bounds.size.width',
-              value: Number(override.value),
-            });
-          }
-          const elementLayerPositionOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_elementLayer' && o.keyPath === 'position.x');
-          if (elementLayerPositionOverride) {
-            elementLayerPositionOverride.value = Number(override.value) / 2;
-          } else {
-            liquidGlassOverrides.push({
-              targetId: override.targetId + '_elementLayer',
-              keyPath: 'position.x',
-              value: Number(override.value) / 2,
-            });
-          }
-        }
-
-        if (override.keyPath === 'bounds.size.height') {
-          const sdfLayerBoundOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_sdfLayer' && o.keyPath === 'bounds.size.height');
-          if (sdfLayerBoundOverride) {
-            sdfLayerBoundOverride.value = Number(override.value);
-          } else {
-            liquidGlassOverrides.push({
-              targetId: override.targetId + '_sdfLayer',
-              keyPath: 'bounds.size.height',
-              value: Number(override.value),
-            });
-          }
-          const sdfLayerPositionOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_sdfLayer' && o.keyPath === 'position.y');
-          if (sdfLayerPositionOverride) {
-            sdfLayerPositionOverride.value = Number(override.value) / 2;
-          } else {
-            liquidGlassOverrides.push({
-              targetId: override.targetId + '_sdfLayer',
-              keyPath: 'position.y',
-              value: Number(override.value) / 2,
-            });
-          }
-          const elementLayerBoundOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_elementLayer' && o.keyPath === 'bounds.size.height');
-
-          if (elementLayerBoundOverride) {
-            elementLayerBoundOverride.value = Number(override.value);
-          } else {
-            liquidGlassOverrides.push({
-              targetId: override.targetId + '_elementLayer',
-              keyPath: 'bounds.size.height',
-              value: Number(override.value),
-            });
-          }
-          const elementLayerPositionOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_elementLayer' && o.keyPath === 'position.y');
-          if (elementLayerPositionOverride) {
-            elementLayerPositionOverride.value = Number(override.value) / 2;
-          } else {
-            liquidGlassOverrides.push({
-              targetId: override.targetId + '_elementLayer',
-              keyPath: 'position.y',
-              value: Number(override.value) / 2,
-            });
-          }
-        }
-        if (override.keyPath === 'cornerRadius') {
-          const elementLayerOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_elementLayer' && o.keyPath === 'cornerRadius');
-          if (elementLayerOverride) {
-            elementLayerOverride.value = override.value;
-          } else {
-            liquidGlassOverrides.push({
-              targetId: override.targetId + '_elementLayer',
-              keyPath: 'cornerRadius',
-              value: override.value,
-            });
-          }
-        }
-      }
-    }
+    fixCornerRadiusTransitions(stateName, layerIndex, stateOverridesInput || {});
 
     const ovs = ((stateOverridesInput || {})[stateName] || []).filter((ov) => !!layerIndex[ov.targetId]);
     for (const ov of ovs) {
@@ -302,7 +201,7 @@ export function serializeCAML(
         if (typeof elSpec.animation.duration === 'number') a.setAttribute('duration', String(elSpec.animation.duration));
         if (elSpec.animation.fillMode) a.setAttribute('fillMode', String(elSpec.animation.fillMode));
         if (elSpec.animation.keyPath) a.setAttribute('keyPath', String(elSpec.animation.keyPath));
-        if (typeof (elSpec.animation as any).mica_autorecalculatesDuration !== 'undefined') a.setAttribute('mica_autorecalculatesDuration', String((elSpec.animation as any).mica_autorecalculatesDuration));
+        if (typeof elSpec.animation.mica_autorecalculatesDuration !== 'undefined') a.setAttribute('mica_autorecalculatesDuration', String(elSpec.animation.mica_autorecalculatesDuration));
         el.appendChild(a);
       }
       elements.appendChild(el);
@@ -334,4 +233,136 @@ export function serializeCAML(
   ╚═══════════════════════════════════════════════════════════════╝
 -->`;
   return '<?xml version="1.0" encoding="UTF-8"?>\n' + asciiArt + '\n' + formatted;
+}
+
+
+function serializeLiquidGlassTransitions(
+  stateName: string,
+  layerIndex: Record<string, AnyLayer>,
+  stateOverridesInput?: Record<string, Array<{ targetId: string; keyPath: string; value: string | number }>>,
+) {
+  let liquidGlassOverrides = (stateOverridesInput || {})[stateName] || [];
+  for (const override of liquidGlassOverrides) {
+    const currentLayer = layerIndex[override.targetId];
+    if (currentLayer?.type === 'liquidGlass') {
+      if (override.keyPath === 'bounds.size.width') {
+        const sdfLayerBoundOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_sdfLayer' && o.keyPath === 'bounds.size.width');
+        if (sdfLayerBoundOverride) {
+          sdfLayerBoundOverride.value = override.value;
+        } else {
+          liquidGlassOverrides.push({
+            targetId: override.targetId + '_sdfLayer',
+            keyPath: 'bounds.size.width',
+            value: override.value,
+          });
+        }
+        const sdfLayerPositionOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_sdfLayer' && o.keyPath === 'position.x');
+        if (sdfLayerPositionOverride) {
+          sdfLayerPositionOverride.value = Number(override.value) / 2;
+        } else {
+          liquidGlassOverrides.push({
+            targetId: override.targetId + '_sdfLayer',
+            keyPath: 'position.x',
+            value: Number(override.value) / 2,
+          });
+        }
+        const elementLayerBoundOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_elementLayer' && o.keyPath === 'bounds.size.width');
+
+        if (elementLayerBoundOverride) {
+          elementLayerBoundOverride.value = Number(override.value);
+        } else {
+          liquidGlassOverrides.push({
+            targetId: override.targetId + '_elementLayer',
+            keyPath: 'bounds.size.width',
+            value: Number(override.value),
+          });
+        }
+        const elementLayerPositionOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_elementLayer' && o.keyPath === 'position.x');
+        if (elementLayerPositionOverride) {
+          elementLayerPositionOverride.value = Number(override.value) / 2;
+        } else {
+          liquidGlassOverrides.push({
+            targetId: override.targetId + '_elementLayer',
+            keyPath: 'position.x',
+            value: Number(override.value) / 2,
+          });
+        }
+      }
+
+      if (override.keyPath === 'bounds.size.height') {
+        const sdfLayerBoundOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_sdfLayer' && o.keyPath === 'bounds.size.height');
+        if (sdfLayerBoundOverride) {
+          sdfLayerBoundOverride.value = Number(override.value);
+        } else {
+          liquidGlassOverrides.push({
+            targetId: override.targetId + '_sdfLayer',
+            keyPath: 'bounds.size.height',
+            value: Number(override.value),
+          });
+        }
+        const sdfLayerPositionOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_sdfLayer' && o.keyPath === 'position.y');
+        if (sdfLayerPositionOverride) {
+          sdfLayerPositionOverride.value = Number(override.value) / 2;
+        } else {
+          liquidGlassOverrides.push({
+            targetId: override.targetId + '_sdfLayer',
+            keyPath: 'position.y',
+            value: Number(override.value) / 2,
+          });
+        }
+        const elementLayerBoundOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_elementLayer' && o.keyPath === 'bounds.size.height');
+
+        if (elementLayerBoundOverride) {
+          elementLayerBoundOverride.value = Number(override.value);
+        } else {
+          liquidGlassOverrides.push({
+            targetId: override.targetId + '_elementLayer',
+            keyPath: 'bounds.size.height',
+            value: Number(override.value),
+          });
+        }
+        const elementLayerPositionOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_elementLayer' && o.keyPath === 'position.y');
+        if (elementLayerPositionOverride) {
+          elementLayerPositionOverride.value = Number(override.value) / 2;
+        } else {
+          liquidGlassOverrides.push({
+            targetId: override.targetId + '_elementLayer',
+            keyPath: 'position.y',
+            value: Number(override.value) / 2,
+          });
+        }
+      }
+      if (override.keyPath === 'cornerRadius') {
+        const elementLayerOverride = liquidGlassOverrides.find((o) => o.targetId === override.targetId + '_elementLayer' && o.keyPath === 'cornerRadius');
+        if (elementLayerOverride) {
+          elementLayerOverride.value = override.value;
+        } else {
+          liquidGlassOverrides.push({
+            targetId: override.targetId + '_elementLayer',
+            keyPath: 'cornerRadius',
+            value: override.value,
+          });
+        }
+      }
+    }
+  }
+}
+
+function fixCornerRadiusTransitions(stateName: string, layerIndex: Record<string, AnyLayer>, stateOverridesInput: Record<string, Array<{ targetId: string; keyPath: string; value: string | number }>>) {
+  const overrides = stateOverridesInput[stateName];
+  if (!overrides) return;
+  for (const override of overrides) {
+    const currentLayer = layerIndex[override.targetId];
+    if (override.keyPath === 'cornerRadius') {
+      const widthOverride = overrides
+        .find((o) => o.targetId === override.targetId && o.keyPath === 'bounds.size.width');
+      const heightOverride = overrides
+        .find((o) => o.targetId === override.targetId && o.keyPath === 'bounds.size.height');
+      override.value = Math.min(
+        Number(override.value),
+        Number(widthOverride?.value ?? currentLayer?.size.w ?? 0) / 2,
+        Number(heightOverride?.value ?? currentLayer?.size.h ?? 0) / 2,
+      );
+    }
+  }
 }

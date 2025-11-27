@@ -236,8 +236,8 @@ export function MoveableOverlay({
             h: Math.round(currentSize.h),
           },
           position: {
-            x: Math.round(selectedLayer.position.x + worldDx / 2),
-            y: Math.round(selectedLayer.position.y + worldDy / 2),
+            x: selectedLayer.position.x + worldDx / 2,
+            y: selectedLayer.position.y + worldDy / 2,
           },
         });
         setInitialTransform('');
