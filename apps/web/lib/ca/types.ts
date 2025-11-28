@@ -132,6 +132,10 @@ export type ReplicatorLayer = LayerBase & {
   instanceDelay?: number;
 };
 
+export type LiquidGlassLayer = LayerBase & {
+  type: 'liquidGlass';
+};
+
 export type AnyLayer =
   BasicLayer |
   ImageLayer |
@@ -141,7 +145,8 @@ export type AnyLayer =
   GradientLayer |
   EmitterLayer |
   TransformLayer |
-  ReplicatorLayer;
+  ReplicatorLayer |
+  LiquidGlassLayer;
 
 export type CAAsset = {
   path: string;
