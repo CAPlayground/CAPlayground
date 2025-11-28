@@ -62,6 +62,25 @@ export default function useStateTransition(
   }, [layer]);
 
   useEffect(() => {
+    if (activeState === previousState.current) {
+      setValue({
+        position: {
+          y: layer.position.y,
+          x: layer.position.x,
+        },
+        zPosition: layer.zPosition ?? 0,
+        rotation: layer.rotation ?? 0,
+        cornerRadius: layer.cornerRadius ?? 0,
+        opacity: layer.opacity ?? 1,
+        size: {
+          w: layer.size.w,
+          h: layer.size.h,
+        },
+      });
+    }
+  }, [activeState, layer]);
+
+  useEffect(() => {
     if (activeState !== previousState.current) {
       setIsTransitioning(true);
       startTime.current = 0;

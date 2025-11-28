@@ -439,7 +439,6 @@ export function serializeLayer(
     for (const dict of stateOverridesInput?.Locked ?? []) {
       const currentLayer = findById(layer.children || [], dict.targetId);
       if (!currentLayer) continue;
-      console.log(dict);
       const nsDict = doc.createElementNS(CAML_NS, 'NSDictionary');
       const image = doc.createElementNS(CAML_NS, 'image');
       image.setAttribute('type', 'null');

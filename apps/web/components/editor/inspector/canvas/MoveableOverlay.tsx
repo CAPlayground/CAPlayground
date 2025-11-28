@@ -94,39 +94,14 @@ export function MoveableOverlay({
     h: null,
   });
 
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const previousStateRef = useRef(activeState);
-  const transitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
   const path = findPathTo(renderedLayers, selectedLayer?.id ?? '');
-
-  useEffect(() => {
-    if (activeState !== previousStateRef.current) {
-      setIsTransitioning(true);
-      previousStateRef.current = activeState;
-
-      if (transitionTimeoutRef.current) {
-        clearTimeout(transitionTimeoutRef.current);
-      }
-
-      transitionTimeoutRef.current = setTimeout(() => {
-        setIsTransitioning(false);
-      }, 800);
-    }
-
-    return () => {
-      if (transitionTimeoutRef.current) {
-        clearTimeout(transitionTimeoutRef.current);
-      }
-    };
-  }, [activeState]);
-
+  
   useEffect(() => {
     if (!selectedLayer) return;
     targetRef.current = document.getElementById(selectedLayer.id);
   }, [selectedLayer, path]);
 
-  if (!selectedLayer || isTransitioning) return null;
+  if (!selectedLayer) return null;
   const isResizing = currentSize.w !== null || currentSize.h !== null;
   const isDisabled = selectedLayer.animations?.enabled && isPlaying;
   return (
@@ -134,7 +109,6 @@ export function MoveableOverlay({
       ables={[DimensionViewable]}
       ref={moveableRef}
       target={targetRef}
-      key={JSON.stringify(selectedLayer) + JSON.stringify(path)}
       origin={showAnchorPoint}
       verticalGuidelines={snapEdgesEnabled ? [0, canvasW / 2, canvasW] : []}
       horizontalGuidelines={snapEdgesEnabled ? [0, canvasH / 2, canvasH] : []}
