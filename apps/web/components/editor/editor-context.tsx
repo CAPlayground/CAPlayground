@@ -84,8 +84,6 @@ export type EditorContextValue = {
       [state in 'Base State' | 'Locked' | 'Unlock' | 'Sleep' | 'Locked Light' | 'Unlock Light' | 'Sleep Light' | 'Locked Dark' | 'Unlock Dark' | 'Sleep Dark']: number[];
     }>,
   ) => void;
-  isAnimationPlaying: boolean;
-  setIsAnimationPlaying: React.Dispatch<React.SetStateAction<boolean>>;
   animatedLayers: AnyLayer[];
   setAnimatedLayers: React.Dispatch<React.SetStateAction<AnyLayer[]>>;
   hiddenLayerIds: Set<string>;
@@ -118,7 +116,6 @@ export function EditorProvider({
   } | null>(null);
   const lastAddRef = useRef<{ key: string; ts: number } | null>(null);
   
-  const [isAnimationPlaying, setIsAnimationPlaying] = useState(false);
   const [animatedLayers, setAnimatedLayers] = useState<AnyLayer[]>([]);
   const [hiddenLayerIds, setHiddenLayerIds] = useState<Set<string>>(new Set());
 
@@ -126,7 +123,7 @@ export function EditorProvider({
   const currentDoc: CADoc | null = doc ? doc.docs[currentKey] : null;
 
   const pushHistory = useCallback((prev: ProjectDocument) => {
-    pastRef.current.push(JSON.parse(JSON.stringify(prev)) as ProjectDocument);
+    pastRef.current.push(structuredClone(prev));
     futureRef.current = [];
   }, []);
 
@@ -1712,8 +1709,6 @@ export function EditorProvider({
     updateStateOverride,
     updateStateOverrideTransient,
     updateBatchSpecificStateOverride,
-    isAnimationPlaying,
-    setIsAnimationPlaying,
     animatedLayers,
     setAnimatedLayers,
     hiddenLayerIds,
@@ -1752,8 +1747,6 @@ export function EditorProvider({
     updateStateOverride,
     updateStateOverrideTransient,
     updateBatchSpecificStateOverride,
-    isAnimationPlaying,
-    setIsAnimationPlaying,
     animatedLayers,
     setAnimatedLayers,
     hiddenLayerIds,

@@ -1,5 +1,6 @@
 import { TransformLayer } from "@/lib/ca/types";
 import { useEditor } from "../../editor-context";
+import { useEffect, useState } from "react";
 
 export function useTransform({
   layer,
@@ -27,11 +28,15 @@ export function useTransform({
   const transformRotationY = parallaxTransform?.filter((g: any) => g.keyPath === 'transform.rotation.y')[0]
   const transformTranslationX = parallaxTransform?.filter((g: any) => g.keyPath === 'transform.translation.x')[0]
   const transformTranslationY = parallaxTransform?.filter((g: any) => g.keyPath === 'transform.translation.y')[0]
+  const transformPositionX = parallaxTransform?.filter(g => g.keyPath === 'position.x')[0];
+  const transformPositionY = parallaxTransform?.filter(g => g.keyPath === 'position.y')[0];
 
   let rotationXDelta = 0;
   let rotationYDelta = 0;
   let translationXDelta = 0;
   let translationYDelta = 0;
+  let positionXDelta = null;
+  let positionYDelta = null;
 
   if (transformRotationX) {
     let gyroValue = transformRotationX.axis === 'x' ? gyroX : gyroY;
@@ -59,10 +64,38 @@ export function useTransform({
     translationYDelta = -targetValue;
   }
 
+  if (transformPositionX) {
+    let gyroValue = transformPositionX.axis === 'x' ? gyroX : gyroY;
+    if (transformPositionX.mapMinTo > transformPositionX.mapMaxTo) {
+      gyroValue = -gyroValue;
+    }
+    const targetValue = mapRange(gyroValue, transformPositionX.mapMinTo, transformPositionX.mapMaxTo);
+    positionXDelta = targetValue;
+  }
+
+  if (transformPositionY) {
+    const gyroValue = transformPositionY.axis === 'x' ? gyroX : gyroY;
+    const targetValue = mapRange(gyroValue, transformPositionY.mapMinTo, transformPositionY.mapMaxTo);
+    positionYDelta = targetValue;
+  }
+
+  
   let transformString = '';
+  let transformedX = null;
+  let transformedY = null;
   const e = { ...layer } as TransformLayer;
   if (useGyroControls) {
+    if (positionXDelta !== null) {
+      transformedX = positionXDelta;
+    }
+    if (positionYDelta !== null) {
+      transformedY = positionYDelta;
+    }
     transformString = `translate3d(${translationXDelta}px, ${translationYDelta}px, 0) rotate3d(0, 1, 0, ${(e.rotationY ?? 0) + rotationYDelta}deg) rotateX(${(e.rotationX ?? 0) + rotationXDelta}deg)`;
   }
-  return transformString;
+  return {
+    transformString,
+    transformedX,
+    transformedY,
+  };
 }

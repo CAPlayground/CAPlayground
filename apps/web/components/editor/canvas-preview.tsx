@@ -13,18 +13,18 @@ import { useCanvasSize } from "@/hooks/use-canvas-size";
 import { useCanvasZoom } from "@/hooks/use-canvas-zoom";
 import { useCanvasPan } from "@/hooks/use-canvas-pan";
 import { useClipboard } from "@/hooks/use-clipboard";
-import { useAnimation } from "@/hooks/use-animation";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { useTouchGestures } from "@/hooks/use-touch-gestures";
 import { useEditor } from "./editor-context";
 import type { AnyLayer } from "@/lib/ca/types";
 import { getRootFlip } from "./canvas-preview/utils/coordinates";
-import { applyOverrides, applyGyroTransforms } from "./canvas-preview/utils/layerApplication";
+import { applyOverrides } from "./canvas-preview/utils/layerApplication";
 import GyroControls from "./gyro/GyroControls";
 import { LayerRenderer } from "./inspector/canvas/LayerRenderer";
 import { findById } from "@/lib/editor/layer-utils";
 import { MoveableOverlay } from "./inspector/canvas/MoveableOverlay";
 import Moveable from "react-moveable";
+import { useTimeline } from "@/context/TimelineContext";
 
 export function CanvasPreview() {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -32,8 +32,6 @@ export function CanvasPreview() {
     doc,
     selectLayer,
     addImageLayerFromFile,
-    isAnimationPlaying,
-    setIsAnimationPlaying,
     hiddenLayerIds,
   } = useEditor();
   const docRef = useRef<typeof doc>(doc);
@@ -45,7 +43,6 @@ export function CanvasPreview() {
   const [useGyroControls, setUseGyroControls] = useState(false);
   const [gyroY, setGyroY] = useState(0);
   const [gyroX, setGyroX] = useState(0);
-  const [snapState, setSnapState] = useState<{ x: number | null; y: number | null }>({ x: null, y: null });
   const [SNAP_THRESHOLD] = useLocalStorage<number>("caplay_settings_snap_threshold", 12);
   const [snapEdgesEnabled] = useLocalStorage<boolean>("caplay_settings_snap_edges", true);
   const [snapLayersEnabled] = useLocalStorage<boolean>("caplay_settings_snap_layers", true);
@@ -56,7 +53,7 @@ export function CanvasPreview() {
   const [showBackground] = useLocalStorage<boolean>("caplay_preview_show_background", true);
   const [showClockOverlay, setShowClockOverlay] = useLocalStorage<boolean>("caplay_preview_clock_overlay", false);
   const [clockDepthEffect, setClockDepthEffect] = useLocalStorage<boolean>("caplay_preview_clock_depth", false);
-  const [showAnchorPoint, setShowAnchorPoint] = useLocalStorage<boolean>("caplay_preview_anchor_point", false);
+  const [showAnchorPoint] = useLocalStorage<boolean>("caplay_preview_anchor_point", false);
   const [pinchZoomSensitivity] = useLocalStorage<number>("caplay_settings_pinch_zoom_sensitivity", 1);
   const [clockMenuOpen, setClockMenuOpen] = useState(false);
 
@@ -83,14 +80,8 @@ export function CanvasPreview() {
 
   const appliedLayers = useMemo(() => {
     if (!current) return [] as AnyLayer[];
-
-    let layers = current.layers;
-    if (useGyroControls) {
-      layers = applyGyroTransforms(layers, gyroX, gyroY, current.wallpaperParallaxGroups);
-    }
-
-    return applyOverrides(layers, current.stateOverrides, current.activeState);
-  }, [current?.layers, current?.stateOverrides, current?.activeState, current?.wallpaperParallaxGroups, useGyroControls, gyroX, gyroY]);
+    return applyOverrides(current.layers, current.stateOverrides, current.activeState);
+  }, [current?.layers, current?.stateOverrides, current?.activeState]);
 
   const backgroundLayers = useMemo(() => {
     if (!other || currentKey !== 'floating' || !showBackground) return [] as AnyLayer[];
@@ -99,12 +90,12 @@ export function CanvasPreview() {
     if (src && src !== 'Base State') {
       const isVariant = /\s(Light|Dark)$/.test(String(src));
       const base = String(src).replace(/\s(Light|Dark)$/, '');
-      const otherStates = Array.isArray((other as any).states) ? (other as any).states as string[] : [];
-      const split = !!(other as any).appearanceSplit;
-      const mode: 'light' | 'dark' = ((other as any).appearanceMode === 'dark') ? 'dark' : 'light';
+      const otherStates = Array.isArray(other.states) ? other.states : [];
+      const split = !!other.appearanceSplit;
+      const mode: 'light' | 'dark' = (other.appearanceMode === 'dark') ? 'dark' : 'light';
       if (isVariant) {
-        if (otherStates.includes(src as string)) {
-          effective = src as string;
+        if (otherStates.includes(src)) {
+          effective = src;
         } else if (split) {
           const light = `${base} Light`;
           const dark = `${base} Dark`;
@@ -123,32 +114,40 @@ export function CanvasPreview() {
       }
     }
     return applyOverrides(other.layers, other.stateOverrides, effective);
-  }, [other?.layers, other?.stateOverrides, other?.activeState, (other as any)?.states, (other as any)?.appearanceSplit, (other as any)?.appearanceMode, current?.activeState, currentKey, showBackground]);
+  }, [other?.layers, other?.stateOverrides, other?.activeState, other?.states, other?.appearanceSplit, other?.appearanceMode, current?.activeState, currentKey, showBackground]);
 
-  const combinedLayers = useMemo(() => {
+  const renderedLayers = useMemo(() => {
     if (currentKey === 'floating' && showBackground && backgroundLayers.length > 0) {
       return [...backgroundLayers, ...appliedLayers];
     }
     return appliedLayers;
   }, [appliedLayers, backgroundLayers, currentKey, showBackground]);
 
-  const [renderedLayers, setRenderedLayers] = useState<AnyLayer[]>(combinedLayers);
-  useEffect(() => { setRenderedLayers(combinedLayers); }, [combinedLayers]);
-
   useClipboard();
-
   const {
-    hasAnyEnabledAnimation,
-    timeSec,
-    setTimeSec,
-    lastTsRef,
-    evalLayerAnimation,
-  } = useAnimation({
-    combinedLayers,
-    renderedLayers,
-    setRenderedLayers,
-    showBackground,
-  });
+    currentTime,
+    isPlaying,
+    play,
+    pause,
+    stop,
+    setTime,
+  } = useTimeline();
+
+  const hasAnyEnabledAnimation = useMemo(() => {
+    const hasAnimation = (layer: AnyLayer): boolean => {
+      if (layer.animations?.enabled) return true;
+      if (layer.type === 'video' || layer.type === 'emitter') return true;
+      if (layer.type === 'replicator' && (layer.instanceDelay ?? 0) > 0) return true;
+      return layer.children?.some(hasAnimation) ?? false;
+    };
+    return renderedLayers?.some(hasAnimation) ?? false;
+  }, [renderedLayers]);
+  
+  useEffect(() => {
+    if (!hasAnyEnabledAnimation && isPlaying) {
+      stop();
+    }
+  }, [hasAnyEnabledAnimation, isPlaying]);
 
   useKeyboardShortcuts({
     canvasRef: ref,
@@ -278,8 +277,6 @@ export function CanvasPreview() {
                 gyroY={gyroY}
                 useGyroControls={useGyroControls}
                 hiddenLayerIds={hiddenLayerIds}
-                timeSec={timeSec}
-                onEvalLayerAnimation={evalLayerAnimation}
                 moveableRef={moveableRef}
               />
             )}
@@ -297,8 +294,6 @@ export function CanvasPreview() {
                 gyroY={gyroY}
                 useGyroControls={useGyroControls}
                 hiddenLayerIds={hiddenLayerIds}
-                timeSec={timeSec}
-                onEvalLayerAnimation={evalLayerAnimation}
                 moveableRef={moveableRef}
               />
             ))}
@@ -316,8 +311,6 @@ export function CanvasPreview() {
                 gyroY={gyroY}
                 useGyroControls={useGyroControls}
                 hiddenLayerIds={hiddenLayerIds}
-                timeSec={timeSec}
-                onEvalLayerAnimation={evalLayerAnimation}
                 moveableRef={moveableRef}
               />
             ))}
@@ -362,8 +355,6 @@ export function CanvasPreview() {
                   gyroY={gyroY}
                   useGyroControls={useGyroControls}
                   hiddenLayerIds={hiddenLayerIds}
-                  timeSec={timeSec}
-                  onEvalLayerAnimation={evalLayerAnimation}
                   moveableRef={moveableRef}
                 />
               ))
@@ -378,8 +369,6 @@ export function CanvasPreview() {
                   gyroY={gyroY}
                   useGyroControls={useGyroControls}
                   hiddenLayerIds={hiddenLayerIds}
-                  timeSec={timeSec}
-                  onEvalLayerAnimation={evalLayerAnimation}
                   moveableRef={moveableRef}
                 />
               ))
@@ -410,6 +399,7 @@ export function CanvasPreview() {
           snapRotationEnabled={snapRotationEnabled}
           snapLayersEnabled={snapLayersEnabled}
           snapResizeEnabled={snapResizeEnabled}
+          activeState={current?.activeState}
         />
       </div>
       {useGyroControls && (
@@ -616,19 +606,19 @@ export function CanvasPreview() {
             type="button"
             size="sm"
             variant="secondary"
-            onClick={() => setIsAnimationPlaying((p: boolean) => !p)}
+            onClick={() => isPlaying ? pause() : play()}
           >
-            {isAnimationPlaying ? 'Pause' : 'Play'}
+            {isPlaying ? 'Pause' : 'Play'}
           </Button>
           <Button
             type="button"
             size="sm"
             variant="outline"
-            onClick={() => { setTimeSec(0); lastTsRef.current = null; }}
+            onClick={() => setTime(0)}
           >
             Restart
           </Button>
-          <div className="text-xs tabular-nums px-2">{`${timeSec.toFixed(2)}s`}</div>
+          <div className="text-xs tabular-nums px-2">{`${(currentTime / 1000).toFixed(2)}s`}</div>
         </div>
       )}
     </Card>
