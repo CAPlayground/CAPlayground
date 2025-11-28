@@ -25,6 +25,7 @@ export function LayersPanel() {
     addEmitterLayer,
     addTransformLayer,
     addReplicatorLayer,
+    addLiquidGlassLayer,
     hiddenLayerIds,
     toggleLayerVisibility,
   } = useEditor();
@@ -320,6 +321,7 @@ export function LayersPanel() {
               {isGyro && (
                 <DropdownMenuItem onSelect={() => addTransformLayer()}>Transform Layer</DropdownMenuItem>
               )}
+              <DropdownMenuItem onSelect={() => addLiquidGlassLayer()}>Liquid Glass Layer</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         }

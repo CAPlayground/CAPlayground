@@ -220,7 +220,7 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
       const indexXml = `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n  <key>rootDocument</key>\n  <string>main.caml</string>\n</dict>\n</plist>`
       const assetManifest = `<?xml version="1.0" encoding="UTF-8"?>\n\n<caml xmlns="http://www.apple.com/CoreAnimation/1.0">\n  <MicaAssetManifest>\n    <modules type="NSArray"/>\n  </MicaAssetManifest>\n</caml>`
       
-      const { serializeCAML } = await import('@/lib/ca/caml')
+      const { serializeCAML } = await import('@/lib/ca/serialize/serializeCAML')
       
       const mkCaml = async (doc: CAProjectBundle, docName: string) => {
         const root = doc.root

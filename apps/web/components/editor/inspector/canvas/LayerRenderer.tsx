@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { AnyLayer, ShapeLayer, Size, TransformLayer, Vec2 } from '@/lib/ca/types';
 import { LayerContextMenu } from '../../layer-context-menu';
 import { EmitterCanvas } from '../../emitter/EmitterCanvas';
@@ -14,7 +15,7 @@ import { useMoveablePointerDrag } from '../../hooks/use-moveable-pointer-drag';
 import { useEditor } from '../../editor-context';
 import useKeyframeAnimation from '@/hooks/use-keyframe';
 import useStateTransition from '@/hooks/use-state-transition';
-import { useEffect } from 'react';
+import LiquidGlassRenderer from './LiquidGlassRenderer';
 
 interface LayerRendererProps {
   layer: AnyLayer;
@@ -233,6 +234,13 @@ export function LayerRenderer({
         onPointerUp={onPointerUp}
         data-y-up={useYUp}
       >
+        {layer.type === "liquidGlass" && (
+          <LiquidGlassRenderer
+            width={layer.size.w}
+            height={layer.size.h}
+            radius={layer.cornerRadius || 0}
+          />
+        )}
         {layer.type === "text" && (
           <TextRenderer layer={layer} />
         )}

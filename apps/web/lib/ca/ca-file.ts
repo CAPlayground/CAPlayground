@@ -1,5 +1,6 @@
 import { CAProjectBundle, AnyLayer } from './types';
-import { parseCAML, parseStates, parseStateOverrides, parseStateTransitions, serializeCAML, parseWallpaperParallaxGroups } from './caml';
+import { parseCAML, parseStates, parseStateOverrides, parseStateTransitions, parseWallpaperParallaxGroups } from './caml';
+import { serializeCAML } from './serialize/serializeCAML';
 
 const INDEX_XML_BASENAME = 'index.xml';
 const DEFAULT_SCENE = 'main.caml';
