@@ -3,6 +3,7 @@ import { useEditor } from "../../editor-context";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnyLayer } from "@/lib/ca/types";
 import { findPathTo } from "../../canvas-preview/utils/layerTree";
+import { useTimeline } from "@/context/TimelineContext";
 
 const DimensionViewable = {
   name: "dimensionViewable",
@@ -52,6 +53,7 @@ export function MoveableOverlay({
   snapEdgesEnabled,
   snapRotationEnabled,
   snapResizeEnabled,
+  activeState,
 }: {
   moveableRef: React.RefObject<Moveable | null>;
   selectedLayer: AnyLayer | null | undefined;
@@ -62,11 +64,13 @@ export function MoveableOverlay({
   snapEdgesEnabled: boolean;
   snapRotationEnabled: boolean;
   snapResizeEnabled: boolean;
+  activeState?: string;
 }) {
   const {
     updateLayer,
     doc,
   } = useEditor();
+  const { isPlaying } = useTimeline();
   const canvasW = doc?.meta.width ?? 390;
   const canvasH = doc?.meta.height ?? 844;
 
@@ -89,24 +93,22 @@ export function MoveableOverlay({
     w: null,
     h: null,
   });
-  const [initialTransform, setInitialTransform] = useState('');
 
   const path = findPathTo(renderedLayers, selectedLayer?.id ?? '');
-
+  
   useEffect(() => {
     if (!selectedLayer) return;
     targetRef.current = document.getElementById(selectedLayer.id);
   }, [selectedLayer, path]);
 
   if (!selectedLayer) return null;
-
   const isResizing = currentSize.w !== null || currentSize.h !== null;
+  const isDisabled = selectedLayer.animations?.enabled && isPlaying;
   return (
     <Moveable
       ables={[DimensionViewable]}
       ref={moveableRef}
       target={targetRef}
-      key={JSON.stringify(selectedLayer) + JSON.stringify(path)}
       origin={showAnchorPoint}
       verticalGuidelines={snapEdgesEnabled ? [0, canvasW / 2, canvasW] : []}
       horizontalGuidelines={snapEdgesEnabled ? [0, canvasH / 2, canvasH] : []}
@@ -131,11 +133,10 @@ export function MoveableOverlay({
         right: true,
         top: true,
       }}
-      
-      draggable
+
+      draggable={!isDisabled}
       dragArea
       onDragStart={({ target, currentTarget }) => {
-        setInitialTransform(target.style.transform);
       }}
       onDrag={({
         target,
@@ -153,21 +154,19 @@ export function MoveableOverlay({
         target
       }) => {
         if (!selectedLayer || (!currentTranslation.x && !currentTranslation.y)) return;
-        target!.style.transform = initialTransform;
         updateLayer(selectedLayer.id, {
           position: {
             x: selectedLayer.position.x + currentTranslation.x,
             y: selectedLayer.position.y + currentTranslation.y,
           },
         });
-        setInitialTransform('');
         setCurrentTranslation({
           x: 0,
           y: 0,
         });
       }}
 
-      rotatable
+      rotatable={!isDisabled}
       snapRotationThreshold={6}
       snapRotationDegrees={snapRotationEnabled ? [0, 90, 180, 270] : []}
       onBeforeRotate={(e) => {
@@ -188,10 +187,9 @@ export function MoveableOverlay({
         updateLayer(selectedLayer.id, { rotation: -currentRotation });
       }}
 
-      resizable
+      resizable={!isDisabled}
       keepRatio={keepRatio}
       onResizeStart={({ target }) => {
-        setInitialTransform(target.style.transform);
       }}
       onBeforeResize={(e) => {
         if (e.inputEvent.shiftKey) {
@@ -221,7 +219,6 @@ export function MoveableOverlay({
       onResizeEnd={({ target }) => {
         if (!selectedLayer) return;
         if (currentSize.w === null || currentSize.h === null) return;
-        target!.style.transform = initialTransform;
         const dx = currentTranslation.x ?? 0;
         const dy = currentTranslation.y ?? 0;
         const rotDeg = selectedLayer.rotation ?? 0;
@@ -240,7 +237,6 @@ export function MoveableOverlay({
             y: selectedLayer.position.y + worldDy / 2,
           },
         });
-        setInitialTransform('');
         setCurrentTranslation({
           x: 0,
           y: 0,

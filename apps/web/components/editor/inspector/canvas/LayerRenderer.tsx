@@ -1,4 +1,5 @@
-import { AnyLayer, ShapeLayer, TransformLayer } from '@/lib/ca/types';
+import { useEffect } from 'react';
+import { AnyLayer, ShapeLayer, Size, TransformLayer, Vec2 } from '@/lib/ca/types';
 import { LayerContextMenu } from '../../layer-context-menu';
 import { EmitterCanvas } from '../../emitter/EmitterCanvas';
 import { blendModes } from '@/lib/blending';
@@ -11,6 +12,9 @@ import ReplicatorRenderer from './ReplicatorRenderer';
 import { getAnchor } from '../../canvas-preview/utils/coordinates';
 import Moveable from 'react-moveable';
 import { useMoveablePointerDrag } from '../../hooks/use-moveable-pointer-drag';
+import { useEditor } from '../../editor-context';
+import useKeyframeAnimation from '@/hooks/use-keyframe';
+import useStateTransition from '@/hooks/use-state-transition';
 import LiquidGlassRenderer from './LiquidGlassRenderer';
 
 interface LayerRendererProps {
@@ -20,12 +24,11 @@ interface LayerRendererProps {
   assets?: Record<string, { dataURL?: string }>;
   disableHitTesting?: boolean;
   hiddenLayerIds: Set<string>;
-  timeSec: number;
   gyroX: number;
   gyroY: number;
   useGyroControls: boolean;
-  onEvalLayerAnimation: (l: AnyLayer, t: number) => void;
   moveableRef?: React.RefObject<Moveable | null>;
+  delayMs?: number;
 }
 
 const hexToRgba = (hex?: string, alpha?: number): string | undefined => {
@@ -49,40 +52,79 @@ const bgStyleFor = (layer: AnyLayer): React.CSSProperties => {
 };
 
 export function LayerRenderer({
-  layer,
+  layer: initialLayer,
   useYUp,
   siblings,
   assets,
   disableHitTesting = false,
   hiddenLayerIds,
-  timeSec,
   gyroX,
   gyroY,
   useGyroControls,
-  onEvalLayerAnimation,
-  moveableRef
+  moveableRef,
+  delayMs
 }: LayerRendererProps) {
+
+  const { doc } = useEditor();
+  const currentKey = doc?.activeCA ?? 'floating';
+  const current = doc?.docs?.[currentKey];
+  const layerTransition = useStateTransition(initialLayer);
+  const layer = {
+    ...initialLayer,
+    ...layerTransition
+  }
+  const {
+    transformString,
+    transformedX,
+    transformedY,
+  } = useTransform({
+    layer: layer as TransformLayer,
+    useGyroControls,
+    gyroX,
+    gyroY,
+  });
+  const animation = useKeyframeAnimation({
+    keyframes: layer.animations?.enabled
+      ? layer.animations?.values || []
+      : [],
+    reverse: layer.animations?.autoreverses === 1,
+    durationMs: (layer.animations?.durationSeconds ?? 0) * 1000,
+    speed: layer.animations?.speed ?? 1,
+    delayMs,
+  });
+  const animationOverrides: Record<string, number> = {};
+  if (layer.animations?.enabled && layer.animations?.keyPath) {
+    if (layer.animations.keyPath === 'position') {
+      animationOverrides['position.x'] = (animation as Vec2).x;
+      animationOverrides['position.y'] = (animation as Vec2).y;
+    } else if (layer.animations.keyPath === 'bounds') {
+      animationOverrides['bounds.size.width'] = (animation as Size).w;
+      animationOverrides['bounds.size.height'] = (animation as Size).h;
+    } else {
+      animationOverrides[layer.animations.keyPath] = animation as number;
+    }
+  }
+
+  const x = transformedX ?? animationOverrides['position.x'] ?? layer.position.x;
+  const y = transformedY ?? animationOverrides['position.y'] ?? layer.position.y;
+  const rotation = animationOverrides['transform.rotation.z'] ?? layer.rotation;
+  const rotationX = animationOverrides['transform.rotation.x'] ?? layer.rotationX;
+  const rotationY = animationOverrides['transform.rotation.y'] ?? layer.rotationY;
+  const width = animationOverrides['bounds.size.width'] ?? layer.size.w;
+  const height = animationOverrides['bounds.size.height'] ?? layer.size.h;
+  const opacity = animationOverrides['opacity'] ?? layer.opacity;
+
+  useEffect(() => {
+    if (layer.id === current?.selectedId) {
+      moveableRef?.current?.updateRect();
+    }
+  }, [layer]);
+
   const anchor = getAnchor(layer);
   const transformOriginY = useYUp ? (1 - anchor.y) * 100 : anchor.y * 100;
   const isWrappedContent = (layer as any).__wrappedContent === true || disableHitTesting === true;
 
   const renderChildren = (layer: AnyLayer, nextUseYUp: boolean) => {
-    if (layer.type === 'video' && layer.children?.length) {
-      const imageToRender = layer.children.sort((a, b) => (b.zPosition ?? 0) - (a.zPosition ?? 0))[0];
-      return <LayerRenderer
-        layer={imageToRender}
-        useYUp={nextUseYUp}
-        siblings={layer.children}
-        assets={assets}
-        hiddenLayerIds={hiddenLayerIds}
-        timeSec={timeSec}
-        gyroX={gyroX}
-        gyroY={gyroY}
-        useGyroControls={useGyroControls}
-        onEvalLayerAnimation={onEvalLayerAnimation}
-        disableHitTesting
-      />
-    };
     return layer.children?.map((c) => {
       return (
         <LayerRenderer
@@ -92,12 +134,11 @@ export function LayerRenderer({
           siblings={layer.children || []}
           assets={assets}
           hiddenLayerIds={hiddenLayerIds}
-          timeSec={timeSec}
           gyroX={gyroX}
           gyroY={gyroY}
           useGyroControls={useGyroControls}
-          onEvalLayerAnimation={onEvalLayerAnimation}
           moveableRef={moveableRef}
+          delayMs={delayMs}
         />
       );
     });
@@ -107,19 +148,19 @@ export function LayerRenderer({
     ? { border: `${layer.borderWidth}px solid ${layer.borderColor || '#000000'}` }
     : {};
 
-  const translateX = layer.position.x - (layer.anchorPoint?.x ?? 0.5 * layer.size.w);
-  const translateY = (useYUp ? -layer.position.y : layer.position.y) - (layer.anchorPoint?.y ?? 0.5 * layer.size.h);
+  const translateX = x - (layer.anchorPoint?.x ?? 0.5 * width);
+  const translateY = (useYUp ? -y : y) - (layer.anchorPoint?.y ?? 0.5 * height);
   const common: React.CSSProperties = {
     position: "absolute",
     left: 0,
     top: useYUp ? '100%' : 0,
-    width: layer.size.w,
-    height: layer.size.h,
-    transform: `translateX(${translateX}px) translateY(${translateY}px) rotateX(${-(layer.rotationX ?? 0)}deg) rotateY(${-(layer.rotationY ?? 0)}deg) rotate(${-(layer.rotation ?? 0)}deg)`,
+    width,
+    height,
+    transform: `translateX(${translateX}px) translateY(${translateY}px) rotateX(${-(rotationX ?? 0)}deg) rotateY(${-(rotationY ?? 0)}deg) rotate(${-(rotation ?? 0)}deg)`,
     transformOrigin: `${anchor.x * 100}% ${transformOriginY}%`,
     backfaceVisibility: "visible",
     display: (layer.visible === false || hiddenLayerIds.has(layer.id)) ? "none" : undefined,
-    opacity: typeof layer.opacity === 'number' ? Math.max(0, Math.min(1, layer.opacity)) : undefined,
+    opacity: typeof opacity === 'number' ? Math.max(0, Math.min(1, opacity)) : undefined,
     cursor: "move",
     pointerEvents: isWrappedContent ? 'none' : undefined,
     ...borderStyle,
@@ -158,12 +199,6 @@ export function LayerRenderer({
     ? ((layer.geometryFlipped as 0 | 1) === 0)
     : useYUp;
 
-  const transformString = useTransform({
-    layer: layer as TransformLayer,
-    useGyroControls,
-    gyroX,
-    gyroY,
-  });
   let style: React.CSSProperties = {
     ...common,
     ...bgStyleFor(layer),
@@ -221,18 +256,16 @@ export function LayerRenderer({
         {layer.type === "emitter" && (
           <EmitterCanvas layer={layer} assets={assets} />
         )}
-        {layer.type !== "replicator" && renderChildren(layer, nextUseYUp)}
+        {layer.type !== "replicator" && layer.type !== "video" && renderChildren(layer, nextUseYUp)}
         {layer.type === "replicator" && (
           <ReplicatorRenderer
             layer={layer}
-            timeSec={timeSec}
             gyroX={gyroX}
             gyroY={gyroY}
             nextUseYUp={nextUseYUp}
             assets={assets}
             hiddenLayerIds={hiddenLayerIds}
             useGyroControls={useGyroControls}
-            onEvalLayerAnimation={onEvalLayerAnimation}
             transformOriginY={transformOriginY}
             anchor={anchor}
           />

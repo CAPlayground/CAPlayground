@@ -4,6 +4,7 @@ import {
 } from './emitter';
 import { EmitterLayer } from '@/lib/ca/types';
 import { useEditor } from '../editor-context';
+import { useTimeline } from '@/context/TimelineContext';
 
 const loadImage = (src: string) =>
   new Promise((resolve, reject) => {
@@ -21,8 +22,9 @@ export function EmitterCanvas({
   layer: EmitterLayer;
   assets?: Record<string, { dataURL?: string }>;
 }) {
-  const { doc, isAnimationPlaying } = useEditor();
-  const paused = !isAnimationPlaying;
+  const { doc } = useEditor();
+  const { isPlaying } = useTimeline();
+  const paused = !isPlaying;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafIdRef = useRef<number>(0);
   const runningRef = useRef(!paused);
