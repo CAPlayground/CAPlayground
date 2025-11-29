@@ -9,8 +9,9 @@ import { Slider } from "@/components/ui/slider";
 import { Fragment, useState } from "react";
 import type { InspectorTabProps } from "../types";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Minus, Plus } from "lucide-react";
+import { AlignHorizontalJustifyStart, AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd, AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, Plus, Minus } from "lucide-react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useEditor } from "../../editor-context";
 
 interface GeometryTabProps extends InspectorTabProps {
   disablePosX: boolean;
@@ -48,7 +49,36 @@ export function GeometryTab({
   const [useCustomAnchor, setUseCustomAnchor] = useState(!isStandardAnchor);
   const [resizePercentage, setResizePercentage] = useState(10);
   const [showGeometryResize] = useLocalStorage<boolean>("caplay_settings_show_geometry_resize", true);
+  const [showAlignButtons] = useLocalStorage<boolean>("caplay_settings_show_align_buttons", false);
+  const { doc } = useEditor();
 
+  const alignLayer = (horizontalAlign?: 'left' | 'center' | 'right', verticalAlign?: 'top' | 'center' | 'bottom') => {
+    const canvasWidth = doc?.meta.width ?? 0;
+    const canvasHeight = doc?.meta.height ?? 0;
+    const layerWidth = selected.size.w;
+    const layerHeight = selected.size.h;
+
+    let newX = selected.position.x;
+    let newY = selected.position.y;
+
+    if (horizontalAlign === 'left') {
+      newX = layerWidth * selAx;
+    } else if (horizontalAlign === 'center') {
+      newX = canvasWidth / 2;
+    } else if (horizontalAlign === 'right') {
+      newX = canvasWidth - layerWidth * (1 - selAx);
+    }
+
+    if (verticalAlign === 'top') {
+      newY = canvasHeight - layerHeight * (1 - selAy);
+    } else if (verticalAlign === 'center') {
+      newY = canvasHeight / 2;
+    } else if (verticalAlign === 'bottom') {
+      newY = layerHeight * selAy;
+    }
+
+    updateLayer(selected.id, { position: { x: round2(newX), y: round2(newY) } as any });
+  };
   return (
     <div>
       {(disablePosX || disablePosY || disableRotX || disableRotY || disableRotZ) && (
@@ -101,6 +131,73 @@ export function GeometryTab({
               clearBuf('pos-y');
             }} />
         </div>
+        {showAlignButtons && (
+          <div className="space-y-1 col-span-2">
+            <Label>Align</Label>
+            <div className="grid grid-cols-6 gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => alignLayer('left', undefined)}
+                title="Align left"
+                disabled={disablePosX}
+              >
+                <AlignHorizontalJustifyStart className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => alignLayer('center', undefined)}
+                title="Align horizontal center"
+                disabled={disablePosX}
+              >
+                <AlignHorizontalJustifyCenter className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => alignLayer('right', undefined)}
+                title="Align right"
+                disabled={disablePosX}
+              >
+                <AlignHorizontalJustifyEnd className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => alignLayer(undefined, 'top')}
+                title="Align top"
+                disabled={disablePosY}
+              >
+                <AlignVerticalJustifyStart className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => alignLayer(undefined, 'center')}
+                title="Align vertical center"
+                disabled={disablePosY}
+              >
+                <AlignVerticalJustifyCenter className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => alignLayer(undefined, 'bottom')}
+                title="Align bottom"
+                disabled={disablePosY}
+              >
+                <AlignVerticalJustifyEnd className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
         <div className="space-y-1">
           <Label htmlFor="w">Width</Label>
           <Input id="w" type="number" step="0.01" value={getBuf('w', fmt2(selected.size.w))}

@@ -49,7 +49,8 @@ export function SettingsPanel({
   const [showAnchorPoint, setShowAnchorPoint] = useLocalStorage<boolean>("caplay_preview_anchor_point", false);
   const [autoClosePanels, setAutoClosePanels] = useLocalStorage<boolean>("caplay_settings_auto_close_panels", true);
   const [pinchZoomSensitivity, setPinchZoomSensitivity] = useLocalStorage<number>("caplay_settings_pinch_zoom_sensitivity", 1);
-  const [showGeometryResize, setShowGeometryResize] = useLocalStorage<boolean>("caplay_settings_show_geometry_resize", true);
+  const [showGeometryResize, setShowGeometryResize] = useLocalStorage<boolean>("caplay_settings_show_geometry_resize", false);
+  const [showAlignButtons, setShowAlignButtons] = useLocalStorage<boolean>("caplay_settings_show_align_buttons", false);
 
   useEffect(() => setMounted(true), []);
 
@@ -155,6 +156,21 @@ export function SettingsPanel({
             </div>
           </div>
 
+          {/* Layer Controls */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Layer Controls</h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="show-geometry-resize" className="text-sm">Show geometry resize buttons</Label>
+                <Switch id="show-geometry-resize" checked={!!showGeometryResize} onCheckedChange={(c) => setShowGeometryResize(!!c)} />
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="show-align-buttons" className="text-sm">Show align buttons</Label>
+                <Switch id="show-align-buttons" checked={!!showAlignButtons} onCheckedChange={(c) => setShowAlignButtons(!!c)} />
+              </div>
+            </div>
+          </div>
+
           {/* Preview */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Preview</h3>
@@ -213,10 +229,6 @@ export function SettingsPanel({
               <div className="flex items-center justify-between">
                 <span>States panel height</span>
                 <span className="font-mono text-muted-foreground text-xs">{statesHeight ?? '—'} px</span>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <Label htmlFor="show-geometry-resize" className="text-sm">Show geometry resize buttons</Label>
-                <Switch id="show-geometry-resize" checked={!!showGeometryResize} onCheckedChange={(c) => setShowGeometryResize(!!c)} />
               </div>
               <div className="pt-2">
                 <Button
