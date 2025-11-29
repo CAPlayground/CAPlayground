@@ -1067,6 +1067,7 @@ export function EditorProvider({
         type: "liquidGlass",
         position: { x, y },
         size: { w: 200, h: 200 },
+        cornerRadius: 40,
       };
       const nextLayers = insertIntoSelected(cur.layers, selId, layer);
 
