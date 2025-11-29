@@ -260,7 +260,7 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
           try {
             const data = asset.data instanceof Blob ? asset.data : new Blob([asset.data as ArrayBuffer]);
             await putBlobFile(id, `${folder}/Wallpaper.ca/assets/${filename}`, data);
-          } catch { }
+          } catch {}
         }
       } else {
         const floatingDoc = tendies.floating

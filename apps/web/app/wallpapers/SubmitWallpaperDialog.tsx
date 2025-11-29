@@ -174,7 +174,7 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
         throw new Error(`Failed to save submission to database: ${dbError.message}`)
       }
 
-      console.log("✅ Submission saved to database:", dbData)
+      console.log("Submission saved to database!:", dbData)
 
       setSubmissionStatus({ message: "Preparing repository..." })
 

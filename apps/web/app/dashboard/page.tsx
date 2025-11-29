@@ -58,6 +58,7 @@ function DashboardContent() {
     submitted_at?: string
   }>>([])
   const [submissionsLoading, setSubmissionsLoading] = useState(true)
+  const [isSyncing, setIsSyncing] = useState(false)
 
   useEffect(() => {
     document.title = "CAPlayground - Dashboard";
@@ -165,6 +166,7 @@ function DashboardContent() {
     if (awaitingSubmissions.length === 0) return
 
     const syncStatuses = async () => {
+      setIsSyncing(true)
       console.log('Syncing statuses for', awaitingSubmissions.length, 'submissions')
       const updates = await Promise.all(
         awaitingSubmissions.map(async (sub) => {
@@ -217,6 +219,7 @@ function DashboardContent() {
           setRejectedSubmissions(prev => [...newRejected, ...prev])
         }
       }
+      setIsSyncing(false)
     }
 
     syncStatuses()
@@ -303,7 +306,15 @@ function DashboardContent() {
                 <>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-semibold">Awaiting Review</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-semibold">Awaiting Review</h3>
+                        {isSyncing && (
+                          <span className="flex items-center text-[10px] text-muted-foreground animate-pulse">
+                            <Cloud className="h-3 w-3 mr-1 animate-spin" />
+                            Syncing...
+                          </span>
+                        )}
+                      </div>
                       <span className="text-xs text-muted-foreground">
                         {awaitingSubmissions.length}/3 slots used
                       </span>
