@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { App } from "octokit"
 
+export const runtime = 'edge'
+
 export async function GET() {
     const appId = process.env.GITHUB_APP_ID
     const privateKey = process.env.GITHUB_APP_PRIVATE_KEY
