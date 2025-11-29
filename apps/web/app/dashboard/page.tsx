@@ -50,6 +50,13 @@ function DashboardContent() {
     description: string
     status: 'awaiting_review' | 'approved' | 'rejected'
   }>>([])
+  const [rejectedSubmissions, setRejectedSubmissions] = useState<Array<{
+    id: number
+    name: string
+    description: string
+    status: 'awaiting_review' | 'approved' | 'rejected'
+    submitted_at?: string
+  }>>([])
   const [submissionsLoading, setSubmissionsLoading] = useState(true)
 
   useEffect(() => {
@@ -110,8 +117,19 @@ function DashboardContent() {
         } else if (mounted && submissionsData) {
           const awaiting = submissionsData.filter((s: any) => s.status === 'awaiting_review').slice(0, 3)
           const approved = submissionsData.filter((s: any) => s.status === 'approved')
+
+          const thirtyDaysAgo = new Date()
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+          const rejected = submissionsData.filter((s: any) => {
+            if (s.status !== 'rejected') return false
+            if (!s.submitted_at) return true
+            return new Date(s.submitted_at) > thirtyDaysAgo
+          })
+
           setAwaitingSubmissions(awaiting as any)
           setApprovedSubmissions(approved as any)
+          setRejectedSubmissions(rejected as any)
         }
       } catch (e) {
         console.error('Unexpected error loading wallpaper submissions:', e)
@@ -142,6 +160,67 @@ function DashboardContent() {
     load()
     return () => { mounted = false }
   }, [router, supabase])
+
+  useEffect(() => {
+    if (awaitingSubmissions.length === 0) return
+
+    const syncStatuses = async () => {
+      console.log('Syncing statuses for', awaitingSubmissions.length, 'submissions')
+      const updates = await Promise.all(
+        awaitingSubmissions.map(async (sub) => {
+          try {
+            const res = await fetch('/api/wallpapers/sync', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ submission_id: sub.id })
+            })
+            if (res.ok) {
+              const data = await res.json()
+              if (data.updated) {
+                return { id: sub.id, status: data.status }
+              }
+            }
+          } catch (e) {
+            console.error('Failed to sync submission', sub.id, e)
+          }
+          return null
+        })
+      )
+
+      const validUpdates = updates.filter(Boolean) as Array<{ id: number, status: string }>
+      if (validUpdates.length > 0) {
+        console.log('Applying status updates:', validUpdates)
+
+        setAwaitingSubmissions(prev => prev.filter(sub => !validUpdates.find(u => u.id === sub.id)))
+
+        const newApproved = validUpdates
+          .filter(u => u.status === 'approved')
+          .map(u => {
+            const original = awaitingSubmissions.find(s => s.id === u.id)
+            return original ? { ...original, status: 'approved' as const } : null
+          })
+          .filter(Boolean) as typeof approvedSubmissions
+
+        if (newApproved.length > 0) {
+          setApprovedSubmissions(prev => [...newApproved, ...prev])
+        }
+
+        const newRejected = validUpdates
+          .filter(u => u.status === 'rejected')
+          .map(u => {
+            const original = awaitingSubmissions.find(s => s.id === u.id)
+            return original ? { ...original, status: 'rejected' as const } : null
+          })
+          .filter(Boolean) as typeof rejectedSubmissions
+
+        if (newRejected.length > 0) {
+          setRejectedSubmissions(prev => [...newRejected, ...prev])
+        }
+      }
+    }
+
+    syncStatuses()
+  }, [awaitingSubmissions.length])
 
   async function handleSignOut() {
     setLoading(true)
@@ -261,6 +340,42 @@ function DashboardContent() {
                       </div>
                     )}
                   </div>
+
+
+                  {rejectedSubmissions.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold">Rejected (Last 30 Days)</h3>
+                        <span className="text-xs text-muted-foreground">
+                          {rejectedSubmissions.length} rejected
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Submissions that were not accepted. These will disappear after 30 days.
+                      </p>
+
+                      <div className="space-y-3">
+                        {rejectedSubmissions.map((submission) => (
+                          <div
+                            key={submission.id}
+                            className="flex items-start justify-between border border-border/80 rounded-lg p-3 bg-red-50/50 dark:bg-red-900/10"
+                          >
+                            <div className="flex-1 min-w-0 space-y-1">
+                              <h3 className="font-semibold text-sm line-clamp-1 break-words">
+                                {submission.name}
+                              </h3>
+                              <p className="text-xs text-muted-foreground line-clamp-2 break-words">
+                                {submission.description}
+                              </p>
+                            </div>
+                            <span className="ml-3 flex-shrink-0 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200 border-red-200 dark:border-red-700">
+                              Rejected
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
