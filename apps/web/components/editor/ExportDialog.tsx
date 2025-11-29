@@ -13,6 +13,8 @@ import { getProject, listFiles } from "@/lib/storage";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Checkbox } from "@/components/ui/checkbox";
+import { getSupabaseBrowserClient } from "@/lib/supabase";
+import { SubmitWallpaperDialog } from "@/app/wallpapers/SubmitWallpaperDialog";
 
 type ExportLicense = "none" | "cc-by-4.0" | "cc-by-sa-4.0" | "cc-by-nc-4.0";
 
@@ -41,6 +43,7 @@ async function loadLicenseText(license: ExportLicense): Promise<string | null> {
 export function ExportDialog() {
   const { doc, flushPersist } = useEditor();
   const { toast } = useToast();
+  const supabase = getSupabaseBrowserClient();
 
   const [exportOpen, setExportOpen] = useState(false);
   const [exportingTendies, setExportingTendies] = useState(false);
@@ -49,6 +52,10 @@ export function ExportDialog() {
   const [exportFormat, setExportFormat] = useState<"ca" | "tendies">("ca");
   const [exportLicense, setExportLicense] = useState<ExportLicense>("none");
   const [exportConfirmed, setExportConfirmed] = useState(false);
+  const [isSubmitDialogOpen, setIsSubmitDialogOpen] = useState(false);
+  const [username, setUsername] = useState<string>("");
+  const [displayName, setDisplayName] = useState<string>("");
+  const [isSignedIn, setIsSignedIn] = useState(false);
   const requiresLicenseConfirmation = exportLicense !== "none";
 
   const starMessage = useMemo(() => {
@@ -82,6 +89,37 @@ export function ExportDialog() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadUser() {
+      try {
+        const { data } = await supabase.auth.getUser();
+        const user = data.user;
+        if (!user) {
+          if (mounted) setIsSignedIn(false);
+          return;
+        }
+
+        if (mounted) setIsSignedIn(true);
+
+        const meta: any = user.user_metadata || {};
+        const name = meta.full_name || meta.name || meta.username || user.email || "";
+        if (mounted) setDisplayName(name as string);
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (mounted && profile?.username) setUsername(profile.username as string);
+      } catch {}
+    }
+    loadUser();
+    return () => {
+      mounted = false;
+    };
+  }, [supabase]);
 
   const exportCA = async (downloadNameOverride?: string): Promise<boolean> => {
     try {
@@ -338,8 +376,10 @@ export function ExportDialog() {
         <DialogContent className="sm:max-w-md p-4">
           <DialogHeader
             className={`${
-              exportView === "success" ? "flex items-center justify-start" : ""
-            } py-2`}
+              exportView === "success"
+                ? "flex items-center justify-start py-1"
+                : "py-2"
+            }`}
           >
             {exportView === "success" ? (
               <Button
@@ -501,35 +541,69 @@ export function ExportDialog() {
                   exportView === "select" ? "h-0 overflow-hidden" : ""
                 }`}
               >
-                <div className="py-4 flex flex-col items-center text-center gap-2">
+                <div className="pt-0 pb-4 flex flex-col items-center text-center gap-2.5">
                   <div className="text-2xl font-semibold">
                     Thank you for using CAPlayground!
                   </div>
-                  <div className="text-sm text-muted-foreground whitespace-pre-line">
-                    {starMessage}
+                  <div className="text-sm text-muted-foreground">
+                    What should I do next?
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="w-full max-w-md text-left space-y-3 text-sm sm:text-base">
+                    <div className="flex gap-3 border rounded-md px-4 py-3">
+                      <div className="font-medium">1.</div>
+                      <div className="space-y-1">
+                        <div className="font-medium">Watch video</div>
+                        <div>Watch the video on how to use Pocket Poster or Nugget.</div>
+                        <a
+                          href="https://www.youtube.com/watch?v=nSBQIwAaAEc"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
+                        >
+                          <Youtube className="h-4 w-4" />
+                          Watch the video
+                        </a>
+                      </div>
+                    </div>
+                    <div className="flex gap-3 border rounded-md px-4 py-3">
+                      <div className="font-medium">2.</div>
+                      <div className="space-y-1">
+                        <div className="font-medium">Test your wallpaper</div>
+                        <div>Apply the wallpaper to your device and test it.</div>
+                      </div>
+                    </div>
+                    <div className="flex gap-3 border rounded-md px-4 py-3">
+                      <div className="font-medium">3.</div>
+                      <div className="space-y-1">
+                        <div className="font-medium">Showcase your work (Optional)</div>
+                        <div>Submit the wallpaper if you want to showcase your work.</div>
+                        <button
+                          type="button"
+                          onClick={() => setIsSubmitDialogOpen(true)}
+                          className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
+                        >
+                          Submit wallpaper
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2 pt-2">
                     <a
                       href="https://github.com/CAPlayground/CAPlayground"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 rounded-md border px-3 py-2 hover:bg-muted"
+                      className="inline-flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted"
                     >
                       <Star className="h-4 w-4" />
                       Star the repo
                     </a>
-                    <a
-                      href="https://www.youtube.com/watch?v=nSBQIwAaAEc"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 rounded-md border px-3 py-2 hover:bg-muted"
+                    <Button
+                      variant="default"
+                      className="text-sm"
+                      onClick={() => setExportOpen(false)}
                     >
-                      <Youtube className="h-4 w-4" />
-                      Watch Tutorial
-                    </a>
-                  </div>
-                  <div className="pt-2">
-                    <Button onClick={() => setExportOpen(false)}>Close</Button>
+                      Done
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -537,6 +611,12 @@ export function ExportDialog() {
           </div>
         </DialogContent>
       </Dialog>
+      <SubmitWallpaperDialog
+        open={isSubmitDialogOpen}
+        onOpenChange={setIsSubmitDialogOpen}
+        username={username || displayName || "Anonymous"}
+        isSignedIn={isSignedIn}
+      />
     </div>
   );
 }

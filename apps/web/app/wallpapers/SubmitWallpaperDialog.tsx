@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { AspectRatio } from "@/components/ui/aspect-ratio"
-import { Upload, ArrowLeft, ArrowRight } from "lucide-react"
+import { Upload, ArrowLeft, ArrowRight, Github, Loader2, CheckCircle2, AlertCircle } from "lucide-react"
 import {
   Tooltip,
   TooltipContent,
@@ -23,6 +23,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import Link from "next/link"
+import { Octokit } from "octokit"
 import { getSupabaseBrowserClient } from "@/lib/supabase"
 
 interface SubmitWallpaperDialogProps {
@@ -32,7 +33,11 @@ interface SubmitWallpaperDialogProps {
   isSignedIn?: boolean
 }
 
-type Step = "form" | "preview"
+type Step = "form" | "preview" | "submitting" | "success"
+
+interface SubmissionStatus {
+  message: string
+}
 
 export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymous", isSignedIn = false }: SubmitWallpaperDialogProps) {
   const [step, setStep] = useState<Step>("form")
@@ -41,9 +46,10 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
   const [tendiesFile, setTendiesFile] = useState<File | null>(null)
   const [videoFile, setVideoFile] = useState<File | null>(null)
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>({ message: "" })
   const [submitError, setSubmitError] = useState<string | null>(null)
-  
+  const [prUrl, setPrUrl] = useState<string | null>(null)
+
   const tendiesInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
 
@@ -74,7 +80,7 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
   }
 
   const handleBack = () => {
-    setStep("form")
+    if (step === "preview") setStep("form")
   }
 
   const handleCancel = () => {
@@ -83,6 +89,8 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
     setDescription("")
     setTendiesFile(null)
     setVideoFile(null)
+    setSubmitError(null)
+    setPrUrl(null)
     if (videoPreviewUrl) {
       URL.revokeObjectURL(videoPreviewUrl)
     }
@@ -90,48 +98,215 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
     onOpenChange(false)
   }
 
+  const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
+    let binary = ''
+    const bytes = new Uint8Array(buffer)
+    const len = bytes.byteLength
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i])
+    }
+    return window.btoa(binary)
+  }
+
   const handleSubmit = async () => {
     if (!tendiesFile || !videoFile) return
 
-    setIsSubmitting(true)
+    setStep("submitting")
     setSubmitError(null)
 
     try {
       const supabase = getSupabaseBrowserClient()
       const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session?.access_token) {
-        throw new Error("Not authenticated")
+
+      if (!session?.user) {
+        throw new Error("You must be signed in to submit.")
       }
 
-      const formData = new FormData()
-      formData.append("name", name)
-      formData.append("description", description)
-      formData.append("tendiesFile", tendiesFile)
-      formData.append("videoFile", videoFile)
+      setSubmissionStatus({ message: "Checking existing submissions..." })
+      const { count: awaitingCount, error: awaitingError } = await supabase
+        .from('wallpaper_submissions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', session.user.id)
+        .eq('status', 'awaiting_review')
 
-      const response = await fetch("/api/wallpapers/submit", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${session.access_token}`,
-        },
-        body: formData,
+      if (awaitingError) {
+        console.warn('Failed to check existing submissions limit:', awaitingError)
+      } else if (typeof awaitingCount === 'number' && awaitingCount >= 3) {
+        throw new Error('You already have 3 wallpapers awaiting review. Please wait until one is approved or rejected before submitting more.')
+      }
+
+      setSubmissionStatus({ message: "Authenticating..." })
+
+      const tokenResponse = await fetch('/api/github/token')
+      if (!tokenResponse.ok) {
+        throw new Error("Failed to authenticate with GitHub service")
+      }
+      const { token } = await tokenResponse.json()
+
+      const octokit = new Octokit({ auth: token })
+      const upstreamOwner = "CAPlayground"
+      const upstreamRepo = "wallpapers"
+
+      const wallpaperId = Math.floor(Math.random() * 9000000) + 1000000
+      const idString = wallpaperId.toString()
+
+      setSubmissionStatus({ message: "Registering submission..." })
+      const { data: dbData, error: dbError } = await supabase
+        .from('wallpaper_submissions')
+        .insert({
+          id: wallpaperId,
+          user_id: session.user.id,
+          name: name,
+          description: description,
+          status: 'awaiting_review',
+          github_username: username
+        })
+        .select()
+
+      if (dbError) {
+        console.error("Failed to track submission in DB:", {
+          error: dbError,
+          message: dbError.message,
+          details: dbError.details,
+          hint: dbError.hint,
+          code: dbError.code
+        })
+        throw new Error(`Failed to save submission to database: ${dbError.message}`)
+      }
+
+      console.log("✅ Submission saved to database:", dbData)
+
+      setSubmissionStatus({ message: "Preparing repository..." })
+
+      const { data: refData } = await octokit.rest.git.getRef({
+        owner: upstreamOwner,
+        repo: upstreamRepo,
+        ref: "heads/main",
+      })
+      const latestCommitSha = refData.object.sha
+      const { data: commitData } = await octokit.rest.git.getCommit({
+        owner: upstreamOwner,
+        repo: upstreamRepo,
+        commit_sha: latestCommitSha,
+      })
+      const treeSha = commitData.tree.sha
+
+      setSubmissionStatus({ message: "Uploading files..." })
+
+      const tendiesContent = arrayBufferToBase64(await tendiesFile.arrayBuffer())
+      const { data: tendiesBlob } = await octokit.rest.git.createBlob({
+        owner: upstreamOwner,
+        repo: upstreamRepo,
+        content: tendiesContent,
+        encoding: "base64",
       })
 
-      const data = await response.json()
+      const videoContent = arrayBufferToBase64(await videoFile.arrayBuffer())
+      const { data: videoBlob } = await octokit.rest.git.createBlob({
+        owner: upstreamOwner,
+        repo: upstreamRepo,
+        content: videoContent,
+        encoding: "base64",
+      })
 
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to submit wallpaper")
+      const { data: currentJsonData } = await octokit.rest.repos.getContent({
+        owner: upstreamOwner,
+        repo: upstreamRepo,
+        path: "wallpapers.json",
+      })
+
+      let currentWallpapers: { base_url: string; wallpapers: any[] } = { base_url: "https://raw.githubusercontent.com/CAPlayground/wallpapers/main/", wallpapers: [] }
+      if ('content' in currentJsonData && !Array.isArray(currentJsonData)) {
+        const content = atob(currentJsonData.content.replace(/\s/g, ''))
+        currentWallpapers = JSON.parse(content)
       }
 
-      // Success! Close dialog and reset
-      handleCancel()
-      alert("Submission sent for review!")
-    } catch (error) {
-      console.error("Submission error:", error)
-      setSubmitError(error instanceof Error ? error.message : "Failed to submit wallpaper")
-    } finally {
-      setIsSubmitting(false)
+      const safeName = name.replace(/[^a-z0-9]/gi, '_')
+      const tendiesPath = `wallpapers/${safeName}.tendies`
+      const videoPath = `previews/gif/${safeName}.${videoFile.name.split('.').pop()}`
+
+      const newEntry = {
+        name: name,
+        id: idString,
+        creator: username,
+        description: description,
+        file: tendiesPath,
+        preview: videoPath,
+        from: "website"
+      }
+
+      currentWallpapers.wallpapers.push(newEntry)
+
+      const { data: jsonBlob } = await octokit.rest.git.createBlob({
+        owner: upstreamOwner,
+        repo: upstreamRepo,
+        content: JSON.stringify(currentWallpapers, null, 2),
+        encoding: "utf-8",
+      })
+
+      const { data: newTree } = await octokit.rest.git.createTree({
+        owner: upstreamOwner,
+        repo: upstreamRepo,
+        base_tree: treeSha,
+        tree: [
+          {
+            path: tendiesPath,
+            mode: "100644",
+            type: "blob",
+            sha: tendiesBlob.sha,
+          },
+          {
+            path: videoPath,
+            mode: "100644",
+            type: "blob",
+            sha: videoBlob.sha,
+          },
+          {
+            path: "wallpapers.json",
+            mode: "100644",
+            type: "blob",
+            sha: jsonBlob.sha,
+          },
+        ],
+      })
+
+      const { data: newCommit } = await octokit.rest.git.createCommit({
+        owner: upstreamOwner,
+        repo: upstreamRepo,
+        message: `Add wallpaper: ${name}`,
+        tree: newTree.sha,
+        parents: [latestCommitSha],
+      })
+
+      const slugUsername = (username || 'user')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'user'
+      const branchName = `${slugUsername}/${idString}`
+      await octokit.rest.git.createRef({
+        owner: upstreamOwner,
+        repo: upstreamRepo,
+        ref: `refs/heads/${branchName}`,
+        sha: newCommit.sha,
+      })
+
+      setSubmissionStatus({ message: "Creating Pull Request..." })
+      const { data: pr } = await octokit.rest.pulls.create({
+        owner: upstreamOwner,
+        repo: upstreamRepo,
+        title: `Submission: ${name}`,
+        body: `Wallpaper submission from ${username}\n\nDescription: ${description}\nID: ${idString}`,
+        head: branchName,
+        base: "main",
+      })
+
+      setPrUrl(pr.html_url)
+      setStep("success")
+
+    } catch (error: any) {
+      console.error("GitHub submission error:", error)
+      setStep("preview")
+      setSubmitError(error.message || "Failed to submit to GitHub")
     }
   }
 
@@ -282,7 +457,7 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
               </Button>
             </DialogFooter>
           </>
-        ) : (
+        ) : step === "preview" ? (
           <>
             <DialogHeader>
               <DialogTitle>Preview Submission</DialogTitle>
@@ -291,7 +466,7 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
               </DialogDescription>
             </DialogHeader>
 
-            <div className="py-4">
+            <div className="py-4 space-y-4">
               <Card className="overflow-hidden">
                 <div className="pt-0 px-5">
                   <div className="mb-3 overflow-hidden rounded-md border bg-background">
@@ -337,24 +512,62 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
                   </div>
                 </CardContent>
               </Card>
+
+              {submitError && (
+                <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+                  <AlertCircle className="h-4 w-4" />
+                  <p>{submitError}</p>
+                </div>
+              )}
             </div>
 
-            {submitError && (
-              <div className="px-4 py-3 bg-destructive/10 border border-destructive/20 rounded-md">
-                <p className="text-sm text-destructive">{submitError}</p>
-              </div>
-            )}
-
             <DialogFooter className="gap-2">
-              <Button variant="outline" onClick={handleBack} disabled={isSubmitting}>
+              <Button variant="outline" onClick={handleBack}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back
               </Button>
-              <Button onClick={handleSubmit} disabled={isSubmitting}>
-                {isSubmitting ? "Submitting..." : "Submit Wallpaper"}
+              <Button onClick={handleSubmit}>
+                <Github className="h-4 w-4 mr-2" />
+                Submit Wallpaper
               </Button>
             </DialogFooter>
           </>
+        ) : step === "submitting" ? (
+          <div className="py-12 flex flex-col items-center justify-center text-center space-y-4">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <div className="space-y-1">
+              <h3 className="font-semibold text-lg">Submitting Wallpaper</h3>
+              <p className="text-muted-foreground">{submissionStatus.message}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="py-8 flex flex-col items-center justify-center text-center space-y-6">
+            <div className="h-16 w-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+              <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="font-semibold text-xl">Submission Successful!</h3>
+              <p className="text-muted-foreground max-w-sm mx-auto">
+                Your wallpaper has been submitted as a Pull Request. Once approved, it will appear in the gallery.
+              </p>
+            </div>
+
+            {prUrl && (
+              <a
+                href={prUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-primary hover:underline"
+              >
+                <Github className="h-4 w-4" />
+                View Pull Request
+              </a>
+            )}
+
+            <Button onClick={handleCancel} className="w-full sm:w-auto min-w-[120px]">
+              Done
+            </Button>
+          </div>
         )}
       </DialogContent>
     </Dialog>
