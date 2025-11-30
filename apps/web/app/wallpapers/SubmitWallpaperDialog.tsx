@@ -181,7 +181,7 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
       const { data: refData } = await octokit.rest.git.getRef({
         owner: upstreamOwner,
         repo: upstreamRepo,
-        ref: "heads/main",
+        ref: "heads/dev",
       })
       const latestCommitSha = refData.object.sha
       const { data: commitData } = await octokit.rest.git.getCommit({
@@ -213,6 +213,7 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
         owner: upstreamOwner,
         repo: upstreamRepo,
         path: "wallpapers.json",
+        ref: "dev"
       })
 
       let currentWallpapers: { base_url: string; wallpapers: any[] } = { base_url: "https://raw.githubusercontent.com/CAPlayground/wallpapers/main/", wallpapers: [] }
@@ -223,7 +224,9 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
 
       const safeName = name.replace(/[^a-z0-9]/gi, '_')
       const tendiesPath = `wallpapers/${safeName}.tendies`
-      const videoPath = `previews/gif/${safeName}.${videoFile.name.split('.').pop()}`
+      const videoExtension = videoFile.name.split('.').pop()
+      const videoUploadPath = `previews/video/${safeName}.${videoExtension}`
+      const gifPreviewPath = `previews/gif/${safeName}.gif`
 
       const newEntry = {
         name: name,
@@ -231,7 +234,7 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
         creator: username,
         description: description,
         file: tendiesPath,
-        preview: videoPath,
+        preview: gifPreviewPath,
         from: "website"
       }
 
@@ -256,7 +259,7 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
             sha: tendiesBlob.sha,
           },
           {
-            path: videoPath,
+            path: videoUploadPath,
             mode: "100644",
             type: "blob",
             sha: videoBlob.sha,
@@ -297,7 +300,7 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
         title: `Submission: ${name}`,
         body: `Wallpaper submission from ${username}\n\nDescription: ${description}\nID: ${idString}`,
         head: branchName,
-        base: "main",
+        base: "dev",
       })
 
       setPrUrl(pr.html_url)
