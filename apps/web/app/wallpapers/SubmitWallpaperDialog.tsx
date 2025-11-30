@@ -39,6 +39,16 @@ interface SubmissionStatus {
   message: string
 }
 
+interface WallpaperEntry {
+  name: string
+  id: number
+  creator: string
+  description: string
+  file: string
+  preview: string
+  from: string
+}
+
 export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymous", isSignedIn = false }: SubmitWallpaperDialogProps) {
   const [step, setStep] = useState<Step>("form")
   const [name, setName] = useState("")
@@ -216,7 +226,7 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
         ref: "dev"
       })
 
-      let currentWallpapers: { base_url: string; wallpapers: any[] } = { base_url: "https://raw.githubusercontent.com/CAPlayground/wallpapers/main/", wallpapers: [] }
+      let currentWallpapers: { base_url: string; wallpapers: WallpaperEntry[] } = { base_url: "https://raw.githubusercontent.com/CAPlayground/wallpapers/main/", wallpapers: [] }
       if ('content' in currentJsonData && !Array.isArray(currentJsonData)) {
         const content = atob(currentJsonData.content.replace(/\s/g, ''))
         currentWallpapers = JSON.parse(content)
@@ -228,9 +238,9 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
       const videoUploadPath = `previews/video/${safeName}.${videoExtension}`
       const gifPreviewPath = `previews/gif/${safeName}.gif`
 
-      const newEntry = {
+      const newEntry: WallpaperEntry = {
         name: name,
-        id: idString,
+        id: wallpaperId,
         creator: username,
         description: description,
         file: tendiesPath,
