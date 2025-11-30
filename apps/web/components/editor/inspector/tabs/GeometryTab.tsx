@@ -6,11 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Slider } from "@/components/ui/slider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Fragment, useState } from "react";
 import type { InspectorTabProps } from "../types";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Minus, Plus } from "lucide-react";
+import { AlignHorizontalJustifyStart, AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd, AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, Plus, Minus } from "lucide-react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useEditor } from "../../editor-context";
+import { getParentAbsContextFor } from "../../canvas-preview/utils/coordinates";
 
 interface GeometryTabProps extends InspectorTabProps {
   disablePosX: boolean;
@@ -47,8 +50,77 @@ export function GeometryTab({
 
   const [useCustomAnchor, setUseCustomAnchor] = useState(!isStandardAnchor);
   const [resizePercentage, setResizePercentage] = useState(10);
-  const [showGeometryResize] = useLocalStorage<boolean>("caplay_settings_show_geometry_resize", true);
+  const [showGeometryResize] = useLocalStorage<boolean>("caplay_settings_show_geometry_resize", false);
+  const [showAlignButtons] = useLocalStorage<boolean>("caplay_settings_show_align_buttons", false);
+  const [alignTarget, setAlignTarget] = useLocalStorage<'root' | 'parent'>("caplay_settings_align_target", 'parent');
+  const { doc } = useEditor();
 
+  const alignLayer = (horizontalAlign?: 'left' | 'center' | 'right', verticalAlign?: 'top' | 'center' | 'bottom') => {
+    const key = doc?.activeCA ?? 'floating';
+    const current = doc?.docs?.[key];
+    if (!current) return;
+
+    const layerWidth = selected.size.w;
+    const layerHeight = selected.size.h;
+
+    const parentContext = getParentAbsContextFor(
+      selected.id,
+      current.layers,
+      doc?.meta.height ?? 0,
+      doc?.meta.geometryFlipped
+    );
+
+    const findParentLayer = (layers: any[], targetId: string, parent: any = null): any => {
+      for (const layer of layers) {
+        if (layer.id === targetId) return parent;
+        if (layer.children) {
+          const found = findParentLayer(layer.children, targetId, layer);
+          if (found !== null) return found;
+        }
+      }
+      return null;
+    };
+
+    const parentLayer = findParentLayer(current.layers, selected.id);
+    const targetWidth = alignTarget === 'root' ? (doc?.meta.width ?? 0) : (parentLayer?.size.w ?? parentContext.containerH);
+    const targetHeight = alignTarget === 'root' ? (doc?.meta.height ?? 0) : parentContext.containerH;
+
+    let targetCssLeft = 0;
+    let targetCssTop = 0;
+
+    if (horizontalAlign === 'left') {
+      targetCssLeft = 0;
+    } else if (horizontalAlign === 'center') {
+      targetCssLeft = (targetWidth - layerWidth) / 2;
+    } else if (horizontalAlign === 'right') {
+      targetCssLeft = targetWidth - layerWidth;
+    }
+
+    if (verticalAlign === 'top') {
+      targetCssTop = 0;
+    } else if (verticalAlign === 'center') {
+      targetCssTop = (targetHeight - layerHeight) / 2;
+    } else if (verticalAlign === 'bottom') {
+      targetCssTop = targetHeight - layerHeight;
+    }
+
+    const parentOffsetLeft = alignTarget === 'root' ? parentContext.left : 0;
+    const parentOffsetTop = alignTarget === 'root' ? parentContext.top : 0;
+
+    const relativeCssLeft = horizontalAlign ? targetCssLeft - parentOffsetLeft :
+      selected.position.x - selAx * layerWidth;
+    const relativeCssTop = verticalAlign ? targetCssTop - parentOffsetTop :
+      (parentContext.useYUp ?
+        (parentContext.containerH - (selected.position.y + (1 - selAy) * layerHeight)) :
+        (selected.position.y - selAy * layerHeight));
+
+    const newX = relativeCssLeft + selAx * layerWidth;
+    const newY = parentContext.useYUp ?
+      ((parentContext.containerH - relativeCssTop) - (1 - selAy) * layerHeight) :
+      (relativeCssTop + selAy * layerHeight);
+
+    updateLayer(selected.id, { position: { x: round2(newX), y: round2(newY) } as any });
+  };
   return (
     <div>
       {(disablePosX || disablePosY || disableRotX || disableRotY || disableRotZ) && (
@@ -101,6 +173,84 @@ export function GeometryTab({
               clearBuf('pos-y');
             }} />
         </div>
+        {showAlignButtons && (
+          <div className="space-y-1 col-span-2">
+            <div className="flex items-center justify-between mb-1">
+              <Label>Align</Label>
+              <Select value={alignTarget} onValueChange={(value: 'root' | 'parent') => setAlignTarget(value)}>
+                <SelectTrigger className="h-7 w-[110px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="root">To Canvas</SelectItem>
+                  <SelectItem value="parent">To Parent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-6 gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => alignLayer('left', undefined)}
+                title="Align left"
+                disabled={disablePosX}
+              >
+                <AlignHorizontalJustifyStart className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => alignLayer('center', undefined)}
+                title="Align horizontal center"
+                disabled={disablePosX}
+              >
+                <AlignHorizontalJustifyCenter className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => alignLayer('right', undefined)}
+                title="Align right"
+                disabled={disablePosX}
+              >
+                <AlignHorizontalJustifyEnd className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => alignLayer(undefined, 'top')}
+                title="Align top"
+                disabled={disablePosY}
+              >
+                <AlignVerticalJustifyStart className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => alignLayer(undefined, 'center')}
+                title="Align vertical center"
+                disabled={disablePosY}
+              >
+                <AlignVerticalJustifyCenter className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => alignLayer(undefined, 'bottom')}
+                title="Align bottom"
+                disabled={disablePosY}
+              >
+                <AlignVerticalJustifyEnd className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
         <div className="space-y-1">
           <Label htmlFor="w">Width</Label>
           <Input id="w" type="number" step="0.01" value={getBuf('w', fmt2(selected.size.w))}
