@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Slider } from "@/components/ui/slider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Fragment, useState } from "react";
 import type { InspectorTabProps } from "../types";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -51,6 +52,7 @@ export function GeometryTab({
   const [resizePercentage, setResizePercentage] = useState(10);
   const [showGeometryResize] = useLocalStorage<boolean>("caplay_settings_show_geometry_resize", false);
   const [showAlignButtons] = useLocalStorage<boolean>("caplay_settings_show_align_buttons", false);
+  const [alignTarget, setAlignTarget] = useLocalStorage<'root' | 'parent'>("caplay_settings_align_target", 'parent');
   const { doc } = useEditor();
 
   const alignLayer = (horizontalAlign?: 'left' | 'center' | 'right', verticalAlign?: 'top' | 'center' | 'bottom') => {
@@ -58,39 +60,56 @@ export function GeometryTab({
     const current = doc?.docs?.[key];
     if (!current) return;
 
-    const canvasWidth = doc?.meta.width ?? 0;
-    const canvasHeight = doc?.meta.height ?? 0;
     const layerWidth = selected.size.w;
     const layerHeight = selected.size.h;
 
     const parentContext = getParentAbsContextFor(
       selected.id,
       current.layers,
-      canvasHeight,
+      doc?.meta.height ?? 0,
       doc?.meta.geometryFlipped
     );
+
+    const findParentLayer = (layers: any[], targetId: string, parent: any = null): any => {
+      for (const layer of layers) {
+        if (layer.id === targetId) return parent;
+        if (layer.children) {
+          const found = findParentLayer(layer.children, targetId, layer);
+          if (found !== null) return found;
+        }
+      }
+      return null;
+    };
+
+    const parentLayer = findParentLayer(current.layers, selected.id);
+    const targetWidth = alignTarget === 'root' ? (doc?.meta.width ?? 0) : (parentLayer?.size.w ?? parentContext.containerH);
+    const targetHeight = alignTarget === 'root' ? (doc?.meta.height ?? 0) : parentContext.containerH;
+
     let targetCssLeft = 0;
     let targetCssTop = 0;
 
     if (horizontalAlign === 'left') {
       targetCssLeft = 0;
     } else if (horizontalAlign === 'center') {
-      targetCssLeft = (canvasWidth - layerWidth) / 2;
+      targetCssLeft = (targetWidth - layerWidth) / 2;
     } else if (horizontalAlign === 'right') {
-      targetCssLeft = canvasWidth - layerWidth;
+      targetCssLeft = targetWidth - layerWidth;
     }
 
     if (verticalAlign === 'top') {
       targetCssTop = 0;
     } else if (verticalAlign === 'center') {
-      targetCssTop = (canvasHeight - layerHeight) / 2;
+      targetCssTop = (targetHeight - layerHeight) / 2;
     } else if (verticalAlign === 'bottom') {
-      targetCssTop = canvasHeight - layerHeight;
+      targetCssTop = targetHeight - layerHeight;
     }
 
-    const relativeCssLeft = horizontalAlign ? targetCssLeft - parentContext.left :
+    const parentOffsetLeft = alignTarget === 'root' ? parentContext.left : 0;
+    const parentOffsetTop = alignTarget === 'root' ? parentContext.top : 0;
+
+    const relativeCssLeft = horizontalAlign ? targetCssLeft - parentOffsetLeft :
       selected.position.x - selAx * layerWidth;
-    const relativeCssTop = verticalAlign ? targetCssTop - parentContext.top :
+    const relativeCssTop = verticalAlign ? targetCssTop - parentOffsetTop :
       (parentContext.useYUp ?
         (parentContext.containerH - (selected.position.y + (1 - selAy) * layerHeight)) :
         (selected.position.y - selAy * layerHeight));
@@ -156,7 +175,18 @@ export function GeometryTab({
         </div>
         {showAlignButtons && (
           <div className="space-y-1 col-span-2">
-            <Label>Align</Label>
+            <div className="flex items-center justify-between mb-1">
+              <Label>Align</Label>
+              <Select value={alignTarget} onValueChange={(value: 'root' | 'parent') => setAlignTarget(value)}>
+                <SelectTrigger className="h-7 w-[110px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="root">To Canvas</SelectItem>
+                  <SelectItem value="parent">To Parent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="grid grid-cols-6 gap-1">
               <Button
                 type="button"
