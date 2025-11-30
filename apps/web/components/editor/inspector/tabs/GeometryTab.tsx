@@ -48,7 +48,7 @@ export function GeometryTab({
 
   const [useCustomAnchor, setUseCustomAnchor] = useState(!isStandardAnchor);
   const [resizePercentage, setResizePercentage] = useState(10);
-  const [showGeometryResize] = useLocalStorage<boolean>("caplay_settings_show_geometry_resize", true);
+  const [showGeometryResize] = useLocalStorage<boolean>("caplay_settings_show_geometry_resize", false);
   const [showAlignButtons] = useLocalStorage<boolean>("caplay_settings_show_align_buttons", false);
   const { doc } = useEditor();
 
