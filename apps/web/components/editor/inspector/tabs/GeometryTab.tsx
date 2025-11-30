@@ -12,6 +12,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { AlignHorizontalJustifyStart, AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd, AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, Plus, Minus } from "lucide-react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useEditor } from "../../editor-context";
+import { getParentAbsContextFor } from "../../canvas-preview/utils/coordinates";
 
 interface GeometryTabProps extends InspectorTabProps {
   disablePosX: boolean;
@@ -53,29 +54,51 @@ export function GeometryTab({
   const { doc } = useEditor();
 
   const alignLayer = (horizontalAlign?: 'left' | 'center' | 'right', verticalAlign?: 'top' | 'center' | 'bottom') => {
+    const key = doc?.activeCA ?? 'floating';
+    const current = doc?.docs?.[key];
+    if (!current) return;
+
     const canvasWidth = doc?.meta.width ?? 0;
     const canvasHeight = doc?.meta.height ?? 0;
     const layerWidth = selected.size.w;
     const layerHeight = selected.size.h;
 
-    let newX = selected.position.x;
-    let newY = selected.position.y;
+    const parentContext = getParentAbsContextFor(
+      selected.id,
+      current.layers,
+      canvasHeight,
+      doc?.meta.geometryFlipped
+    );
+    let targetCssLeft = 0;
+    let targetCssTop = 0;
 
     if (horizontalAlign === 'left') {
-      newX = layerWidth * selAx;
+      targetCssLeft = 0;
     } else if (horizontalAlign === 'center') {
-      newX = canvasWidth / 2;
+      targetCssLeft = (canvasWidth - layerWidth) / 2;
     } else if (horizontalAlign === 'right') {
-      newX = canvasWidth - layerWidth * (1 - selAx);
+      targetCssLeft = canvasWidth - layerWidth;
     }
 
     if (verticalAlign === 'top') {
-      newY = canvasHeight - layerHeight * (1 - selAy);
+      targetCssTop = 0;
     } else if (verticalAlign === 'center') {
-      newY = canvasHeight / 2;
+      targetCssTop = (canvasHeight - layerHeight) / 2;
     } else if (verticalAlign === 'bottom') {
-      newY = layerHeight * selAy;
+      targetCssTop = canvasHeight - layerHeight;
     }
+
+    const relativeCssLeft = horizontalAlign ? targetCssLeft - parentContext.left :
+      selected.position.x - selAx * layerWidth;
+    const relativeCssTop = verticalAlign ? targetCssTop - parentContext.top :
+      (parentContext.useYUp ?
+        (parentContext.containerH - (selected.position.y + (1 - selAy) * layerHeight)) :
+        (selected.position.y - selAy * layerHeight));
+
+    const newX = relativeCssLeft + selAx * layerWidth;
+    const newY = parentContext.useYUp ?
+      ((parentContext.containerH - relativeCssTop) - (1 - selAy) * layerHeight) :
+      (relativeCssTop + selAy * layerHeight);
 
     updateLayer(selected.id, { position: { x: round2(newX), y: round2(newY) } as any });
   };
