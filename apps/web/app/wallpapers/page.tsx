@@ -25,16 +25,16 @@ export async function generateMetadata({
         next: { revalidate },
         headers: { Accept: "application/json" },
       })
-      
+
       if (wallpapersRes.ok) {
         const data = (await wallpapersRes.json()) as WallpapersResponse
         const wallpaper = data.wallpapers.find(w => String(w.id) === wallpaperId)
-        
+
         if (wallpaper) {
           const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
           const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
           let downloads = 0
-          
+
           if (supabaseUrl && supabaseAnonKey) {
             try {
               const statsRes = await fetch(
@@ -47,7 +47,7 @@ export async function generateMetadata({
                   cache: 'no-store',
                 }
               )
-              
+
               if (statsRes.ok) {
                 const stats = await statsRes.json()
                 if (stats && stats.length > 0) {
@@ -58,11 +58,11 @@ export async function generateMetadata({
               console.error('Failed to fetch download stats for metadata:', err)
             }
           }
-          
+
           const downloadText = downloads === 1 ? '1 download' : `${downloads} downloads`
           const description = `${downloadText} • by ${wallpaper.creator}`
           const previewUrl = `${data.base_url}${wallpaper.preview}`
-          
+
           return {
             title: `CAPlayground Community - ${wallpaper.name}`,
             description,

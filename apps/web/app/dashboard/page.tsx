@@ -6,18 +6,18 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { ArrowLeft, Cloud } from "lucide-react"
+import { ArrowLeft, Cloud, Plus } from "lucide-react"
 import { getSupabaseBrowserClient } from "@/lib/supabase"
 import { SubmitWallpaperDialog } from "@/app/wallpapers/SubmitWallpaperDialog"
 
 const GoogleDriveIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
-    <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
-    <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
-    <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
-    <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
-    <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
-    <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+    <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da" />
+    <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47" />
+    <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335" />
+    <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d" />
+    <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc" />
+    <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00" />
   </svg>
 )
 
@@ -38,6 +38,27 @@ function DashboardContent() {
   const [messageDialogTitle, setMessageDialogTitle] = useState('')
   const [messageDialogContent, setMessageDialogContent] = useState('')
   const [messageDialogVariant, setMessageDialogVariant] = useState<'success' | 'error'>('success')
+  const [awaitingSubmissions, setAwaitingSubmissions] = useState<Array<{
+    id: number
+    name: string
+    description: string
+    status: 'awaiting_review' | 'approved' | 'rejected'
+  }>>([])
+  const [approvedSubmissions, setApprovedSubmissions] = useState<Array<{
+    id: number
+    name: string
+    description: string
+    status: 'awaiting_review' | 'approved' | 'rejected'
+  }>>([])
+  const [rejectedSubmissions, setRejectedSubmissions] = useState<Array<{
+    id: number
+    name: string
+    description: string
+    status: 'awaiting_review' | 'approved' | 'rejected'
+    submitted_at?: string
+  }>>([])
+  const [submissionsLoading, setSubmissionsLoading] = useState(true)
+  const [isSyncing, setIsSyncing] = useState(false)
 
   useEffect(() => {
     document.title = "CAPlayground - Dashboard";
@@ -46,7 +67,7 @@ function DashboardContent() {
   useEffect(() => {
     const driveConnected = searchParams?.get('drive_connected');
     const error = searchParams?.get('error');
-    
+
     if (driveConnected === 'true') {
       setMessageDialogTitle('Success');
       setMessageDialogContent('Signed in to Google Drive successfully! You can now sync projects to the cloud.');
@@ -83,15 +104,47 @@ function DashboardContent() {
           .eq("id", user.id)
           .maybeSingle()
         if (mounted && profile?.username) setUsername(profile.username as string)
-      } catch {}
-      
+      } catch { }
+
+      try {
+        const { data: submissionsData, error: submissionsError } = await supabase
+          .from('wallpaper_submissions')
+          .select('id, name, description, status')
+          .eq('user_id', user.id)
+          .order('submitted_at', { ascending: false })
+
+        if (submissionsError) {
+          console.warn('Failed to load wallpaper submissions:', submissionsError)
+        } else if (mounted && submissionsData) {
+          const awaiting = submissionsData.filter((s: any) => s.status === 'awaiting_review').slice(0, 3)
+          const approved = submissionsData.filter((s: any) => s.status === 'approved')
+
+          const thirtyDaysAgo = new Date()
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+          const rejected = submissionsData.filter((s: any) => {
+            if (s.status !== 'rejected') return false
+            if (!s.submitted_at) return true
+            return new Date(s.submitted_at) > thirtyDaysAgo
+          })
+
+          setAwaitingSubmissions(awaiting as any)
+          setApprovedSubmissions(approved as any)
+          setRejectedSubmissions(rejected as any)
+        }
+      } catch (e) {
+        console.error('Unexpected error loading wallpaper submissions:', e)
+      } finally {
+        if (mounted) setSubmissionsLoading(false)
+      }
+
       try {
         const { data: identities } = await supabase.auth.getUserIdentities()
         if (mounted && identities?.identities) {
           const hasGoogle = identities.identities.some((identity: any) => identity.provider === 'google')
           setHasGoogleLinked(hasGoogle)
         }
-        
+
         try {
           const driveRes = await fetch('/api/drive/auth')
           const driveData = await driveRes.json()
@@ -108,6 +161,69 @@ function DashboardContent() {
     load()
     return () => { mounted = false }
   }, [router, supabase])
+
+  useEffect(() => {
+    if (awaitingSubmissions.length === 0) return
+
+    const syncStatuses = async () => {
+      setIsSyncing(true)
+      console.log('Syncing statuses for', awaitingSubmissions.length, 'submissions')
+      const updates = await Promise.all(
+        awaitingSubmissions.map(async (sub) => {
+          try {
+            const res = await fetch('/api/wallpapers/sync', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ submission_id: sub.id })
+            })
+            if (res.ok) {
+              const data = await res.json()
+              if (data.updated) {
+                return { id: sub.id, status: data.status }
+              }
+            }
+          } catch (e) {
+            console.error('Failed to sync submission', sub.id, e)
+          }
+          return null
+        })
+      )
+
+      const validUpdates = updates.filter(Boolean) as Array<{ id: number, status: string }>
+      if (validUpdates.length > 0) {
+        console.log('Applying status updates:', validUpdates)
+
+        setAwaitingSubmissions(prev => prev.filter(sub => !validUpdates.find(u => u.id === sub.id)))
+
+        const newApproved = validUpdates
+          .filter(u => u.status === 'approved')
+          .map(u => {
+            const original = awaitingSubmissions.find(s => s.id === u.id)
+            return original ? { ...original, status: 'approved' as const } : null
+          })
+          .filter(Boolean) as typeof approvedSubmissions
+
+        if (newApproved.length > 0) {
+          setApprovedSubmissions(prev => [...newApproved, ...prev])
+        }
+
+        const newRejected = validUpdates
+          .filter(u => u.status === 'rejected')
+          .map(u => {
+            const original = awaitingSubmissions.find(s => s.id === u.id)
+            return original ? { ...original, status: 'rejected' as const } : null
+          })
+          .filter(Boolean) as typeof rejectedSubmissions
+
+        if (newRejected.length > 0) {
+          setRejectedSubmissions(prev => [...newRejected, ...prev])
+        }
+      }
+      setIsSyncing(false)
+    }
+
+    syncStatuses()
+  }, [awaitingSubmissions.length])
 
   async function handleSignOut() {
     setLoading(true)
@@ -133,7 +249,7 @@ function DashboardContent() {
           'Authorization': `Bearer ${session.access_token}`
         }
       })
-      
+
       if (!response.ok) {
         const data = await response.json()
         throw new Error(data.error || 'Failed to delete cloud projects')
@@ -146,7 +262,7 @@ function DashboardContent() {
       setMessageDialogContent('All cloud projects deleted successfully!');
       setMessageDialogVariant('success');
       setMessageDialogOpen(true);
-      
+
     } catch (error: any) {
       setMessageDialogTitle('Error');
       setMessageDialogContent(`Failed to delete: ${error.message}`);
@@ -172,6 +288,150 @@ function DashboardContent() {
         <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight">Welcome back{displayName ? `, ${displayName}` : ""}!</h1>
         <p className="mt-6 text-muted-foreground text-lg">Manage your cloud projects and account settings.</p>
         <div className="mt-8 space-y-6">
+          {/* Wallpaper Submissions */}
+          <Card className="border-border/80">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Wallpaper Submissions</CardTitle>
+                <Button onClick={() => setIsSubmitDialogOpen(true)} size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Submit Wallpaper
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {submissionsLoading ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">Loading your submissions...</p>
+              ) : (
+                <>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-semibold">Awaiting Review</h3>
+                        {isSyncing && (
+                          <span className="flex items-center text-[10px] text-muted-foreground animate-pulse">
+                            <Cloud className="h-3 w-3 mr-1 animate-spin" />
+                            Syncing...
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {awaitingSubmissions.length}/3 slots used
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      You can have up to three wallpapers awaiting review at a time.
+                    </p>
+
+                    {awaitingSubmissions.length === 0 ? (
+                      <div className="border border-dashed border-border/70 rounded-lg py-6 px-4 text-center">
+                        <p className="text-sm text-muted-foreground">No wallpapers awaiting review</p>
+                        <p className="text-xs text-muted-foreground mt-1">Click "Submit Wallpaper" to get started</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {awaitingSubmissions.map((submission) => (
+                          <div
+                            key={submission.id}
+                            className="flex items-start justify-between border border-border/80 rounded-lg p-3 bg-amber-50/50 dark:bg-amber-900/10"
+                          >
+                            <div className="flex-1 min-w-0 space-y-1">
+                              <h3 className="font-semibold text-sm line-clamp-1 break-words">
+                                {submission.name}
+                              </h3>
+                              <p className="text-xs text-muted-foreground line-clamp-2 break-words">
+                                {submission.description}
+                              </p>
+                            </div>
+                            <span className="ml-3 flex-shrink-0 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-100 border-amber-200 dark:border-amber-700">
+                              Awaiting Review
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+
+                  {rejectedSubmissions.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold">Rejected (Last 30 Days)</h3>
+                        <span className="text-xs text-muted-foreground">
+                          {rejectedSubmissions.length} rejected
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Submissions that were not accepted. These will disappear after 30 days.
+                      </p>
+
+                      <div className="space-y-3">
+                        {rejectedSubmissions.map((submission) => (
+                          <div
+                            key={submission.id}
+                            className="flex items-start justify-between border border-border/80 rounded-lg p-3 bg-red-50/50 dark:bg-red-900/10"
+                          >
+                            <div className="flex-1 min-w-0 space-y-1">
+                              <h3 className="font-semibold text-sm line-clamp-1 break-words">
+                                {submission.name}
+                              </h3>
+                              <p className="text-xs text-muted-foreground line-clamp-2 break-words">
+                                {submission.description}
+                              </p>
+                            </div>
+                            <span className="ml-3 flex-shrink-0 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200 border-red-200 dark:border-red-700">
+                              Rejected
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-semibold">Published</h3>
+                      <span className="text-xs text-muted-foreground">
+                        {approvedSubmissions.length === 0 ? 'None yet' : `${approvedSubmissions.length} published`}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Wallpapers that have been approved and are live in the gallery.
+                    </p>
+
+                    {approvedSubmissions.length === 0 ? (
+                      <div className="border border-dashed border-border/70 rounded-lg py-6 px-4 text-center">
+                        <p className="text-sm text-muted-foreground">No published wallpapers yet</p>
+                        <p className="text-xs text-muted-foreground mt-1">They'll appear here once approved</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {approvedSubmissions.map((submission) => (
+                          <div
+                            key={submission.id}
+                            className="flex items-start justify-between border border-border/80 rounded-lg p-3 bg-emerald-50/50 dark:bg-emerald-900/10"
+                          >
+                            <div className="flex-1 min-w-0 space-y-1">
+                              <h3 className="font-semibold text-sm line-clamp-1 break-words">
+                                {submission.name}
+                              </h3>
+                              <p className="text-xs text-muted-foreground line-clamp-2 break-words">
+                                {submission.description}
+                              </p>
+                            </div>
+                            <span className="ml-3 flex-shrink-0 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200 border-emerald-200 dark:border-emerald-700">
+                              Published
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Cloud Projects */}
           <Card className="border-border/80">
             <CardHeader>
@@ -203,20 +463,20 @@ function DashboardContent() {
                   </div>
                   <div className="flex flex-col gap-2">
                     <div className="flex gap-2">
-                      <Link href="/projects" className="flex-1"> 
+                      <Link href="/projects" className="flex-1">
                         <Button variant="outline" className="w-full">
                           Manage Projects
                         </Button>
                       </Link>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         onClick={() => setDeleteAllOpen(true)}
                         className="text-destructive hover:text-destructive"
                       >
                         Delete All
                       </Button>
                     </div>
-                    <Button 
+                    <Button
                       variant="outline"
                       size="sm"
                       onClick={async () => {
@@ -340,8 +600,8 @@ function DashboardContent() {
             <Button variant="outline" onClick={() => setDeleteAllOpen(false)} disabled={deleting}>
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={handleDeleteAllCloudProjects}
               disabled={deleting}
             >

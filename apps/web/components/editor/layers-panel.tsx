@@ -3,11 +3,12 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, MoreVertical, ChevronRight, ChevronDown, Copy, Trash2, Check, Eye, EyeOff } from "lucide-react";
+import { Plus, MoreVertical, ChevronRight, ChevronDown, Copy, Trash2, Check, Eye, EyeOff, AlertTriangle } from "lucide-react";
 import { useEditor } from "./editor-context";
 import { useEffect, useRef, useState } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { AnyLayer } from "@/lib/ca/types";
+import { isChromiumBrowser } from "@/lib/browser";
 
 export function LayersPanel() {
   const {
@@ -47,6 +48,12 @@ export function LayersPanel() {
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [multiSelectedIds, setMultiSelectedIds] = useState<string[]>([]);
+  const [isChromium, setIsChromium] = useState(true);
+
+  useEffect(() => {
+    setIsChromium(isChromiumBrowser());
+  }, []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isSelectMode) {
@@ -217,6 +224,19 @@ export function LayersPanel() {
             )}
           </div>
           <div className="flex items-center gap-1 pr-2">
+            {l.type === 'liquidGlass' && !isChromium && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <AlertTriangle className="h-3.5 w-3.5 ml-1 text-amber-600 dark:text-amber-500 shrink-0" />
+                </TooltipTrigger>
+                <TooltipContent side="right" className="max-w-xs">
+                  <p className="font-semibold mb-1">Not Visible</p>
+                  <p className="text-xs">
+                    This layer only works in Chromium-based browsers and will not be visible in your current browser.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -321,7 +341,26 @@ export function LayersPanel() {
               {isGyro && (
                 <DropdownMenuItem onSelect={() => addTransformLayer()}>Transform Layer</DropdownMenuItem>
               )}
-              <DropdownMenuItem onSelect={() => addLiquidGlassLayer()}>Liquid Glass Layer</DropdownMenuItem>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuItem
+                    onSelect={() => addLiquidGlassLayer()}
+                    className={!isChromium ? "text-amber-600 dark:text-amber-500" : ""}
+                  >
+                    {!isChromium && <AlertTriangle className="h-3.5 w-3.5" />}
+                    Liquid Glass Layer
+                  </DropdownMenuItem>
+                </TooltipTrigger>
+                {!isChromium && (
+                  <TooltipContent side="left" className="max-w-xs">
+                    <p className="font-semibold mb-1">Chromium-Only Feature</p>
+                    <p className="text-xs">
+                      Liquid Glass layers only work in Chromium-based browsers (Chrome, Edge, Opera).
+                      The layer will not be visible in your current browser.
+                    </p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
             </DropdownMenuContent>
           </DropdownMenu>
         }
