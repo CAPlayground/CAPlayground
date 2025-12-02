@@ -60,7 +60,7 @@ export function LayersPanel() {
 
   useEffect(() => {
     if (multiSelectedIds.length === 0) return;
-    
+
     const existsInLayers = (id: string, layerList: AnyLayer[]): boolean => {
       for (const layer of layerList) {
         if (layer.id === id) return true;
@@ -141,7 +141,7 @@ export function LayersPanel() {
           onDragStart={(e) => {
             e.stopPropagation();
             e.dataTransfer.setData('text/cap-layer-id', l.id);
-            try { e.dataTransfer.effectAllowed = 'move'; } catch {}
+            try { e.dataTransfer.effectAllowed = 'move'; } catch { }
           }}
           onDragOver={(e) => {
             e.preventDefault();
@@ -221,8 +221,8 @@ export function LayersPanel() {
               variant="ghost"
               size="icon"
               className="h-6 w-6 text-muted-foreground"
-              onClick={(e) => { 
-                e.stopPropagation(); 
+              onClick={(e) => {
+                e.stopPropagation();
                 toggleLayerVisibility(l.id);
               }}
               aria-label={isHidden ? 'Show layer' : 'Hide layer'}
@@ -343,7 +343,7 @@ export function LayersPanel() {
             if (imageFiles.length) setUploadStatus(imageFiles.length > 1 ? `Uploading ${imageFiles.length} images...` : 'Uploading image...');
             try {
               for (const file of imageFiles) {
-                try { await addImageLayerFromFile(file); } catch {}
+                try { await addImageLayerFromFile(file); } catch { }
               }
             } finally {
               setUploadStatus(null);
@@ -423,53 +423,53 @@ export function LayersPanel() {
       </div>
 
       {isSelectMode && (
-          <div className="border-t p-2 gap-2 flex flex-col">
-            <div className="text-xs text-muted-foreground">
-              {multiSelectedIds.length} selected
-            </div>
-            <div className="flex gap-2 items-center w-full">
-              <Button
-                variant="outline"
-                size="icon"
-                disabled={multiSelectedIds.length === 0}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  for (const id of multiSelectedIds) {
-                    try { duplicateLayer(id); } catch {}
-                  }
-                }}
-                className="h-8 w-8"
-                title="Duplicate layers"
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                disabled={multiSelectedIds.length === 0}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  for (const id of multiSelectedIds) {
-                    try { deleteLayer(id); } catch {}
-                  }
-                  setMultiSelectedIds([]);
-                }}
-                className="h-8 w-8"
-                title="Delete layers"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => { setIsSelectMode(false); setMultiSelectedIds([]); }}
-                className="flex-1 gap-1.5"
-              >
-                <Check className="h-4 w-4" />
-                Done
-              </Button>
-            </div>
+        <div className="border-t p-2 gap-2 flex flex-col">
+          <div className="text-xs text-muted-foreground">
+            {multiSelectedIds.length} selected
           </div>
-        )}
+          <div className="flex gap-2 items-center w-full">
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={multiSelectedIds.length === 0}
+              onClick={(e) => {
+                e.stopPropagation();
+                for (const id of multiSelectedIds) {
+                  try { duplicateLayer(id); } catch { }
+                }
+              }}
+              className="h-8 w-8"
+              title="Duplicate layers"
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={multiSelectedIds.length === 0}
+              onClick={(e) => {
+                e.stopPropagation();
+                for (const id of multiSelectedIds) {
+                  try { deleteLayer(id); } catch { }
+                }
+                setMultiSelectedIds([]);
+              }}
+              className="h-8 w-8"
+              title="Delete layers"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => { setIsSelectMode(false); setMultiSelectedIds([]); }}
+              className="flex-1 gap-1.5"
+            >
+              <Check className="h-4 w-4" />
+              Done
+            </Button>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

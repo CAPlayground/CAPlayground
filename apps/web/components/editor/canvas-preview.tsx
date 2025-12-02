@@ -142,7 +142,7 @@ export function CanvasPreview() {
     };
     return renderedLayers?.some(hasAnimation) ?? false;
   }, [renderedLayers]);
-  
+
   useEffect(() => {
     if (!hasAnyEnabledAnimation && isPlaying) {
       stop();
@@ -238,7 +238,7 @@ export function CanvasPreview() {
           return;
         }
       }}
-      onKeyDown={() => {}}
+      onKeyDown={() => { }}
     >
       <div
         className="absolute inset-0 dark:hidden cursor-[inherit]"
