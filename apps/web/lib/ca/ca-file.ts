@@ -364,6 +364,7 @@ export async function unpackCA(file: Blob): Promise<CAProjectBundle> {
   const states = parseStates(camlStr);
   const stateOverrides = parseStateOverrides(camlStr);
   const stateTransitions = parseStateTransitions(camlStr);
+  const wallpaperParallaxGroups = parseWallpaperParallaxGroups(camlStr);
 
   const assets: CAProjectBundle['assets'] = {};
   try {
@@ -433,7 +434,7 @@ export async function unpackCA(file: Blob): Promise<CAProjectBundle> {
     geometryFlipped: ((root as any).geometryFlipped ?? 0) as 0 | 1,
   };
 
-  return { project, root, assets, states, stateOverrides, stateTransitions };
+  return { project, root, assets, states, stateOverrides, stateTransitions, wallpaperParallaxGroups };
 }
 
 export async function unpackTendies(file: Blob): Promise<TendiesBundle> {
