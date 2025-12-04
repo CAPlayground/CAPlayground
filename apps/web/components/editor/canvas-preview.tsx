@@ -615,7 +615,7 @@ export function CanvasPreview() {
       </div>
 
       {/* Playback controls - visible only if any animation is enabled */}
-      {hasAnyEnabledAnimation && (
+      {hasAnyEnabledAnimation && !showPreview && (
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-white/80 dark:bg-gray-900/70 border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 shadow-sm">
           <Button
             type="button"

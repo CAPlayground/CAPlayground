@@ -225,7 +225,7 @@ export function LayerRenderer({
   });
 
   return (
-    // <LayerContextMenu layer={layer} siblings={siblings}>
+    <LayerContextMenu layer={layer} siblings={siblings}>
       <div
         id={layer.id}
         style={style}
@@ -271,6 +271,6 @@ export function LayerRenderer({
           />
         )}
       </div>
-    // </LayerContextMenu>
+    </LayerContextMenu>
   )
 }
