@@ -145,7 +145,16 @@ export function EmitterCanvas({
     return () => {
       cancelAnimationFrame(rafIdRef.current);
     };
-  }, [JSON.stringify(emitterLayer)]);
+  }, [
+    JSON.stringify(emitterLayer),
+    JSON.stringify(emitterLayer.emitterPosition),
+    JSON.stringify(emitterLayer.emitterSize),
+    emitterLayer.geometryFlipped,
+    emitterLayer.size.h,
+    emitterLayer.emitterShape,
+    emitterLayer.emitterMode,
+    emitterLayer.renderMode,
+  ]);
 
   return (
     <canvas
