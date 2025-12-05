@@ -430,7 +430,7 @@ export function CanvasPreview() {
             <TooltipContent side="left">Gyro</TooltipContent>
           </Tooltip>
         )}
-        <Tooltip>
+        {currentKey !== 'wallpaper' && <Tooltip>
           <TooltipTrigger asChild>
             <Button
               type="button"
@@ -445,7 +445,7 @@ export function CanvasPreview() {
             </Button>
           </TooltipTrigger>
           <TooltipContent side="left">Show Preview</TooltipContent>
-        </Tooltip>
+        </Tooltip>}
         {(() => {
           const w = doc?.meta.width ?? 0;
           const h = doc?.meta.height ?? 0;
