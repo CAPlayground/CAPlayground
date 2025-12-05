@@ -148,8 +148,10 @@ export function LayerRenderer({
     ? { border: `${layer.borderWidth}px solid ${layer.borderColor || '#000000'}` }
     : {};
 
-  const translateX = x - (layer.anchorPoint?.x ?? 0.5 * width);
-  const translateY = (useYUp ? -y : y) - (layer.anchorPoint?.y ?? 0.5 * height);
+  const translateX = x - (anchor.x * width);
+  const translateY = useYUp
+    ? -y - ((1 - anchor.y) * height)
+    : y - (anchor.y * height);
   const common: React.CSSProperties = {
     position: "absolute",
     left: 0,
