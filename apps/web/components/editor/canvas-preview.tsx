@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Minus, Plus, Crosshair, Square, Crop, Clock, Rotate3D } from "lucide-react";
+import { Minus, Plus, Crosshair, Square, Crop, Clock, Rotate3D, TabletSmartphone } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useCanvasSize } from "@/hooks/use-canvas-size";
@@ -25,6 +25,8 @@ import { findById } from "@/lib/editor/layer-utils";
 import { MoveableOverlay } from "./inspector/canvas/MoveableOverlay";
 import Moveable from "react-moveable";
 import { useTimeline } from "@/context/TimelineContext";
+import DevicePreview from "./device-preview/DevicePreview";
+import { ClockOverlay } from "./device-preview/ClockOverlay";
 
 export function CanvasPreview() {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -41,6 +43,7 @@ export function CanvasPreview() {
   const { userScale, setUserScale } = useCanvasZoom(ref);
   const { pan, setPan, isPanning, setIsPanning, panDragRef } = useCanvasPan();
   const [useGyroControls, setUseGyroControls] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [gyroY, setGyroY] = useState(0);
   const [gyroX, setGyroX] = useState(0);
   const [SNAP_THRESHOLD] = useLocalStorage<number>("caplay_settings_snap_threshold", 12);
@@ -56,6 +59,24 @@ export function CanvasPreview() {
   const [showAnchorPoint] = useLocalStorage<boolean>("caplay_preview_anchor_point", false);
   const [pinchZoomSensitivity] = useLocalStorage<number>("caplay_settings_pinch_zoom_sensitivity", 1);
   const [clockMenuOpen, setClockMenuOpen] = useState(false);
+
+  useClipboard();
+  const {
+    currentTime,
+    isPlaying,
+    play,
+    pause,
+    stop,
+    setTime,
+  } = useTimeline();
+
+  useEffect(() => {
+    if (showPreview) {
+      play();
+    } else {
+      pause();
+    }
+  }, [showPreview]);
 
   const { fitScale, baseOffsetX, baseOffsetY } = useMemo(() => {
     const w = doc?.meta.width ?? 390;
@@ -115,23 +136,15 @@ export function CanvasPreview() {
     }
     return applyOverrides(other.layers, other.stateOverrides, effective);
   }, [other?.layers, other?.stateOverrides, other?.activeState, other?.states, other?.appearanceSplit, other?.appearanceMode, current?.activeState, currentKey, showBackground]);
+  const [previewLayers, setPreviewLayers] = useState<AnyLayer[] | null>(null);
 
   const renderedLayers = useMemo(() => {
+    if (previewLayers) return previewLayers;
     if (currentKey === 'floating' && showBackground && backgroundLayers.length > 0) {
       return [...backgroundLayers, ...appliedLayers];
     }
     return appliedLayers;
-  }, [appliedLayers, backgroundLayers, currentKey, showBackground]);
-
-  useClipboard();
-  const {
-    currentTime,
-    isPlaying,
-    play,
-    pause,
-    stop,
-    setTime,
-  } = useTimeline();
+  }, [appliedLayers, backgroundLayers, currentKey, showBackground, previewLayers]);
 
   const hasAnyEnabledAnimation = useMemo(() => {
     const hasAnimation = (layer: AnyLayer): boolean => {
@@ -142,7 +155,7 @@ export function CanvasPreview() {
     };
     return renderedLayers?.some(hasAnimation) ?? false;
   }, [renderedLayers]);
-  
+
   useEffect(() => {
     if (!hasAnyEnabledAnimation && isPlaying) {
       stop();
@@ -180,7 +193,7 @@ export function CanvasPreview() {
     pinchZoomSensitivity,
   });
 
-  const selectedLayer = findById(renderedLayers, current?.selectedId);
+  const selectedLayer = !showPreview ? findById(renderedLayers, current?.selectedId) : null;
   const moveableRef = useRef<Moveable>(null);
 
   return (
@@ -238,7 +251,7 @@ export function CanvasPreview() {
           return;
         }
       }}
-      onKeyDown={() => {}}
+      onKeyDown={() => { }}
     >
       <div
         className="absolute inset-0 dark:hidden cursor-[inherit]"
@@ -250,101 +263,42 @@ export function CanvasPreview() {
         style={{ background: "repeating-conic-gradient(#0b1220 0% 25%, #1f2937 0% 50%) 50% / 20px 20px" }}
         onClick={() => selectLayer(null)}
       />
-      <div
-        id="root-canvas"
-        className="absolute"
-        style={{
-          width: doc?.meta.width,
-          height: doc?.meta.height,
-          background: doc?.meta.background ?? "#f3f4f6",
-          transform: `translate(${offsetX}px, ${offsetY}px) scale(${scale})`,
-          transformOrigin: "top left",
-          borderRadius: 0,
-          overflow: clipToCanvas ? "hidden" : "visible",
-          boxShadow: "0 0 0 1px rgba(0,0,0,0.05), 0 10px 30px rgba(0,0,0,0.08)",
-        }}
-      >
-        {currentKey === 'floating' && showBackground ? (
-          <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-            {renderedLayers.slice(0, backgroundLayers.length).map((layer) =>
-              <LayerRenderer
-                key={layer.id}
-                layer={layer}
-                useYUp={getRootFlip(doc?.meta.geometryFlipped) === 0}
-                siblings={renderedLayers}
-                assets={other?.assets}
-                gyroX={gyroX}
-                gyroY={gyroY}
-                useGyroControls={useGyroControls}
-                hiddenLayerIds={hiddenLayerIds}
-                moveableRef={moveableRef}
-              />
-            )}
-          </div>
-        ) : currentKey === 'background' ? (
-          <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-            {renderedLayers.map((layer) => (
-              <LayerRenderer
-                key={layer.id}
-                layer={layer}
-                useYUp={getRootFlip(doc?.meta.geometryFlipped) === 0}
-                siblings={renderedLayers}
-                assets={current?.assets}
-                gyroX={gyroX}
-                gyroY={gyroY}
-                useGyroControls={useGyroControls}
-                hiddenLayerIds={hiddenLayerIds}
-                moveableRef={moveableRef}
-              />
-            ))}
-          </div>
-        ) : currentKey === 'wallpaper' ? (
-          <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-            {renderedLayers.map((layer) => (
-              <LayerRenderer
-                key={layer.id}
-                layer={layer}
-                useYUp={getRootFlip(doc?.meta.geometryFlipped) === 0}
-                siblings={renderedLayers}
-                assets={current?.assets}
-                gyroX={gyroX}
-                gyroY={gyroY}
-                useGyroControls={useGyroControls}
-                hiddenLayerIds={hiddenLayerIds}
-                moveableRef={moveableRef}
-              />
-            ))}
-          </div>
-        ) : null}
-        {showClockOverlay && (() => {
-          const w = doc?.meta.width ?? 0;
-          const h = doc?.meta.height ?? 0;
-          const targetRatio = 1170 / 2532;
-          const currentRatio = w / h;
-          const isMatchingAspectRatio = Math.abs(currentRatio - targetRatio) < 0.01;
-
-          if (isMatchingAspectRatio) {
-            return (
-              <div
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  pointerEvents: 'none',
-                  backgroundImage: 'url(/clock.png)',
-                  backgroundSize: 'contain',
-                  backgroundPosition: 'center',
-                  backgroundRepeat: 'no-repeat',
-                  zIndex: clockDepthEffect ? 50 : 500,
-                }}
-              />
-            );
-          }
-          return null;
-        })()}
-        {currentKey === 'floating' && (
-          <div style={{ position: 'absolute', inset: 0, zIndex: clockDepthEffect ? 1000 : 100 }}>
-            {showBackground
-              ? renderedLayers.slice(backgroundLayers.length).map((layer) => (
+      <DevicePreview showPreview={showPreview} setPreviewLayers={setPreviewLayers} scale={scale}>
+        <div
+          id="root-canvas"
+          className="absolute"
+          style={{
+            width: doc?.meta.width,
+            height: doc?.meta.height,
+            background: doc?.meta.background ?? "#f3f4f6",
+            transform: showPreview ? `scale(1)` : `translate(${offsetX}px, ${offsetY}px) scale(${scale})`,
+            transformOrigin: "top left",
+            borderRadius: 0,
+            overflow: clipToCanvas || showPreview ? "hidden" : "visible",
+            boxShadow: "0 0 0 1px rgba(0,0,0,0.05), 0 10px 30px rgba(0,0,0,0.08)",
+            pointerEvents: showPreview ? "none" : "auto",
+          }}
+        >
+          {currentKey === 'floating' && showBackground ? (
+            <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+              {renderedLayers.slice(0, backgroundLayers.length).map((layer) =>
+                <LayerRenderer
+                  key={layer.id}
+                  layer={layer}
+                  useYUp={getRootFlip(doc?.meta.geometryFlipped) === 0}
+                  siblings={renderedLayers}
+                  assets={other?.assets}
+                  gyroX={gyroX}
+                  gyroY={gyroY}
+                  useGyroControls={useGyroControls}
+                  hiddenLayerIds={hiddenLayerIds}
+                  moveableRef={moveableRef}
+                />
+              )}
+            </div>
+          ) : currentKey === 'background' ? (
+            <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+              {renderedLayers.map((layer) => (
                 <LayerRenderer
                   key={layer.id}
                   layer={layer}
@@ -357,8 +311,11 @@ export function CanvasPreview() {
                   hiddenLayerIds={hiddenLayerIds}
                   moveableRef={moveableRef}
                 />
-              ))
-              : renderedLayers.map((layer) => (
+              ))}
+            </div>
+          ) : currentKey === 'wallpaper' ? (
+            <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+              {renderedLayers.map((layer) => (
                 <LayerRenderer
                   key={layer.id}
                   layer={layer}
@@ -371,37 +328,79 @@ export function CanvasPreview() {
                   hiddenLayerIds={hiddenLayerIds}
                   moveableRef={moveableRef}
                 />
-              ))
-            }
-          </div>
-        )}
-        {/* Edge guide overlay */}
-        {showEdgeGuide && (
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              pointerEvents: 'none',
-              border: '3px dotted #ffffff',
-              borderRadius: 0,
-              mixBlendMode: 'difference',
-              zIndex: 2000,
-            }}
+              ))}
+            </div>
+          ) : null}
+          {showClockOverlay && !showPreview && (
+            <ClockOverlay
+              docWidth={doc?.meta.width ?? 0}
+              docHeight={doc?.meta.height ?? 0}
+              clockDepthEffect={clockDepthEffect}
+            />
+          )}
+          {currentKey === 'floating' && (
+            <div style={{ position: 'absolute', inset: 0, zIndex: clockDepthEffect ? 1000 : 100 }}>
+              {showBackground
+                ? renderedLayers.slice(backgroundLayers.length).map((layer) => (
+                  <LayerRenderer
+                    key={layer.id}
+                    layer={layer}
+                    useYUp={getRootFlip(doc?.meta.geometryFlipped) === 0}
+                    siblings={renderedLayers}
+                    assets={current?.assets}
+                    gyroX={gyroX}
+                    gyroY={gyroY}
+                    useGyroControls={useGyroControls}
+                    hiddenLayerIds={hiddenLayerIds}
+                    moveableRef={moveableRef}
+                  />
+                ))
+                : renderedLayers.map((layer) => (
+                  <LayerRenderer
+                    key={layer.id}
+                    layer={layer}
+                    useYUp={getRootFlip(doc?.meta.geometryFlipped) === 0}
+                    siblings={renderedLayers}
+                    assets={current?.assets}
+                    gyroX={gyroX}
+                    gyroY={gyroY}
+                    useGyroControls={useGyroControls}
+                    hiddenLayerIds={hiddenLayerIds}
+                    moveableRef={moveableRef}
+                  />
+                ))
+              }
+            </div>
+          )}
+          {/* Edge guide overlay */}
+          {showEdgeGuide && (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                pointerEvents: 'none',
+                border: '3px dotted #ffffff',
+                borderRadius: 0,
+                mixBlendMode: 'difference',
+                zIndex: 2000,
+              }}
+            />
+          )}
+          <MoveableOverlay
+            moveableRef={moveableRef}
+            selectedLayer={selectedLayer}
+            renderedLayers={renderedLayers}
+            showAnchorPoint={showAnchorPoint}
+            snapThreshold={SNAP_THRESHOLD}
+            snapEdgesEnabled={snapEdgesEnabled}
+            snapRotationEnabled={snapRotationEnabled}
+            snapLayersEnabled={snapLayersEnabled}
+            snapResizeEnabled={snapResizeEnabled}
+            activeState={current?.activeState}
           />
-        )}
-        <MoveableOverlay
-          moveableRef={moveableRef}
-          selectedLayer={selectedLayer}
-          renderedLayers={renderedLayers}
-          showAnchorPoint={showAnchorPoint}
-          snapThreshold={SNAP_THRESHOLD}
-          snapEdgesEnabled={snapEdgesEnabled}
-          snapRotationEnabled={snapRotationEnabled}
-          snapLayersEnabled={snapLayersEnabled}
-          snapResizeEnabled={snapResizeEnabled}
-          activeState={current?.activeState}
-        />
-      </div>
+        </div>
+      </DevicePreview>
+
       {useGyroControls && (
         <GyroControls
           value={{ x: gyroX, y: gyroY }}
@@ -431,6 +430,22 @@ export function CanvasPreview() {
             <TooltipContent side="left">Gyro</TooltipContent>
           </Tooltip>
         )}
+        {currentKey !== 'wallpaper' && <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              size="icon"
+              variant={showPreview ? "default" : "outline"}
+              aria-pressed={showPreview}
+              aria-label="Toggle preview"
+              onClick={() => setShowPreview((v: boolean) => !v)}
+              className={`h-8 w-8 ${showPreview ? '' : 'hover:text-primary hover:border-primary/50 hover:bg-primary/10'}`}
+            >
+              <TabletSmartphone className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="left">Show Preview</TooltipContent>
+        </Tooltip>}
         {(() => {
           const w = doc?.meta.width ?? 0;
           const h = doc?.meta.height ?? 0;
@@ -450,6 +465,7 @@ export function CanvasPreview() {
                         variant={showClockOverlay ? "default" : "outline"}
                         aria-pressed={showClockOverlay}
                         aria-label="Clock overlay settings"
+                        disabled={showPreview}
                         className={`h-8 w-8 ${showClockOverlay ? '' : 'hover:text-primary hover:border-primary/50 hover:bg-primary/10'}`}
                       >
                         <Clock className="h-4 w-4" />
@@ -600,7 +616,7 @@ export function CanvasPreview() {
       </div>
 
       {/* Playback controls - visible only if any animation is enabled */}
-      {hasAnyEnabledAnimation && (
+      {hasAnyEnabledAnimation && !showPreview && (
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-white/80 dark:bg-gray-900/70 border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 shadow-sm">
           <Button
             type="button"

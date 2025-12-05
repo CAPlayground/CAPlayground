@@ -177,3 +177,35 @@ export function getNextLayerName(layers: AnyLayer[], base: string = 'Transform L
 
   return `${base} ${i}`;
 }
+
+export function lerp(start: number, end: number, t: number): number {
+  return start + (end - start) * t;
+}
+
+export function interpolateLayers(baseLayers: AnyLayer[], targetLayers: AnyLayer[], progress: number): AnyLayer[] {
+  const interpolate = (base: AnyLayer[], target: AnyLayer[], prog: number): AnyLayer[] => {
+    return base.map((baseLayer, index) => {
+      const targetLayer = target[index];
+      if (!targetLayer) return baseLayer;
+
+      return {
+        ...baseLayer,
+        position: {
+          x: lerp(baseLayer.position?.x ?? 0, targetLayer.position?.x ?? 0, prog),
+          y: lerp(baseLayer.position?.y ?? 0, targetLayer.position?.y ?? 0, prog),
+        },
+        size: baseLayer.size ? {
+          w: lerp(baseLayer.size.w, targetLayer.size?.w ?? baseLayer.size.w, prog),
+          h: lerp(baseLayer.size.h, targetLayer.size?.h ?? baseLayer.size.h, prog),
+        } : baseLayer.size,
+        rotation: lerp(baseLayer.rotation ?? 0, targetLayer.rotation ?? 0, prog),
+        opacity: lerp(baseLayer.opacity ?? 1, targetLayer.opacity ?? 1, prog),
+        zPosition: lerp(baseLayer.zPosition ?? 0, targetLayer.zPosition ?? 0, prog),
+        children: baseLayer.children && targetLayer.children
+          ? interpolate(baseLayer.children, targetLayer.children, prog)
+          : baseLayer.children,
+      };
+    });
+  };
+  return interpolate(baseLayers, targetLayers, progress);
+}
