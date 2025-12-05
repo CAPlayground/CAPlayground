@@ -82,16 +82,16 @@ export function parseWallpaperParallaxGroups(xml: string): GyroParallaxDictionar
     const doc = new DOMParser().parseFromString(xml, 'application/xml');
     const caml = doc.getElementsByTagNameNS(CAML_NS, 'caml')[0] || doc.documentElement;
     if (!caml) return result;
-    
+
     const rootLayer = caml.getElementsByTagNameNS(CAML_NS, 'CALayer')[0];
     if (!rootLayer) return result;
-    
+
     const style = rootLayer.getElementsByTagNameNS(CAML_NS, 'style')[0];
     if (!style) return result;
-    
+
     const wallpaperParallaxGroups = style.getElementsByTagNameNS(CAML_NS, 'wallpaperParallaxGroups')[0];
     if (!wallpaperParallaxGroups) return result;
-    
+
     const dicts = Array.from(wallpaperParallaxGroups.getElementsByTagNameNS(CAML_NS, 'NSDictionary'));
     const layerNames = Array.from(doc.querySelectorAll('[name]:not([name=""])')).map((el) => el.getAttribute('name'));
     for (const dict of dicts) {
@@ -104,7 +104,7 @@ export function parseWallpaperParallaxGroups(xml: string): GyroParallaxDictionar
       const mapMinTo = Number(dict.getElementsByTagNameNS(CAML_NS, 'mapMinTo')[0]?.getAttribute('value') || '0');
       const title = dict.getElementsByTagNameNS(CAML_NS, 'title')[0]?.getAttribute('value') || '';
       const view = dict.getElementsByTagNameNS(CAML_NS, 'view')[0]?.getAttribute('value') || 'Floating';
-      
+
       result.push({
         axis: axis as 'x' | 'y',
         image,
@@ -230,7 +230,7 @@ export function parseStates(xml: string): string[] {
     if (wallpaperPropertyGroups) {
       return ['Locked', 'Unlock', 'Sleep']
     }
-    
+
     const statesEl = caml.getElementsByTagNameNS(CAML_NS, 'states')[0];
     if (!statesEl) return [];
     const arr: string[] = [];
@@ -269,13 +269,13 @@ function parseLayerBase(el: Element): LayerBase {
     rotation: radToDeg(rotationZ || 0),
     rotationX: radToDeg(rotationX || 0),
     rotationY: radToDeg(rotationY || 0),
-    anchorPoint: (anchorPt.length === 2 && (anchorPt[0] !== 0.5 || anchorPt[1] !== 0.5)) 
-      ? { x: anchorPt[0], y: anchorPt[1] } 
+    anchorPoint: (anchorPt.length === 2 && (anchorPt[0] !== 0.5 || anchorPt[1] !== 0.5))
+      ? { x: anchorPt[0], y: anchorPt[1] }
       : undefined,
     geometryFlipped: parseBooleanAttr(el, 'geometryFlipped') || 0,
     masksToBounds: parseBooleanAttr(el, 'masksToBounds') || 0,
   };
-  
+
   // Parse transform attribute for additional rotation values
   const transformAttr = attr(el, 'transform');
   if (transformAttr && /rotate\(/i.test(transformAttr)) {
@@ -284,7 +284,7 @@ function parseLayerBase(el: Element): LayerBase {
     if (rotations.x !== undefined) base.rotationX = base.rotationX || rotations.x;
     if (rotations.y !== undefined) base.rotationY = base.rotationY || rotations.y;
   }
-  
+
   const compositingFilter = directChildByTagNS(el, 'compositingFilter');
   if (compositingFilter) {
     const blendMode = attr(compositingFilter, 'filter') || 'normal';
@@ -333,23 +333,23 @@ function parseLayerBase(el: Element): LayerBase {
 
 function parseTransformRotations(transformAttr: string): { x?: number; y?: number; z?: number } {
   const rotations: { x?: number; y?: number; z?: number } = {};
-  
+
   try {
     const rx = /rotate\(([^)]+)\)/gi;
     let m: RegExpExecArray | null;
-    
+
     while ((m = rx.exec(transformAttr)) !== null) {
       const inside = m[1].trim();
       const parts = inside.split(/\s*,\s*/);
       const angleStr = parts[0].trim();
       const angle = parseFloat(angleStr.replace(/deg/i, '').trim());
       const deg = Number.isFinite(angle) ? angle : 0;
-      
+
       if (parts.length >= 4) {
         const ax = parseFloat(parts[1]);
         const ay = parseFloat(parts[2]);
         const az = parseFloat(parts[3]);
-        
+
         if (Math.abs(ax - 1) < 1e-6 && Math.abs(ay) < 1e-6 && Math.abs(az) < 1e-6) {
           rotations.x = deg;
         } else if (Math.abs(ay - 1) < 1e-6 && Math.abs(ax) < 1e-6 && Math.abs(az) < 1e-6) {
@@ -361,8 +361,8 @@ function parseTransformRotations(transformAttr: string): { x?: number; y?: numbe
         rotations.z = deg;
       }
     }
-  } catch {}
-  
+  } catch { }
+
   return rotations;
 }
 
@@ -389,7 +389,7 @@ function parseCAVideoLayer(el: Element): VideoLayer {
   const animationsEl = directChildByTagNS(el, 'animations');
   const animNode = animationsEl?.getElementsByTagNameNS(CAML_NS, 'animation')[0];
   const frameRefs: string[] = [];
-  
+
   if (animNode) {
     const valuesNode = animNode.getElementsByTagNameNS(CAML_NS, 'values')[0];
     if (valuesNode) {
@@ -417,7 +417,7 @@ function parseCAVideoLayer(el: Element): VideoLayer {
   const contentsSrcAttr = (contents && (contents.getAttribute('type') || '').toLowerCase() === 'cgimage')
     ? (contents.getAttribute('src') || undefined)
     : undefined;
-  
+
   let framePrefix = prefixAttr || undefined;
   let frameExtension = extAttr || undefined;
 
@@ -493,13 +493,13 @@ function parseCATextLayer(el: Element): AnyLayer {
 function parseCAGradientLayer(el: Element): AnyLayer {
   const base = parseLayerBase(el);
   const children = parseSublayers(el);
-  
+
   const startPointAttr = parseNumberList(attr(el, 'startPoint'));
   const endPointAttr = parseNumberList(attr(el, 'endPoint'));
-  
+
   const startPoint = { x: startPointAttr[0] ?? 0, y: startPointAttr[1] ?? 0 };
   const endPoint = { x: endPointAttr[0] ?? 1, y: endPointAttr[1] ?? 1 };
-  
+
   // Parse colors
   const colors: any[] = [];
   const colorsEl = el.getElementsByTagNameNS(CAML_NS, 'colors')[0] as Element | undefined;
@@ -515,7 +515,7 @@ function parseCAGradientLayer(el: Element): AnyLayer {
       });
     }
   }
-  
+
   // Parse gradient type
   let gradientType: 'axial' | 'radial' | 'conic' = 'axial';
   const typeEl = el.getElementsByTagNameNS(CAML_NS, 'type')[0] as Element | undefined;
@@ -538,7 +538,7 @@ function parseCAGradientLayer(el: Element): AnyLayer {
     children,
     ...(parsedAnimations ? { animations: parsedAnimations } : {} as any),
   } as AnyLayer;
-  
+
   return layer;
 }
 
@@ -552,38 +552,38 @@ function parseCAEmitterLayer(el: Element): AnyLayer {
   const emitterMode = attr(el, 'emitterMode') as 'volume' | 'outline' | 'surface';
   const emitterCells = emitterCellsEl
     ? Array.from(emitterCellsEl.children).map((c) => {
-        let imageSrc: string | undefined;
-        const contents = c.getElementsByTagNameNS(CAML_NS, 'contents')[0];
-        if (contents) {
-          const images = contents.getElementsByTagNameNS(CAML_NS, 'CGImage');
-          if (images && images[0]) {
-            imageSrc = attr(images[0], 'src');
-          } else {
-            const t = (contents.getAttribute('type') || '').toLowerCase();
-            const s = contents.getAttribute('src') || '';
-            if (t === 'cgimage' && s) imageSrc = s;
-          }
+      let imageSrc: string | undefined;
+      const contents = c.getElementsByTagNameNS(CAML_NS, 'contents')[0];
+      if (contents) {
+        const images = contents.getElementsByTagNameNS(CAML_NS, 'CGImage');
+        if (images && images[0]) {
+          imageSrc = attr(images[0], 'src');
+        } else {
+          const t = (contents.getAttribute('type') || '').toLowerCase();
+          const s = contents.getAttribute('src') || '';
+          if (t === 'cgimage' && s) imageSrc = s;
         }
-        const newCell = new CAEmitterCell();
-        newCell.id = String(attr(c, 'id') || crypto.randomUUID());
-        newCell.src = imageSrc;
-        newCell.birthRate = Number(attr(c, 'birthRate'));
-        newCell.lifetime = Number(attr(c, 'lifetime'));
-        newCell.velocity = Number(attr(c, 'velocity'));
-        newCell.scale = Number(attr(c, 'scale'));
-        newCell.scaleRange = Number(attr(c, 'scaleRange'));
-        newCell.scaleSpeed = Number(attr(c, 'scaleSpeed'));
-        newCell.alphaRange = Number(attr(c, 'alphaRange'));
-        newCell.alphaSpeed = Number(attr(c, 'alphaSpeed'));
-        newCell.emissionRange = radToDeg(Number(attr(c, 'emissionRange')) || 0);
-        newCell.emissionLongitude = radToDeg(Number(attr(c, 'emissionLongitude')) || 0);
-        newCell.emissionLatitude = radToDeg(Number(attr(c, 'emissionLatitude')) || 0);
-        newCell.spin = radToDeg(Number(attr(c, 'spin')) || 0);
-        newCell.spinRange = radToDeg(Number(attr(c, 'spinRange')) || 0);
-        newCell.xAcceleration = Number(attr(c, 'xAcceleration'));
-        newCell.yAcceleration = Number(attr(c, 'yAcceleration'));
-        return newCell;
-      })
+      }
+      const newCell = new CAEmitterCell();
+      newCell.id = String(attr(c, 'id') || crypto.randomUUID());
+      newCell.src = imageSrc;
+      newCell.birthRate = Number(attr(c, 'birthRate'));
+      newCell.lifetime = Number(attr(c, 'lifetime'));
+      newCell.velocity = Number(attr(c, 'velocity'));
+      newCell.scale = Number(attr(c, 'scale'));
+      newCell.scaleRange = Number(attr(c, 'scaleRange'));
+      newCell.scaleSpeed = Number(attr(c, 'scaleSpeed'));
+      newCell.alphaRange = Number(attr(c, 'alphaRange'));
+      newCell.alphaSpeed = Number(attr(c, 'alphaSpeed'));
+      newCell.emissionRange = radToDeg(Number(attr(c, 'emissionRange')) || 0);
+      newCell.emissionLongitude = radToDeg(Number(attr(c, 'emissionLongitude')) || 0);
+      newCell.emissionLatitude = radToDeg(Number(attr(c, 'emissionLatitude')) || 0);
+      newCell.spin = radToDeg(Number(attr(c, 'spin')) || 0);
+      newCell.spinRange = radToDeg(Number(attr(c, 'spinRange')) || 0);
+      newCell.xAcceleration = Number(attr(c, 'xAcceleration'));
+      newCell.yAcceleration = Number(attr(c, 'yAcceleration'));
+      return newCell;
+    })
     : [];
 
   return {
@@ -601,7 +601,7 @@ function parseCAEmitterLayer(el: Element): AnyLayer {
 function parseCATransformLayer(el: Element): AnyLayer {
   const base = parseLayerBase(el);
   const children = parseSublayers(el);
-  
+
   return {
     ...base,
     type: 'transform',
@@ -612,15 +612,15 @@ function parseCATransformLayer(el: Element): AnyLayer {
 function parseCAReplicatorLayer(el: Element): AnyLayer {
   const base = parseLayerBase(el);
   const children = parseSublayers(el);
-  
+
   const instanceCount = parseNumericAttr(el, 'instanceCount') || 1;
   const instanceDelay = parseNumericAttr(el, 'instanceDelay') || 0;
-  
+
   // Parse instanceTransform attribute
   const instanceTransformAttr = attr(el, 'instanceTransform');
   let instanceTranslation = { x: 0, y: 0, z: 0 };
   let instanceRotation = 0;
-  
+
   if (instanceTransformAttr) {
     // Parse translate(x, y, z)
     const translateMatch = instanceTransformAttr.match(/translate\s*\(\s*([^,)]+)\s*,\s*([^,)]+)\s*,\s*([^,)]+)\s*\)/);
@@ -631,14 +631,14 @@ function parseCAReplicatorLayer(el: Element): AnyLayer {
         z: Number(translateMatch[3]) || 0,
       };
     }
-    
+
     // Parse rotate(deg)
     const rotateMatch = instanceTransformAttr.match(/rotate\s*\(\s*([^)]+)deg\s*\)/);
     if (rotateMatch) {
       instanceRotation = Number(rotateMatch[1]) || 0;
     }
   }
-  
+
   return {
     ...base,
     type: 'replicator',
@@ -807,6 +807,6 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
         speed: Number.isFinite(Number(speed)) ? Number(speed) : undefined,
       };
     }
-  } catch {} 
+  } catch { }
   return parsedAnimations;
 }

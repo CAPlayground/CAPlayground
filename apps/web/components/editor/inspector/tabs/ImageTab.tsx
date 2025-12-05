@@ -8,6 +8,7 @@ import type { InspectorTabProps } from "../types";
 import type { ImageLayer } from "@/lib/ca/types";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { BlurEditor } from "../../tools/BlurEditor";
 
 interface ImageTabProps extends Omit<InspectorTabProps, 'getBuf' | 'setBuf' | 'clearBuf' | 'round2' | 'fmt2' | 'fmt0' | 'updateLayerTransient' | 'selectedBase'> {
   replaceImageForLayer: (id: string, file: File) => Promise<void>;
@@ -25,6 +26,7 @@ export function ImageTab({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const inState = !!activeState && activeState !== 'Base State';
   const [cropOpen, setCropOpen] = useState(false);
+  const [blurOpen, setBlurOpen] = useState(false);
 
   if (selected.type !== 'image') return null;
 
@@ -41,14 +43,14 @@ export function ImageTab({
           <Tooltip>
             <TooltipTrigger asChild>
               <div>
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={inState}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            Replace Image…
-          </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={inState}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Replace Image…
+                </Button>
               </div>
             </TooltipTrigger>
             {inState && <TooltipContent sideOffset={6}>Not supported for state transitions</TooltipContent>}
@@ -117,6 +119,29 @@ export function ImageTab({
                     size: { ...selected.size, w: dims.width, h: dims.height },
                   });
                 }
+              }}
+            />
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!imageSrc || inState}
+            onClick={() => {
+              if (imageSrc && !inState) {
+                setBlurOpen(true);
+              }
+            }}
+          >
+            Blur
+          </Button>
+          {imageSrc && (
+            <BlurEditor
+              open={blurOpen}
+              onOpenChange={setBlurOpen}
+              src={imageSrc}
+              filename={asset?.filename ?? selected.name ?? "image.png"}
+              onApply={async (file) => {
+                await replaceImageForLayer(selected.id, file);
               }}
             />
           )}

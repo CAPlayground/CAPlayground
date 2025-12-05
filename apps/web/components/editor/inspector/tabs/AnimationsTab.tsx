@@ -458,7 +458,7 @@ export function AnimationsTab({
           onClick={() => {
             const keyPath = ((selectedBase as any)?.animations?.keyPath ?? 'position') as KeyPath;
             const currentValues = ((selectedBase as any)?.animations?.values || []) as any[];
-            
+
             const textValues = currentValues.map(val => {
               if (typeof val === 'number') {
                 return keyPath === 'opacity' ? Math.round(val * 100).toString() : Math.round(val).toString();

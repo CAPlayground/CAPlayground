@@ -49,7 +49,7 @@ export function Inspector() {
   useEffect(() => {
     setInputs({});
   }, [selKey]);
-  
+
   const getBuf = (key: string, fallback: string): string => {
     const bufKey = `${selKey}:${key}`;
     return inputs[bufKey] !== undefined ? inputs[bufKey] : fallback;
@@ -68,12 +68,12 @@ export function Inspector() {
       return next;
     });
   };
-  
+
   const selected = (() => {
     if (!current || !selectedBase) return selectedBase;
 
     if (selectedAnimated) return selectedAnimated;
-    
+
     const state = current.activeState;
     if (!state || state === 'Base State') return selectedBase;
     const eff: any = structuredClone(selectedBase);
@@ -169,7 +169,7 @@ export function Inspector() {
       setActiveTab('image');
     } else if (selected?.type === 'video' && (['text', 'gradient', 'image', 'emitter', 'replicator', 'gyro'].includes(activeTab))) {
       setActiveTab('video');
-    } else if (!['text','emitter', 'replicator', 'gradient', 'image', 'video', 'transform'].includes(selected?.type) && ['text', 'gradient', 'image', 'video', 'emitter', 'replicator', 'gyro'].includes(activeTab)) {
+    } else if (!['text', 'emitter', 'replicator', 'gradient', 'image', 'video', 'transform'].includes(selected?.type) && ['text', 'gradient', 'image', 'video', 'emitter', 'replicator', 'gyro'].includes(activeTab)) {
       setActiveTab('geometry');
     } else if (selected?.type === 'emitter' && (['animations', 'text', 'gradient', 'image', 'video', 'content', 'replicator', 'gyro'].includes(activeTab))) {
       setActiveTab('emitter');
