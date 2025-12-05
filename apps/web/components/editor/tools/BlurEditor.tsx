@@ -29,12 +29,14 @@ export function BlurEditor({
 }: BlurEditorProps) {
   const [blurAmount, setBlurAmount] = useState(0);
   const [applying, setApplying] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
 
   useEffect(() => {
     if (open) {
       setBlurAmount(0);
+      setLoaded(false);
     }
   }, [open]);
 
@@ -59,7 +61,7 @@ export function BlurEditor({
     ctx.filter = `blur(${blurAmount}px)`;
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     ctx.filter = "none"; // Reset filter
-  }, [blurAmount, src, open]);
+  }, [blurAmount, src, open, loaded]);
 
   const handleApply = async () => {
     const canvas = canvasRef.current;
@@ -116,7 +118,7 @@ export function BlurEditor({
                 className="hidden"
                 onLoad={() => {
                   // Trigger initial draw
-                  setBlurAmount((prev) => prev);
+                  setLoaded(true);
                 }}
               />
               <canvas
