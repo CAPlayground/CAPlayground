@@ -331,7 +331,7 @@ export function CanvasPreview() {
               ))}
             </div>
           ) : null}
-          {showClockOverlay && (
+          {showClockOverlay && !showPreview && (
             <ClockOverlay
               docWidth={doc?.meta.width ?? 0}
               docHeight={doc?.meta.height ?? 0}
@@ -465,6 +465,7 @@ export function CanvasPreview() {
                         variant={showClockOverlay ? "default" : "outline"}
                         aria-pressed={showClockOverlay}
                         aria-label="Clock overlay settings"
+                        disabled={showPreview}
                         className={`h-8 w-8 ${showClockOverlay ? '' : 'hover:text-primary hover:border-primary/50 hover:bg-primary/10'}`}
                       >
                         <Clock className="h-4 w-4" />
