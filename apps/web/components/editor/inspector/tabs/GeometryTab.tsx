@@ -82,8 +82,8 @@ export function GeometryTab({
     };
 
     const parentLayer = findParentLayer(current.layers, selected.id);
-    const targetWidth = alignTarget === 'root' ? (doc?.meta.width ?? 0) : (parentLayer?.size.w ?? parentContext.containerH);
-    const targetHeight = alignTarget === 'root' ? (doc?.meta.height ?? 0) : parentContext.containerH;
+    const targetWidth = (alignTarget === 'root' || !parentLayer) ? (doc?.meta.width ?? 0) : parentLayer.size.w;
+    const targetHeight = (alignTarget === 'root' || !parentLayer) ? (doc?.meta.height ?? 0) : parentContext.containerH;
 
     let targetCssLeft = 0;
     let targetCssTop = 0;
