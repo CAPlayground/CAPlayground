@@ -39,13 +39,23 @@ export function ImageTab({
     <div className="grid grid-cols-2 gap-x-1.5 gap-y-3">
       <div className="space-y-1 col-span-2">
         <Label>Image</Label>
-        <div className="flex items-center gap-2">
+        {imageSrc && (
+          <div className="flex justify-center rounded-md border bg-secondary/20 p-2">
+            <img
+              src={imageSrc}
+              alt={selected.name || "Image layer"}
+              className="max-h-[200px] max-w-full object-contain"
+            />
+          </div>
+        )}
+        <div className="flex flex-col gap-2">
           <Tooltip>
             <TooltipTrigger asChild>
-              <div>
+              <div className="w-full">
                 <Button
                   type="button"
                   variant="secondary"
+                  className="w-full"
                   disabled={inState}
                   onClick={() => fileInputRef.current?.click()}
                 >
@@ -58,6 +68,7 @@ export function ImageTab({
           <Button
             type="button"
             variant="outline"
+            className="w-full"
             onClick={async () => {
               try {
                 const img = new Image();
@@ -93,10 +104,11 @@ export function ImageTab({
       </div>
       <div className="space-y-1 col-span-2">
         <Label>Edit</Label>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2">
           <Button
             type="button"
             variant="outline"
+            className="w-full"
             disabled={!canCrop}
             onClick={() => {
               if (canCrop) {
@@ -125,6 +137,7 @@ export function ImageTab({
           <Button
             type="button"
             variant="outline"
+            className="w-full"
             disabled={!imageSrc || inState}
             onClick={() => {
               if (imageSrc && !inState) {
@@ -355,14 +368,15 @@ function ImageCropDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="relative w-full overflow-hidden rounded-md border bg-muted">
-            <div ref={containerRef} className="relative max-h-[320px] w-full">
+          <div className="flex items-center justify-center overflow-hidden rounded-md border bg-muted p-4">
+            <div ref={containerRef} className="relative w-fit">
               <img
                 ref={imgRef}
                 src={src}
                 alt=""
-                className="block h-auto w-full"
+                className="block max-h-[50vh] max-w-full object-contain"
                 onLoad={onImageLoad}
+                draggable={false}
               />
               {naturalSize && (
                 <div className="pointer-events-none absolute inset-0">
