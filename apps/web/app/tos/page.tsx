@@ -39,7 +39,7 @@ export default function TermsPage() {
       <div className="mx-auto max-w-3xl">
         <div className="mb-6 sm:mb-8">
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Terms of Service</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Last Updated: 4th November 2025</p>
+          <p className="mt-2 text-sm text-muted-foreground">Last Updated: 9th December 2025</p>
         </div>
         {/* Paper container */}
         <div className="rounded-2xl bg-card text-card-foreground shadow-lg ring-1 ring-black/5 border border-border p-6 sm:p-10 text-base sm:text-lg">
@@ -73,7 +73,7 @@ export default function TermsPage() {
             <strong>Intellectual Property</strong>: We retain all rights to the Service. You retain rights to your User Content.
           </li>
           <li>
-            <strong>Content Sharing & Attribution</strong>: If you share wallpapers or content created with CAPlayground on social media platforms (including but not limited to TikTok, Instagram, YouTube, Twitter/X), you must provide clear attribution to CAPlayground. Acceptable attribution includes: (a) linking to caplayground.pages.dev in your post description, bio, or pinned comment, or (b) visibly crediting "CAPlayground" in your content. You may not mislead viewers about the source of the wallpapers or direct them to fraudulent instructions, scam websites, or deceptive practices instead of proper attribution.
+            <strong>Content Sharing & Attribution</strong>: If you share wallpapers or content created with CAPlayground on social media platforms (including but not limited to TikTok, Instagram, YouTube, Twitter/X), you must provide clear attribution to CAPlayground. Acceptable attribution includes: (a) linking to caplayground.vercel.app in your post description, bio, or pinned comment, or (b) visibly crediting "CAPlayground" in your content. You may not mislead viewers about the source of the wallpapers or direct them to fraudulent instructions, scam websites, or deceptive practices instead of proper attribution.
           </li>
           <li>
             <strong>Prohibited Conduct</strong>: You may not use content created with CAPlayground to: (a) deceive or defraud users, (b) promote scams or misleading instructions, (c) falsely claim creation of the Service or its features, or (d) engage in any activity that damages CAPlayground's reputation or misleads the public about the Service.

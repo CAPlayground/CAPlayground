@@ -8,7 +8,7 @@ function isOfficialHost(hostname: string): boolean {
   if (hostname === "127.0.0.1" || hostname === "[::1]") return true;
   const baseDomains = [
     "localhost",
-    "caplayground.pages.dev",
+    "caplayground.vercel.app",
     "caplayground.enkei64.xyz",
     "caplayground.netlify.app",
     "caplayground.squair.xyz",
@@ -42,7 +42,7 @@ export function UnofficialDomainBanner() {
         <AlertDescription>
           You are visiting this site on an unofficial domain. For the official site, please use
           {" "}
-          <a className="underline font-medium" href="https://caplayground.pages.dev" target="_blank" rel="noreferrer">caplayground.pages.dev</a>
+          <a className="underline font-medium" href="https://caplayground.vercel.app" target="_blank" rel="noreferrer">caplayground.vercel.app</a>
         </AlertDescription>
         <button
           type="button"
