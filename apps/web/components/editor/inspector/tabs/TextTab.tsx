@@ -68,21 +68,12 @@ export function TextTab({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="SFProText-Regular">System Default (SF Pro)</SelectItem>
-            <SelectItem value="ArialMT">Arial</SelectItem>
-            <SelectItem value="AvenirNext-Regular">Avenir Next</SelectItem>
-            <SelectItem value="Baskerville">Baskerville</SelectItem>
-            <SelectItem value="BodoniSvtyTwoITCTT-Book">Bodoni 72</SelectItem>
+            <SelectItem value="TimesNewRomanPSMT">Times New Roman</SelectItem>
             <SelectItem value="Copperplate">Copperplate</SelectItem>
             <SelectItem value="CourierNewPSMT">Courier New</SelectItem>
             <SelectItem value="Futura-Medium">Futura</SelectItem>
             <SelectItem value="Georgia">Georgia</SelectItem>
-            <SelectItem value="GillSans">Gill Sans</SelectItem>
-            <SelectItem value="HelveticaNeue">Helvetica Neue</SelectItem>
-            <SelectItem value="MarkerFelt-Thin">MarkerFelt</SelectItem>
-            <SelectItem value="Optima-Regular">Optima</SelectItem>
-            <SelectItem value="Palatino-Roman">Palatino</SelectItem>
             <SelectItem value="Papyrus">Papyrus</SelectItem>
-            <SelectItem value="TimesNewRomanPSMT">Times New Roman</SelectItem>
             <SelectItem value="Verdana">Verdana</SelectItem>
           </SelectContent>
         </Select>

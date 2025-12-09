@@ -7,22 +7,7 @@
   font-family: 'SFProText-Regular';
   src: local('SF Pro Text'), local('SF Pro'), local('.AppleSystemUIFont');
 }
-@font-face {
-  font-family: 'ArialMT';
-  src: local('Arial'), local('ArialMT');
-}
-@font-face {
-  font-family: 'AvenirNext-Regular';
-  src: local('Avenir Next'), local('AvenirNext-Regular');
-}
-@font-face {
-  font-family: 'Baskerville';
-  src: local('Baskerville');
-}
-@font-face {
-  font-family: 'BodoniSvtyTwoITCTT-Book';
-  src: local('Bodoni 72'), local('BodoniSvtyTwoITCTT-Book');
-}
+
 @font-face {
   font-family: 'Copperplate';
   src: local('Copperplate');
@@ -39,26 +24,7 @@
   font-family: 'Georgia';
   src: local('Georgia');
 }
-@font-face {
-  font-family: 'GillSans';
-  src: local('Gill Sans'), local('GillSans');
-}
-@font-face {
-  font-family: 'HelveticaNeue';
-  src: local('Helvetica Neue'), local('HelveticaNeue');
-}
-@font-face {
-  font-family: 'MarkerFelt-Thin';
-  src: local('Marker Felt'), local('MarkerFelt-Thin');
-}
-@font-face {
-  font-family: 'Optima-Regular';
-  src: local('Optima'), local('Optima-Regular');
-}
-@font-face {
-  font-family: 'Palatino-Roman';
-  src: local('Palatino'), local('Palatino-Roman');
-}
+
 @font-face {
   font-family: 'Papyrus';
   src: local('Papyrus');
