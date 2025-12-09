@@ -15,6 +15,7 @@ export default function TextRenderer({
     : 'nowrap';
   return (
     <div style={{
+      fontFamily: layer.fontFamily,
       color: layer.color,
       fontSize: layer.fontSize,
       textAlign: cssAlign as any,
