@@ -3,7 +3,7 @@ import { Footer } from "@/components/footer"
 import { Suspense } from "react"
 import TendiesChecker from "./TendiesChecker"
 
-export const runtime = "edge"
+export const runtime = "nodejs"
 
 export default function TendiesCheckPage() {
   return (

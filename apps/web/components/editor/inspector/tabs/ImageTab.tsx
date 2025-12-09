@@ -8,6 +8,7 @@ import type { InspectorTabProps } from "../types";
 import type { ImageLayer } from "@/lib/ca/types";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { BlurEditor } from "../../tools/BlurEditor";
 
 interface ImageTabProps extends Omit<InspectorTabProps, 'getBuf' | 'setBuf' | 'clearBuf' | 'round2' | 'fmt2' | 'fmt0' | 'updateLayerTransient' | 'selectedBase'> {
   replaceImageForLayer: (id: string, file: File) => Promise<void>;
@@ -25,6 +26,7 @@ export function ImageTab({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const inState = !!activeState && activeState !== 'Base State';
   const [cropOpen, setCropOpen] = useState(false);
+  const [blurOpen, setBlurOpen] = useState(false);
 
   if (selected.type !== 'image') return null;
 
@@ -37,18 +39,28 @@ export function ImageTab({
     <div className="grid grid-cols-2 gap-x-1.5 gap-y-3">
       <div className="space-y-1 col-span-2">
         <Label>Image</Label>
-        <div className="flex items-center gap-2">
+        {imageSrc && (
+          <div className="flex justify-center rounded-md border bg-secondary/20 p-2">
+            <img
+              src={imageSrc}
+              alt={selected.name || "Image layer"}
+              className="max-h-[200px] max-w-full object-contain"
+            />
+          </div>
+        )}
+        <div className="flex flex-col gap-2">
           <Tooltip>
             <TooltipTrigger asChild>
-              <div>
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={inState}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            Replace Image…
-          </Button>
+              <div className="w-full">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full"
+                  disabled={inState}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Replace Image…
+                </Button>
               </div>
             </TooltipTrigger>
             {inState && <TooltipContent sideOffset={6}>Not supported for state transitions</TooltipContent>}
@@ -56,6 +68,7 @@ export function ImageTab({
           <Button
             type="button"
             variant="outline"
+            className="w-full"
             onClick={async () => {
               try {
                 const img = new Image();
@@ -91,10 +104,11 @@ export function ImageTab({
       </div>
       <div className="space-y-1 col-span-2">
         <Label>Edit</Label>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2">
           <Button
             type="button"
             variant="outline"
+            className="w-full"
             disabled={!canCrop}
             onClick={() => {
               if (canCrop) {
@@ -117,6 +131,30 @@ export function ImageTab({
                     size: { ...selected.size, w: dims.width, h: dims.height },
                   });
                 }
+              }}
+            />
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            disabled={!imageSrc || inState}
+            onClick={() => {
+              if (imageSrc && !inState) {
+                setBlurOpen(true);
+              }
+            }}
+          >
+            Blur
+          </Button>
+          {imageSrc && (
+            <BlurEditor
+              open={blurOpen}
+              onOpenChange={setBlurOpen}
+              src={imageSrc}
+              filename={asset?.filename ?? selected.name ?? "image.png"}
+              onApply={async (file) => {
+                await replaceImageForLayer(selected.id, file);
               }}
             />
           )}
@@ -330,14 +368,15 @@ function ImageCropDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="relative w-full overflow-hidden rounded-md border bg-muted">
-            <div ref={containerRef} className="relative max-h-[320px] w-full">
+          <div className="flex items-center justify-center overflow-hidden rounded-md border bg-muted p-4">
+            <div ref={containerRef} className="relative w-fit">
               <img
                 ref={imgRef}
                 src={src}
                 alt=""
-                className="block h-auto w-full"
+                className="block max-h-[50vh] max-w-full object-contain"
                 onLoad={onImageLoad}
+                draggable={false}
               />
               {naturalSize && (
                 <div className="pointer-events-none absolute inset-0">

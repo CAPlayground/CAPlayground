@@ -1,8 +1,8 @@
 "use client";
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import type { AnyLayer, CAProject, ImageLayer, LayerBase, ShapeLayer, TextLayer, VideoLayer, GyroParallaxDictionary, EmitterLayer, TransformLayer, ReplicatorLayer } from "@/lib/ca/types";
-import { serializeCAML } from "@/lib/ca/caml";
+import type { AnyLayer, CAProject, ImageLayer, LayerBase, ShapeLayer, TextLayer, VideoLayer, GyroParallaxDictionary, EmitterLayer, TransformLayer, ReplicatorLayer, LiquidGlassLayer } from "@/lib/ca/types";
+import { serializeCAML } from "@/lib/ca/serialize/serializeCAML";
 import { deleteFile, getProject, listFiles, putBlobFile, putBlobFilesBatch, putTextFile } from "@/lib/storage";
 import {
   genId,
@@ -62,6 +62,7 @@ export type EditorContextValue = {
   addEmitterLayer: () => void;
   addTransformLayer: () => void;
   addReplicatorLayer: () => void;
+  addLiquidGlassLayer: () => void;
   removeEmitterCell: (layerId: string, index: number) => void;
   updateLayer: (id: string, patch: Partial<AnyLayer>) => void;
   updateLayerTransient: (id: string, patch: Partial<AnyLayer>) => void;
@@ -84,8 +85,6 @@ export type EditorContextValue = {
       [state in 'Base State' | 'Locked' | 'Unlock' | 'Sleep' | 'Locked Light' | 'Unlock Light' | 'Sleep Light' | 'Locked Dark' | 'Unlock Dark' | 'Sleep Dark']: number[];
     }>,
   ) => void;
-  isAnimationPlaying: boolean;
-  setIsAnimationPlaying: React.Dispatch<React.SetStateAction<boolean>>;
   animatedLayers: AnyLayer[];
   setAnimatedLayers: React.Dispatch<React.SetStateAction<AnyLayer[]>>;
   hiddenLayerIds: Set<string>;
@@ -117,8 +116,7 @@ export function EditorProvider({
     assets?: Record<string, { filename: string; dataURL: string }>;
   } | null>(null);
   const lastAddRef = useRef<{ key: string; ts: number } | null>(null);
-  
-  const [isAnimationPlaying, setIsAnimationPlaying] = useState(false);
+
   const [animatedLayers, setAnimatedLayers] = useState<AnyLayer[]>([]);
   const [hiddenLayerIds, setHiddenLayerIds] = useState<Set<string>>(new Set());
 
@@ -126,7 +124,7 @@ export function EditorProvider({
   const currentDoc: CADoc | null = doc ? doc.docs[currentKey] : null;
 
   const pushHistory = useCallback((prev: ProjectDocument) => {
-    pastRef.current.push(JSON.parse(JSON.stringify(prev)) as ProjectDocument);
+    pastRef.current.push(structuredClone(prev));
     futureRef.current = [];
   }, []);
 
@@ -151,7 +149,7 @@ export function EditorProvider({
         let floatingFiles: Awaited<ReturnType<typeof listFiles>> = [];
         let backgroundFiles: Awaited<ReturnType<typeof listFiles>> = [];
         let wallpaperFiles: Awaited<ReturnType<typeof listFiles>> = [];
-        
+
         if (isGyro) {
           wallpaperFiles = await listFiles(projectId, `${folder}/Wallpaper.ca/`);
           if (wallpaperFiles.length === 0) {
@@ -204,12 +202,12 @@ export function EditorProvider({
                 layers = rootLayer?.name === 'Root Layer' && Array.isArray(rootLayer.children) ? rootLayer.children : [rootLayer];
                 states = parseStates(main.data);
                 stateOverrides = parseStateOverrides(main.data) as any;
-                
+
                 if (caType === 'wallpaper') {
                   wallpaperParallaxGroups = parseWallpaperParallaxGroups(main.data);
                 }
               }
-            } catch {}
+            } catch { }
           }
           if (!main && isGyro) {
             layers.push({
@@ -305,7 +303,7 @@ export function EditorProvider({
                   const assetPath = `${caFolder}/assets/${filename}`;
                   await deleteFile(projectId, assetPath);
                 }
-              } catch {}
+              } catch { }
             }
           }
 
@@ -324,7 +322,7 @@ export function EditorProvider({
         };
 
         const emptyDoc: CADoc = { layers: [], selectedId: null, assets: {}, states: [...fixedStates], activeState: 'Base State', stateOverrides: {}, appearanceSplit: false, appearanceMode: 'light' };
-        
+
         let floatingDoc: CADoc, backgroundDoc: CADoc, wallpaperDoc: CADoc;
         if (isGyro) {
           wallpaperDoc = await readDocFromFiles(wallpaperFiles, 'wallpaper');
@@ -343,7 +341,7 @@ export function EditorProvider({
         };
         try {
           const applyAppearancePrefs = (docIn: ProjectDocument): ProjectDocument => {
-            const keys: Array<'background' | 'floating' | 'wallpaper'> = ['background','floating','wallpaper'];
+            const keys: Array<'background' | 'floating' | 'wallpaper'> = ['background', 'floating', 'wallpaper'];
             const out: ProjectDocument = docIn;
             for (const k of keys) {
               const cur = out.docs[k];
@@ -361,13 +359,13 @@ export function EditorProvider({
                 }
                 const m = localStorage.getItem(`caplay_states_appearance_mode_${projectId}_${k}`);
                 if (m === 'dark' || m === 'light') mode = m;
-              } catch {}
+              } catch { }
               cur.appearanceSplit = split;
               cur.appearanceMode = mode;
-              const baseStates = ["Locked","Unlock","Sleep"] as const;
+              const baseStates = ["Locked", "Unlock", "Sleep"] as const;
               if (split) {
-                const lightStates = ["Locked Light","Unlock Light","Sleep Light"] as const;
-                const darkStates = ["Locked Dark","Unlock Dark","Sleep Dark"] as const;
+                const lightStates = ["Locked Light", "Unlock Light", "Sleep Light"] as const;
+                const darkStates = ["Locked Dark", "Unlock Dark", "Sleep Dark"] as const;
                 cur.states = [...lightStates, ...darkStates] as any;
                 const nextSO: Record<string, Array<{ targetId: string; keyPath: string; value: string | number }>> = {};
                 const curSO = cur.stateOverrides || {};
@@ -396,7 +394,7 @@ export function EditorProvider({
                 }
                 cur.stateOverrides = nextSO;
                 if (cur.activeState && /\s(Light|Dark)$/.test(String(cur.activeState))) {
-                  cur.activeState = String(cur.activeState).replace(/\s(Light|Dark)$/,'') as any;
+                  cur.activeState = String(cur.activeState).replace(/\s(Light|Dark)$/, '') as any;
                 }
               }
             }
@@ -540,8 +538,8 @@ export function EditorProvider({
           geometryFlipped: (snapshot.meta as any).geometryFlipped ?? 0,
           children: toCamlLayers((caDoc.layers as AnyLayer[]) || [], caDoc.assets),
         };
-        
-        const root = key === 'floating' 
+
+        const root = key === 'floating'
           ? rootBase
           : { ...rootBase, backgroundColor: snapshot.meta.background };
 
@@ -568,7 +566,7 @@ export function EditorProvider({
         const buildTransitions = (stateNames: string[], overrides: Record<string, Array<{ targetId: string; keyPath: string; value: string | number }>> | undefined) => {
           const result: Array<{ fromState: string; toState: string; elements: Array<{ targetId: string; keyPath: string; animation?: any }> }> = [];
           if (!overrides) return result;
-          const allowed = new Set(['opacity','cornerRadius', 'zPosition']);
+          const allowed = new Set(['opacity', 'cornerRadius', 'zPosition']);
           const names = (stateNames || []).filter((n) => n && n !== 'Base State');
           for (const st of names) {
             const ovs = (overrides[st] || []).filter((o) => allowed.has(o.keyPath));
@@ -580,7 +578,7 @@ export function EditorProvider({
         };
 
         const transitions = buildTransitions(outputStates as any, outputOverrides as any);
-        
+
         let caml = serializeCAML(
           root,
           {
@@ -607,7 +605,7 @@ export function EditorProvider({
 
         const assets = caDoc.assets || {};
         const assetFiles: Array<{ path: string; data: Blob }> = [];
-        
+
         for (const [assetId, info] of Object.entries(assets)) {
           try {
             const dataURL = info.dataURL;
@@ -618,7 +616,7 @@ export function EditorProvider({
             console.error('Failed to prepare asset:', info.filename, err);
           }
         }
-        
+
         if (assetFiles.length > 0) {
           try {
             await putBlobFilesBatch(projectId, assetFiles);
@@ -626,7 +624,7 @@ export function EditorProvider({
             console.error('Failed to write assets batch:', err);
           }
         }
-        
+
         const dbAssets = (await listFiles(projectId) || [])
           ?.filter(f => f.path.includes('/assets/') && f.path.includes(caFolder));
         for (const dbAsset of dbAssets) {
@@ -638,7 +636,7 @@ export function EditorProvider({
               const assetPath = `${caFolder}/assets/${filename}`;
               await deleteFile(projectId, assetPath);
             }
-          } catch {}
+          } catch { }
         }
       }
     } catch (e) {
@@ -691,7 +689,7 @@ export function EditorProvider({
 
       const selId = cur.selectedId || null;
       const nextLayers = insertIntoSelected(cur.layers, selId, layer);
-      
+
       const next = { ...cur, layers: nextLayers, selectedId: layer.id };
       return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
@@ -708,14 +706,14 @@ export function EditorProvider({
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
-    
+
     const { width: imgW, height: imgH } = await new Promise<{ width: number; height: number }>((resolve, reject) => {
       const img = new Image();
       img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
       img.onerror = reject;
       img.src = dataURL;
     });
-    
+
     setDoc((prev) => {
       if (!prev) return prev;
       pushHistory(prev);
@@ -726,7 +724,7 @@ export function EditorProvider({
       const aspectRatio = imgW / imgH;
       let w = imgW;
       let h = imgH;
-      
+
       if (w > canvasW || h > canvasH) {
         const scaleW = canvasW / imgW;
         const scaleH = canvasH / imgH;
@@ -734,11 +732,11 @@ export function EditorProvider({
         w = imgW * scale;
         h = imgH * scale;
       }
-      
+
       const parentLayer = findById(cur.layers, cur.selectedId)
       const x = (parentLayer?.size.w || canvasW) / 2;
       const y = (parentLayer?.size.h || canvasH) / 2;
-      
+
       const layer: ImageLayer = {
         ...addBase(filename || "Pasted Image"),
         type: "image",
@@ -774,7 +772,7 @@ export function EditorProvider({
       const folder = `${projName}.ca`;
       const safe = sanitizeFilename(file.name) || `image-${Date.now()}.png`;
       await putBlobFile(projectId, `${folder}/${caFolder}/assets/${safe}`, file);
-    } catch {}
+    } catch { }
 
     setDoc((prev) => {
       if (!prev) return prev;
@@ -817,7 +815,7 @@ export function EditorProvider({
       const folder = `${projName}.ca`;
       const safe = sanitizeFilename(file.name) || `image-${Date.now()}.png`;
       await putBlobFile(projectId, `${folder}/${caFolder}/assets/${safe}`, file);
-    } catch {}
+    } catch { }
 
     setDoc((prev) => {
       if (!prev) return prev;
@@ -830,23 +828,23 @@ export function EditorProvider({
       assets[cellId] = { filename, dataURL };
       const updateRec = (layers: AnyLayer[]): AnyLayer[] =>
         layers.map((l) => {
-        if (l.id === layerId) {
-          const newCell = new CAEmitterCell()
-          newCell.contents = dataURL
-          newCell.id = cellId
-          return {
-            ...l,
-            emitterCells: [...((l as any).emitterCells || []), newCell],
-          } as EmitterLayer;
-        }
-        if (l.children?.length) {
-          return {
-            ...l,
-            children: updateRec(l.children),
-          };
-        }
-        return l;
-      });
+          if (l.id === layerId) {
+            const newCell = new CAEmitterCell()
+            newCell.contents = dataURL
+            newCell.id = cellId
+            return {
+              ...l,
+              emitterCells: [...((l as any).emitterCells || []), newCell],
+            } as EmitterLayer;
+          }
+          if (l.children?.length) {
+            return {
+              ...l,
+              children: updateRec(l.children),
+            };
+          }
+          return l;
+        });
       const next = { ...cur, assets, layers: updateRec(cur.layers) };
       return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
@@ -893,7 +891,7 @@ export function EditorProvider({
       const parentLayer = findById(cur.layers, cur.selectedId)
       const x = (parentLayer?.size.w || canvasW) / 2;
       const y = (parentLayer?.size.h || canvasH) / 2;
-      
+
       const layer: ImageLayer = {
         ...addBase("Image Layer"),
         type: "image",
@@ -919,14 +917,14 @@ export function EditorProvider({
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
-    
+
     const { width: imgW, height: imgH } = await new Promise<{ width: number; height: number }>((resolve, reject) => {
       const img = new Image();
       img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
       img.onerror = reject;
       img.src = dataURL;
     });
-    
+
     setDoc((prev) => {
       if (!prev) return prev;
       pushHistory(prev);
@@ -937,7 +935,7 @@ export function EditorProvider({
       const aspectRatio = imgW / imgH;
       let w = imgW;
       let h = imgH;
-      
+
       if (w > canvasW || h > canvasH) {
         const scaleW = canvasW / imgW;
         const scaleH = canvasH / imgH;
@@ -1046,6 +1044,38 @@ export function EditorProvider({
     });
   }, [addBase]);
 
+  const addLiquidGlassLayer = useCallback(() => {
+    setDoc((prev) => {
+      if (!prev) return prev;
+      const canvasW = prev.meta.width || 390;
+      const canvasH = prev.meta.height || 844;
+      const key = prev.activeCA;
+      const cur = prev.docs[key];
+      const selId = cur.selectedId || null;
+      const sig = `liquidGlass:${selId || '__root__'}`;
+      const now = Date.now();
+      if (lastAddRef.current && lastAddRef.current.key === sig && (now - lastAddRef.current.ts) < 400) {
+        return prev;
+      }
+      lastAddRef.current = { key: sig, ts: now };
+      pushHistory(prev);
+      const parentLayer = findById(cur.layers, cur.selectedId)
+      const x = (parentLayer?.size.w || canvasW) / 2;
+      const y = (parentLayer?.size.h || canvasH) / 2;
+      const layer: LiquidGlassLayer = {
+        ...addBase("Liquid Glass Layer"),
+        type: "liquidGlass",
+        position: { x, y },
+        size: { w: 200, h: 200 },
+        cornerRadius: 40,
+      };
+      const nextLayers = insertIntoSelected(cur.layers, selId, layer);
+
+      const next = { ...cur, layers: nextLayers, selectedId: layer.id };
+      return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
+    });
+  }, [addBase]);
+
   const addVideoLayerFromFile = useCallback(async (file: File) => {
     const isGif = /image\/gif/i.test(file.type || '') || /\.gif$/i.test(file.name || '');
     const layerId = genId();
@@ -1064,7 +1094,7 @@ export function EditorProvider({
       const buf = await file.arrayBuffer();
       const decoder: any = new AnyWin.ImageDecoder({ data: new Uint8Array(buf), type: 'image/gif' });
       let track: any = null;
-      try { track = decoder.tracks?.selectedTrack || decoder.tracks?.[0] || null; } catch {}
+      try { track = decoder.tracks?.selectedTrack || decoder.tracks?.[0] || null; } catch { }
       let gifFrameCount: number = Number(track?.frameCount ?? 0);
       if (!Number.isFinite(gifFrameCount) || gifFrameCount <= 0) {
         gifFrameCount = 0;
@@ -1093,7 +1123,7 @@ export function EditorProvider({
           const dataURL = canvas.toDataURL('image/png');
           const filename = `${framePrefix}${i}${frameExtension}`;
           frameAssets.push({ dataURL, filename });
-          try { img.close?.(); } catch {}
+          try { img.close?.(); } catch { }
         } catch { break; }
       }
       const fps = assumedFps;
@@ -1149,7 +1179,7 @@ export function EditorProvider({
     video.preload = 'metadata';
     const videoURL = URL.createObjectURL(file);
     video.src = videoURL;
-    
+
     await new Promise<void>((resolve, reject) => {
       video.onloadedmetadata = () => resolve();
       video.onerror = reject;
@@ -1170,7 +1200,7 @@ export function EditorProvider({
     for (let i = 0; i < frameCount; i++) {
       const time = (i / fps);
       video.currentTime = time;
-      
+
       await new Promise<void>((resolve) => {
         video.onseeked = () => {
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -1282,7 +1312,7 @@ export function EditorProvider({
       return { ...prev, docs: { ...prev.docs, [key]: nextCur } } as ProjectDocument;
     });
   }, [addBase]);
-  
+
   const addTransformLayer = useCallback(() => {
     setDoc((prev) => {
       if (!prev) return prev;
@@ -1334,7 +1364,7 @@ export function EditorProvider({
       return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
   }, [addBase]);
-  
+
   const updateLayer = useCallback((id: string, patch: Partial<AnyLayer>) => {
     setDoc((prev) => {
       if (!prev) return prev;
@@ -1469,7 +1499,7 @@ export function EditorProvider({
       clipboardRef.current = { type: 'layers', data: [JSON.parse(JSON.stringify(sel)) as AnyLayer], assets: images };
       try {
         navigator.clipboard?.writeText?.(JSON.stringify({ __caplay__: true, type: 'layers', data: clipboardRef.current.data, assets: clipboardRef.current.assets }));
-      } catch {}
+      } catch { }
       return prev;
     });
   }, []);
@@ -1625,7 +1655,7 @@ export function EditorProvider({
       return { ...prev, docs: { ...prev.docs, [key]: nextCur } } as ProjectDocument;
     });
   }, []);
-  
+
   const updateBatchSpecificStateOverride = useCallback((
     targetIds: string[],
     keyPath: 'position.x' | 'position.y' | 'zPosition' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'opacity' | 'cornerRadius',
@@ -1642,7 +1672,7 @@ export function EditorProvider({
         const hasAppearanceSplit = cur.appearanceSplit;
         let nextState = next[hasAppearanceSplit ? `${state} Dark` : state];
         if (!nextState) return prev;
-  
+
         const list = [...(nextState || [])];
         for (let i = 0; i < targetIds.length; i++) {
           const targetId = targetIds[i];
@@ -1697,6 +1727,7 @@ export function EditorProvider({
     addEmitterLayer,
     addTransformLayer,
     addReplicatorLayer,
+    addLiquidGlassLayer,
     updateLayer,
     updateLayerTransient,
     selectLayer,
@@ -1712,8 +1743,6 @@ export function EditorProvider({
     updateStateOverride,
     updateStateOverrideTransient,
     updateBatchSpecificStateOverride,
-    isAnimationPlaying,
-    setIsAnimationPlaying,
     animatedLayers,
     setAnimatedLayers,
     hiddenLayerIds,
@@ -1737,6 +1766,7 @@ export function EditorProvider({
     addEmitterLayer,
     addTransformLayer,
     addReplicatorLayer,
+    addLiquidGlassLayer,
     updateLayer,
     updateLayerTransient,
     selectLayer,
@@ -1752,8 +1782,6 @@ export function EditorProvider({
     updateStateOverride,
     updateStateOverrideTransient,
     updateBatchSpecificStateOverride,
-    isAnimationPlaying,
-    setIsAnimationPlaying,
     animatedLayers,
     setAnimatedLayers,
     hiddenLayerIds,

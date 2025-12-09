@@ -6,9 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Slider } from "@/components/ui/slider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Fragment, useState } from "react";
 import type { InspectorTabProps } from "../types";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { AlignHorizontalJustifyStart, AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd, AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, Plus, Minus } from "lucide-react";
+import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useEditor } from "../../editor-context";
+import { getParentAbsContextFor } from "../../canvas-preview/utils/coordinates";
 
 interface GeometryTabProps extends InspectorTabProps {
   disablePosX: boolean;
@@ -39,11 +44,83 @@ export function GeometryTab({
   const inState = !!activeState && activeState !== 'Base State';
   const selAx = (selected as any).anchorPoint?.x ?? 0.5;
   const selAy = (selected as any).anchorPoint?.y ?? 0.5;
-  
+
   const standardValues = [0, 0.5, 1];
   const isStandardAnchor = standardValues.includes(selAx) && standardValues.includes(selAy);
-  
+
   const [useCustomAnchor, setUseCustomAnchor] = useState(!isStandardAnchor);
+  const [resizePercentage, setResizePercentage] = useState(10);
+  const [showGeometryResize] = useLocalStorage<boolean>("caplay_settings_show_geometry_resize", false);
+  const [showAlignButtons] = useLocalStorage<boolean>("caplay_settings_show_align_buttons", false);
+  const [alignTarget, setAlignTarget] = useLocalStorage<'root' | 'parent'>("caplay_settings_align_target", 'parent');
+  const { doc } = useEditor();
+
+  const alignLayer = (horizontalAlign?: 'left' | 'center' | 'right', verticalAlign?: 'top' | 'center' | 'bottom') => {
+    const key = doc?.activeCA ?? 'floating';
+    const current = doc?.docs?.[key];
+    if (!current) return;
+
+    const layerWidth = selected.size.w;
+    const layerHeight = selected.size.h;
+
+    const parentContext = getParentAbsContextFor(
+      selected.id,
+      current.layers,
+      doc?.meta.height ?? 0,
+      doc?.meta.geometryFlipped
+    );
+
+    const findParentLayer = (layers: any[], targetId: string, parent: any = null): any => {
+      for (const layer of layers) {
+        if (layer.id === targetId) return parent;
+        if (layer.children) {
+          const found = findParentLayer(layer.children, targetId, layer);
+          if (found !== null) return found;
+        }
+      }
+      return null;
+    };
+
+    const parentLayer = findParentLayer(current.layers, selected.id);
+    const targetWidth = (alignTarget === 'root' || !parentLayer) ? (doc?.meta.width ?? 0) : parentLayer.size.w;
+    const targetHeight = (alignTarget === 'root' || !parentLayer) ? (doc?.meta.height ?? 0) : parentContext.containerH;
+
+    let targetCssLeft = 0;
+    let targetCssTop = 0;
+
+    if (horizontalAlign === 'left') {
+      targetCssLeft = 0;
+    } else if (horizontalAlign === 'center') {
+      targetCssLeft = (targetWidth - layerWidth) / 2;
+    } else if (horizontalAlign === 'right') {
+      targetCssLeft = targetWidth - layerWidth;
+    }
+
+    if (verticalAlign === 'top') {
+      targetCssTop = 0;
+    } else if (verticalAlign === 'center') {
+      targetCssTop = (targetHeight - layerHeight) / 2;
+    } else if (verticalAlign === 'bottom') {
+      targetCssTop = targetHeight - layerHeight;
+    }
+
+    const parentOffsetLeft = alignTarget === 'root' ? parentContext.left : 0;
+    const parentOffsetTop = alignTarget === 'root' ? parentContext.top : 0;
+
+    const relativeCssLeft = horizontalAlign ? targetCssLeft - parentOffsetLeft :
+      selected.position.x - selAx * layerWidth;
+    const relativeCssTop = verticalAlign ? targetCssTop - parentOffsetTop :
+      (parentContext.useYUp ?
+        (parentContext.containerH - (selected.position.y + (1 - selAy) * layerHeight)) :
+        (selected.position.y - selAy * layerHeight));
+
+    const newX = relativeCssLeft + selAx * layerWidth;
+    const newY = parentContext.useYUp ?
+      ((parentContext.containerH - relativeCssTop) - (1 - selAy) * layerHeight) :
+      (relativeCssTop + selAy * layerHeight);
+
+    updateLayer(selected.id, { position: { x: round2(newX), y: round2(newY) } as any });
+  };
   return (
     <div>
       {(disablePosX || disablePosY || disableRotX || disableRotY || disableRotZ) && (
@@ -96,6 +173,84 @@ export function GeometryTab({
               clearBuf('pos-y');
             }} />
         </div>
+        {showAlignButtons && (
+          <div className="space-y-1 col-span-2">
+            <div className="flex items-center justify-between mb-1">
+              <Label>Align</Label>
+              <Select value={alignTarget} onValueChange={(value: 'root' | 'parent') => setAlignTarget(value)}>
+                <SelectTrigger className="h-7 w-[110px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="root">To Canvas</SelectItem>
+                  <SelectItem value="parent">To Parent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-6 gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => alignLayer('left', undefined)}
+                title="Align left"
+                disabled={disablePosX}
+              >
+                <AlignHorizontalJustifyStart className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => alignLayer('center', undefined)}
+                title="Align horizontal center"
+                disabled={disablePosX}
+              >
+                <AlignHorizontalJustifyCenter className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => alignLayer('right', undefined)}
+                title="Align right"
+                disabled={disablePosX}
+              >
+                <AlignHorizontalJustifyEnd className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => alignLayer(undefined, 'top')}
+                title="Align top"
+                disabled={disablePosY}
+              >
+                <AlignVerticalJustifyStart className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => alignLayer(undefined, 'center')}
+                title="Align vertical center"
+                disabled={disablePosY}
+              >
+                <AlignVerticalJustifyCenter className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => alignLayer(undefined, 'bottom')}
+                title="Align bottom"
+                disabled={disablePosY}
+              >
+                <AlignVerticalJustifyEnd className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
         <div className="space-y-1">
           <Label htmlFor="w">Width</Label>
           <Input id="w" type="number" step="0.01" value={getBuf('w', fmt2(selected.size.w))}
@@ -116,6 +271,49 @@ export function GeometryTab({
               updateLayer(selected.id, { size: { ...selected.size, w: num } as any });
               clearBuf('w');
             }} />
+          <div className="flex items-center gap-1">
+            {showGeometryResize && (
+              <>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-6 flex-1"
+                  disabled={selected.type === 'text' && (((selected as any).wrapped ?? 1) as number) !== 1}
+                  onClick={() => {
+                    const factor = 1 - (resizePercentage / 100);
+                    const newW = Math.max(0, round2(selected.size.w * factor));
+                    updateLayer(selected.id, { size: { ...selected.size, w: newW } as any });
+                  }}
+                >
+                  <Minus className="h-3 w-3" />
+                </Button>
+                <div className="relative flex items-center justify-center w-12">
+                  <Input
+                    className="h-6 px-1 text-center text-xs pr-3"
+                    value={resizePercentage}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      if (!Number.isNaN(val) && val >= 0) setResizePercentage(val);
+                    }}
+                  />
+                  <span className="absolute right-1 text-[10px] text-muted-foreground pointer-events-none">%</span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-6 flex-1"
+                  disabled={selected.type === 'text' && (((selected as any).wrapped ?? 1) as number) !== 1}
+                  onClick={() => {
+                    const factor = 1 + (resizePercentage / 100);
+                    const newW = round2(selected.size.w * factor);
+                    updateLayer(selected.id, { size: { ...selected.size, w: newW } as any });
+                  }}
+                >
+                  <Plus className="h-3 w-3" />
+                </Button>
+              </>
+            )}
+          </div>
         </div>
         <div className="space-y-1">
           <Label htmlFor="h">Height</Label>
@@ -137,6 +335,49 @@ export function GeometryTab({
               updateLayer(selected.id, { size: { ...selected.size, h: num } as any });
               clearBuf('h');
             }} />
+          <div className="flex items-center gap-1">
+            {showGeometryResize && (
+              <>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-6 flex-1"
+                  disabled={selected.type === 'text'}
+                  onClick={() => {
+                    const factor = 1 - (resizePercentage / 100);
+                    const newH = Math.max(0, round2(selected.size.h * factor));
+                    updateLayer(selected.id, { size: { ...selected.size, h: newH } as any });
+                  }}
+                >
+                  <Minus className="h-3 w-3" />
+                </Button>
+                <div className="relative flex items-center justify-center w-12">
+                  <Input
+                    className="h-6 px-1 text-center text-xs pr-3"
+                    value={resizePercentage}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      if (!Number.isNaN(val) && val >= 0) setResizePercentage(val);
+                    }}
+                  />
+                  <span className="absolute right-1 text-[10px] text-muted-foreground pointer-events-none">%</span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-6 flex-1"
+                  disabled={selected.type === 'text'}
+                  onClick={() => {
+                    const factor = 1 + (resizePercentage / 100);
+                    const newH = round2(selected.size.h * factor);
+                    updateLayer(selected.id, { size: { ...selected.size, h: newH } as any });
+                  }}
+                >
+                  <Plus className="h-3 w-3" />
+                </Button>
+              </>
+            )}
+          </div>
         </div>
         <div className="space-y-1 col-span-2">
           <Label>Rotation (deg)</Label>
@@ -221,91 +462,91 @@ export function GeometryTab({
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className={inState ? 'opacity-50 pointer-events-none' : ''}>
-            {!useCustomAnchor ? (
-              <div className="grid grid-cols-3 gap-1">
-                {([1,0.5,0] as number[]).map((ay, rowIdx) => (
-                  <Fragment key={`row-${rowIdx}`}>
-                    {([0,0.5,1] as number[]).map((ax, colIdx) => {
-                      const isActive = Math.abs(selAx - ax) < 1e-6 && Math.abs(selAy - ay) < 1e-6;
-                      return (
-                        <Button key={`ap-${rowIdx}-${colIdx}`} type="button" variant={isActive ? 'default' : 'outline'} size="sm"
+                  {!useCustomAnchor ? (
+                    <div className="grid grid-cols-3 gap-1">
+                      {([1, 0.5, 0] as number[]).map((ay, rowIdx) => (
+                        <Fragment key={`row-${rowIdx}`}>
+                          {([0, 0.5, 1] as number[]).map((ax, colIdx) => {
+                            const isActive = Math.abs(selAx - ax) < 1e-6 && Math.abs(selAy - ay) < 1e-6;
+                            return (
+                              <Button key={`ap-${rowIdx}-${colIdx}`} type="button" variant={isActive ? 'default' : 'outline'} size="sm"
+                                disabled={inState}
+                                onClick={() => updateLayer(selected.id, { anchorPoint: { x: ax, y: ay } as any })}>
+                                {ax},{ay}
+                              </Button>
+                            );
+                          })}
+                        </Fragment>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="anchor-x" className="text-xs">X ({Math.round(selAx * 100)}%)</Label>
+                        </div>
+                        <Slider
+                          id="anchor-x"
+                          min={0}
+                          max={100}
+                          step={1}
                           disabled={inState}
-                          onClick={()=> updateLayer(selected.id, { anchorPoint: { x: ax, y: ay } as any })}>
-                          {ax},{ay}
-                        </Button>
-                      );
-                    })}
-                  </Fragment>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="anchor-x" className="text-xs">X ({Math.round(selAx * 100)}%)</Label>
+                          value={[Math.round(selAx * 100)]}
+                          onValueChange={([val]) => {
+                            const newX = val / 100;
+                            updateLayerTransient(selected.id, { anchorPoint: { x: newX, y: selAy } as any });
+                          }}
+                          onValueCommit={([val]) => {
+                            const newX = val / 100;
+                            updateLayer(selected.id, { anchorPoint: { x: newX, y: selAy } as any });
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="anchor-y" className="text-xs">Y ({Math.round(selAy * 100)}%)</Label>
+                        </div>
+                        <Slider
+                          id="anchor-y"
+                          min={0}
+                          max={100}
+                          step={1}
+                          disabled={inState}
+                          value={[Math.round(selAy * 100)]}
+                          onValueChange={([val]) => {
+                            const newY = val / 100;
+                            updateLayerTransient(selected.id, { anchorPoint: { x: selAx, y: newY } as any });
+                          }}
+                          onValueCommit={([val]) => {
+                            const newY = val / 100;
+                            updateLayer(selected.id, { anchorPoint: { x: selAx, y: newY } as any });
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 mt-2">
+                    <Switch
+                      id="custom-anchor"
+                      checked={useCustomAnchor}
+                      disabled={inState}
+                      onCheckedChange={(checked) => {
+                        setUseCustomAnchor(checked);
+                        if (!checked) {
+                          const nearestX = standardValues.reduce((prev, curr) =>
+                            Math.abs(curr - selAx) < Math.abs(prev - selAx) ? curr : prev
+                          );
+                          const nearestY = standardValues.reduce((prev, curr) =>
+                            Math.abs(curr - selAy) < Math.abs(prev - selAy) ? curr : prev
+                          );
+                          updateLayer(selected.id, { anchorPoint: { x: nearestX, y: nearestY } as any });
+                        }
+                      }}
+                    />
+                    <Label htmlFor="custom-anchor" className="text-xs text-muted-foreground cursor-pointer">
+                      Use custom anchor point
+                    </Label>
                   </div>
-                  <Slider
-                    id="anchor-x"
-                    min={0}
-                    max={100}
-                    step={1}
-                    disabled={inState}
-                    value={[Math.round(selAx * 100)]}
-                    onValueChange={([val]) => {
-                      const newX = val / 100;
-                      updateLayerTransient(selected.id, { anchorPoint: { x: newX, y: selAy } as any });
-                    }}
-                    onValueCommit={([val]) => {
-                      const newX = val / 100;
-                      updateLayer(selected.id, { anchorPoint: { x: newX, y: selAy } as any });
-                    }}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="anchor-y" className="text-xs">Y ({Math.round(selAy * 100)}%)</Label>
-                  </div>
-                  <Slider
-                    id="anchor-y"
-                    min={0}
-                    max={100}
-                    step={1}
-                    disabled={inState}
-                    value={[Math.round(selAy * 100)]}
-                    onValueChange={([val]) => {
-                      const newY = val / 100;
-                      updateLayerTransient(selected.id, { anchorPoint: { x: selAx, y: newY } as any });
-                    }}
-                    onValueCommit={([val]) => {
-                      const newY = val / 100;
-                      updateLayer(selected.id, { anchorPoint: { x: selAx, y: newY } as any });
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-            <div className="flex items-center gap-2 mt-2">
-              <Switch
-                id="custom-anchor"
-                checked={useCustomAnchor}
-                disabled={inState}
-                onCheckedChange={(checked) => {
-                  setUseCustomAnchor(checked);
-                  if (!checked) {
-                    const nearestX = standardValues.reduce((prev, curr) => 
-                      Math.abs(curr - selAx) < Math.abs(prev - selAx) ? curr : prev
-                    );
-                    const nearestY = standardValues.reduce((prev, curr) => 
-                      Math.abs(curr - selAy) < Math.abs(prev - selAy) ? curr : prev
-                    );
-                    updateLayer(selected.id, { anchorPoint: { x: nearestX, y: nearestY } as any });
-                  }
-                }}
-              />
-              <Label htmlFor="custom-anchor" className="text-xs text-muted-foreground cursor-pointer">
-                Use custom anchor point
-              </Label>
-            </div>
                 </div>
               </TooltipTrigger>
               {inState && <TooltipContent sideOffset={6}>Not supported for state transitions</TooltipContent>}
@@ -318,9 +559,9 @@ export function GeometryTab({
             <Tooltip>
               <TooltipTrigger asChild>
                 <div>
-            <Switch checked={(((selected as any).geometryFlipped ?? 0) === 1)}
-              disabled={inState}
-              onCheckedChange={(checked)=> updateLayer(selected.id, { geometryFlipped: (checked ? 1 : 0) as any })} />
+                  <Switch checked={(((selected as any).geometryFlipped ?? 0) === 1)}
+                    disabled={inState}
+                    onCheckedChange={(checked) => updateLayer(selected.id, { geometryFlipped: (checked ? 1 : 0) as any })} />
                 </div>
               </TooltipTrigger>
               {inState && <TooltipContent sideOffset={6}>Not supported for state transitions</TooltipContent>}

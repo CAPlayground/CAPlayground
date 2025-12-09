@@ -1,5 +1,6 @@
 import { CAProjectBundle, AnyLayer } from './types';
-import { parseCAML, parseStates, parseStateOverrides, parseStateTransitions, serializeCAML, parseWallpaperParallaxGroups } from './caml';
+import { parseCAML, parseStates, parseStateOverrides, parseStateTransitions, parseWallpaperParallaxGroups } from './caml';
+import { serializeCAML } from './serialize/serializeCAML';
 
 const INDEX_XML_BASENAME = 'index.xml';
 const DEFAULT_SCENE = 'main.caml';
@@ -35,13 +36,13 @@ function formatXml(xml: string): string {
 }
 
 export type DualCABundle = {
-  project: { width: number; height: number; geometryFlipped: 0|1 };
+  project: { width: number; height: number; geometryFlipped: 0 | 1 };
   floating: Omit<CAProjectBundle, 'project'>;
   background: Omit<CAProjectBundle, 'project'>;
 };
 
 export type TendiesBundle = {
-  project: { width: number; height: number; geometryFlipped: 0|1 };
+  project: { width: number; height: number; geometryFlipped: 0 | 1 };
   floating?: Omit<CAProjectBundle, 'project'>;
   background?: Omit<CAProjectBundle, 'project'>;
   wallpaper?: Omit<CAProjectBundle, 'project'>;
@@ -53,7 +54,7 @@ export async function unpackDualCAZip(file: Blob): Promise<DualCABundle> {
   const zip = await JSZip.loadAsync(file);
 
   const paths = Object.keys(zip.files).map(p => p.replace(/\\/g, '/'));
-  const findDir = (needle: 'Floating.ca'|'Background.ca') => {
+  const findDir = (needle: 'Floating.ca' | 'Background.ca') => {
     const nl = needle.toLowerCase();
     // Find a path that contains a segment exactly matching needle (case-insensitive)
     const candidate = paths.find((p) => p.toLowerCase().split('/').includes(nl));
@@ -115,8 +116,8 @@ export async function unpackDualCAZip(file: Blob): Promise<DualCABundle> {
       for (const [name, info] of Object.entries(inlineAssets || {})) {
         if (!assets[name]) assets[name] = { path: (info as any).path, data: (info as any).data };
       }
-    } catch {}
-    return { root, states, stateOverrides, stateTransitions, assets } as Omit<CAProjectBundle,'project'>;
+    } catch { }
+    return { root, states, stateOverrides, stateTransitions, assets } as Omit<CAProjectBundle, 'project'>;
   };
 
   const floating = await readDoc(floatingDir);
@@ -124,7 +125,7 @@ export async function unpackDualCAZip(file: Blob): Promise<DualCABundle> {
 
   const width = Math.max(0, (floating.root as AnyLayer)?.size?.w || (background.root as AnyLayer)?.size?.w || 390);
   const height = Math.max(0, (floating.root as AnyLayer)?.size?.h || (background.root as AnyLayer)?.size?.h || 844);
-  const geom = (((floating.root as any)?.geometryFlipped ?? (background.root as any)?.geometryFlipped) ?? 0) as 0|1;
+  const geom = (((floating.root as any)?.geometryFlipped ?? (background.root as any)?.geometryFlipped) ?? 0) as 0 | 1;
 
   return {
     project: { width, height, geometryFlipped: geom },
@@ -329,7 +330,7 @@ export async function unpackCA(file: Blob): Promise<CAProjectBundle> {
   let indexXml = await zip.file(INDEX_XML_BASENAME)?.async('string');
   if (!indexXml) indexXml = await zip.file('Index.xml')?.async('string');
   if (!indexXml) indexXml = await zip.file('index.plist')?.async('string');
-  
+
   if (!indexXml) {
     const files = Object.keys(zip.files);
     const indexFile = files.find(f => f.endsWith('index.xml') || f.endsWith('Index.xml'));
@@ -363,6 +364,7 @@ export async function unpackCA(file: Blob): Promise<CAProjectBundle> {
   const states = parseStates(camlStr);
   const stateOverrides = parseStateOverrides(camlStr);
   const stateTransitions = parseStateTransitions(camlStr);
+  const wallpaperParallaxGroups = parseWallpaperParallaxGroups(camlStr);
 
   const assets: CAProjectBundle['assets'] = {};
   try {
@@ -391,9 +393,9 @@ export async function unpackCA(file: Blob): Promise<CAProjectBundle> {
         const info = (inlineAssets as any)[name] as { path: string; data: Blob };
         if (!assets[name]) assets[name] = { path: info.path, data: info.data };
       }
-      try { console.warn(`[import] Extracted ${inlineNames.length} inline image(s) from CAML into assets/`); } catch {}
+      try { console.warn(`[import] Extracted ${inlineNames.length} inline image(s) from CAML into assets/`); } catch { }
     }
-  } catch {}
+  } catch { }
 
   try {
     const doc = new DOMParser().parseFromString(camlStr, 'application/xml');
@@ -420,9 +422,9 @@ export async function unpackCA(file: Blob): Promise<CAProjectBundle> {
     const have = new Set(Object.keys(assets));
     const missing = Array.from(refNames).filter(n => !have.has(n));
     if (missing.length) {
-      try { console.warn(`[import] Missing ${missing.length} asset(s) referenced in CAML: ${missing.join(', ')}`); } catch {}
+      try { console.warn(`[import] Missing ${missing.length} asset(s) referenced in CAML: ${missing.join(', ')}`); } catch { }
     }
-  } catch {}
+  } catch { }
 
   const project = {
     id: crypto.randomUUID(),
@@ -432,7 +434,7 @@ export async function unpackCA(file: Blob): Promise<CAProjectBundle> {
     geometryFlipped: ((root as any).geometryFlipped ?? 0) as 0 | 1,
   };
 
-  return { project, root, assets, states, stateOverrides, stateTransitions };
+  return { project, root, assets, states, stateOverrides, stateTransitions, wallpaperParallaxGroups };
 }
 
 export async function unpackTendies(file: Blob): Promise<TendiesBundle> {
@@ -440,11 +442,11 @@ export async function unpackTendies(file: Blob): Promise<TendiesBundle> {
   const zip = await JSZip.loadAsync(file);
 
   const paths = Object.keys(zip.files).map(p => p.replace(/\\/g, '/'));
-  
-  const hasMercuryPoster = paths.some(path => 
+
+  const hasMercuryPoster = paths.some(path =>
     path.toLowerCase().includes('com.apple.mercuryposter')
   );
-  
+
   if (hasMercuryPoster) {
     throw new Error('MERCURY_POSTER_NOT_SUPPORTED: Mercury Poster wallpapers cannot be imported as their assets are stored in system files and cannot be modified.');
   }
@@ -577,7 +579,7 @@ export async function unpackTendies(file: Blob): Promise<TendiesBundle> {
       if (candidate) camlEntry = zip.file(candidate);
     }
     if (!camlEntry) throw new Error(`Missing CAML in ${baseDir}`);
-    
+
     const camlStrOriginal = await camlEntry.async('string');
     const { xml: camlStr, assets: inlineAssets } = await extractInlineAssetsToFiles(camlStrOriginal);
     const root = parseCAML(camlStr);
@@ -608,7 +610,7 @@ export async function unpackTendies(file: Blob): Promise<TendiesBundle> {
       for (const [name, info] of Object.entries(inlineAssets || {})) {
         if (!assets[name]) assets[name] = { path: (info as any).path, data: (info as any).data };
       }
-    } catch {}
+    } catch { }
 
     return { root, states, stateOverrides, stateTransitions, wallpaperParallaxGroups, assets };
   };
@@ -620,7 +622,7 @@ export async function unpackTendies(file: Blob): Promise<TendiesBundle> {
   const anyRoot = (floating?.root || background?.root || wallpaper?.root) as AnyLayer | undefined;
   const width = Math.max(0, anyRoot?.size?.w || 390);
   const height = Math.max(0, anyRoot?.size?.h || 844);
-  const geom = (((anyRoot as any)?.geometryFlipped) ?? 0) as 0|1;
+  const geom = (((anyRoot as any)?.geometryFlipped) ?? 0) as 0 | 1;
 
   return {
     project: { width, height, geometryFlipped: geom },

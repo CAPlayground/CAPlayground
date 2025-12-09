@@ -1,23 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { promises as fs } from 'fs';
+import path from 'path';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
-    const url = new URL(request.url);
-    const templateUrl = `${url.protocol}//${url.host}/templates/tendies.zip`;
+    const filePath = path.join(process.cwd(), 'public', 'templates', 'tendies.zip');
 
-    const response = await fetch(templateUrl, {
-      signal: AbortSignal.timeout(10000),
-    });
+    const templateBuffer = await fs.readFile(filePath);
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch template: ${response.status} - ${templateUrl}`);
-    }
-
-    const templateBuffer = await response.arrayBuffer();
-
-    return new NextResponse(templateBuffer, {
+    return new NextResponse(new Uint8Array(templateBuffer), {
       headers: {
         'Content-Type': 'application/zip',
         'Content-Disposition': 'attachment; filename="tendies.zip"',
@@ -27,28 +20,8 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error serving tendies template:', error);
 
-    try {
-      const fallbackUrl = new URL('/templates/tendies.zip', request.url);
-      const fallbackResponse = await fetch(fallbackUrl, {
-        signal: AbortSignal.timeout(5000),
-      });
-      
-      if (fallbackResponse.ok) {
-        const fallbackBuffer = await fallbackResponse.arrayBuffer();
-        return new NextResponse(fallbackBuffer, {
-          headers: {
-            'Content-Type': 'application/zip',
-            'Content-Disposition': 'attachment; filename="tendies.zip"',
-            'Cache-Control': 'public, max-age=3600',
-          },
-        });
-      }
-    } catch (fallbackError) {
-      console.error('Fallback also failed:', fallbackError);
-    }
-
     return NextResponse.json(
-      { error: 'Failed to load tendies template', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Failed to load tendies template', details: error instanceof Error ? (error as Error).message : 'Unknown error' },
       { status: 500 }
     );
   }

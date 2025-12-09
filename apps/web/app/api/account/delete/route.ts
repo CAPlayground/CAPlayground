@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 import { getSupabaseAdminClient, getSupabaseServerClientWithAuth } from "@/lib/supabase"
 
 export async function POST(req: Request) {

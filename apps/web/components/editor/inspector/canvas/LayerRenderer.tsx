@@ -1,31 +1,34 @@
-import { MouseEvent as ReactMouseEvent } from 'react';
-import { AnyLayer, EmitterLayer, ShapeLayer, TransformLayer } from '@/lib/ca/types';
+import { useEffect } from 'react';
+import { AnyLayer, ShapeLayer, Size, TransformLayer, Vec2 } from '@/lib/ca/types';
 import { LayerContextMenu } from '../../layer-context-menu';
 import { EmitterCanvas } from '../../emitter/EmitterCanvas';
 import { blendModes } from '@/lib/blending';
-import { useEditor } from '../../editor-context';
 import GradientRenderer from './GradientRenderer';
 import TextRenderer from './TextRenderer';
 import ImageRenderer from './ImageRenderer';
 import VideoRenderer from './VideoRenderer';
 import { useTransform } from './TransformRenderer';
 import ReplicatorRenderer from './ReplicatorRenderer';
-import { computeCssLT, getAnchor } from '../../canvas-preview/utils/coordinates';
+import { getAnchor } from '../../canvas-preview/utils/coordinates';
+import Moveable from 'react-moveable';
+import { useMoveablePointerDrag } from '../../hooks/use-moveable-pointer-drag';
+import { useEditor } from '../../editor-context';
+import useKeyframeAnimation from '@/hooks/use-keyframe';
+import useStateTransition from '@/hooks/use-state-transition';
+import LiquidGlassRenderer from './LiquidGlassRenderer';
 
 interface LayerRendererProps {
   layer: AnyLayer;
-  containerH: number;
   useYUp: boolean;
   siblings: AnyLayer[];
   assets?: Record<string, { dataURL?: string }>;
   disableHitTesting?: boolean;
   hiddenLayerIds: Set<string>;
-  timeSec: number;
   gyroX: number;
   gyroY: number;
   useGyroControls: boolean;
-  onStartDrag: (l: AnyLayer, e: ReactMouseEvent, containerH: number, useYUp: boolean) => void;
-  onEvalLayerAnimation: (l: AnyLayer, t: number) => void;
+  moveableRef?: React.RefObject<Moveable | null>;
+  delayMs?: number;
 }
 
 const hexToRgba = (hex?: string, alpha?: number): string | undefined => {
@@ -47,74 +50,95 @@ const bgStyleFor = (layer: AnyLayer): React.CSSProperties => {
   const css = hexToRgba(hex, a);
   return css ? { background: css } : {};
 };
-const touchToMouseLike = (t: any) => ({
-  clientX: t.clientX,
-  clientY: t.clientY,
-  button: 0,
-  shiftKey: false,
-  preventDefault: () => {},
-  stopPropagation: () => {},
-} as any);
 
 export function LayerRenderer({
-  layer,
-  containerH,
+  layer: initialLayer,
   useYUp,
   siblings,
   assets,
   disableHitTesting = false,
   hiddenLayerIds,
-  timeSec,
   gyroX,
   gyroY,
   useGyroControls,
-  onStartDrag,
-  onEvalLayerAnimation,
+  moveableRef,
+  delayMs
 }: LayerRendererProps) {
+
+  const { doc } = useEditor();
+  const currentKey = doc?.activeCA ?? 'floating';
+  const current = doc?.docs?.[currentKey];
+  const layerTransition = useStateTransition(initialLayer);
+  const layer = {
+    ...initialLayer,
+    ...layerTransition
+  }
+  const {
+    transformString,
+    transformedX,
+    transformedY,
+  } = useTransform({
+    layer: layer as TransformLayer,
+    useGyroControls,
+    gyroX,
+    gyroY,
+  });
+  const animation = useKeyframeAnimation({
+    keyframes: layer.animations?.enabled
+      ? layer.animations?.values || []
+      : [],
+    reverse: layer.animations?.autoreverses === 1,
+    durationMs: (layer.animations?.durationSeconds ?? 0) * 1000,
+    speed: layer.animations?.speed ?? 1,
+    delayMs,
+  });
+  const animationOverrides: Record<string, number> = {};
+  if (layer.animations?.enabled && layer.animations?.keyPath) {
+    if (layer.animations.keyPath === 'position') {
+      animationOverrides['position.x'] = (animation as Vec2).x;
+      animationOverrides['position.y'] = (animation as Vec2).y;
+    } else if (layer.animations.keyPath === 'bounds') {
+      animationOverrides['bounds.size.width'] = (animation as Size).w;
+      animationOverrides['bounds.size.height'] = (animation as Size).h;
+    } else {
+      animationOverrides[layer.animations.keyPath] = animation as number;
+    }
+  }
+
+  const x = transformedX ?? animationOverrides['position.x'] ?? layer.position.x;
+  const y = transformedY ?? animationOverrides['position.y'] ?? layer.position.y;
+  const rotation = animationOverrides['transform.rotation.z'] ?? layer.rotation;
+  const rotationX = animationOverrides['transform.rotation.x'] ?? layer.rotationX;
+  const rotationY = animationOverrides['transform.rotation.y'] ?? layer.rotationY;
+  const width = animationOverrides['bounds.size.width'] ?? layer.size.w;
+  const height = animationOverrides['bounds.size.height'] ?? layer.size.h;
+  const opacity = animationOverrides['opacity'] ?? layer.opacity;
+
+  useEffect(() => {
+    if (layer.id === current?.selectedId) {
+      moveableRef?.current?.updateRect();
+    }
+  }, [layer]);
+
   const anchor = getAnchor(layer);
-  const { left, top } = computeCssLT(layer, containerH, useYUp);
   const transformOriginY = useYUp ? (1 - anchor.y) * 100 : anchor.y * 100;
   const isWrappedContent = (layer as any).__wrappedContent === true || disableHitTesting === true;
 
-  const startDrag = (layer: AnyLayer, e: ReactMouseEvent) => {
-    onStartDrag(layer, e, containerH, useYUp);
-  };
-
   const renderChildren = (layer: AnyLayer, nextUseYUp: boolean) => {
-    if (layer.type === 'video' && layer.children?.length) {
-      const imageToRender = layer.children.sort((a, b) => (b.zPosition ?? 0) - (a.zPosition ?? 0))[0];
-      return <LayerRenderer
-        layer={imageToRender}
-        containerH={layer.size.h}
-        useYUp={nextUseYUp}
-        siblings={layer.children}
-        assets={assets}
-        hiddenLayerIds={hiddenLayerIds}
-        timeSec={timeSec}
-        gyroX={gyroX}
-        gyroY={gyroY}
-        useGyroControls={useGyroControls}
-        onStartDrag={onStartDrag}
-        onEvalLayerAnimation={onEvalLayerAnimation}
-        disableHitTesting
-      />
-    };
     return layer.children?.map((c) => {
       return (
         <LayerRenderer
           key={c.id}
           layer={c}
-          containerH={layer.size.h}
           useYUp={nextUseYUp}
           siblings={layer.children || []}
           assets={assets}
           hiddenLayerIds={hiddenLayerIds}
-          timeSec={timeSec}
           gyroX={gyroX}
           gyroY={gyroY}
           useGyroControls={useGyroControls}
-          onStartDrag={onStartDrag}
-          onEvalLayerAnimation={onEvalLayerAnimation}
+          moveableRef={moveableRef}
+          delayMs={delayMs}
         />
       );
     });
@@ -124,17 +148,21 @@ export function LayerRenderer({
     ? { border: `${layer.borderWidth}px solid ${layer.borderColor || '#000000'}` }
     : {};
 
+  const translateX = x - (anchor.x * width);
+  const translateY = useYUp
+    ? -y - ((1 - anchor.y) * height)
+    : y - (anchor.y * height);
   const common: React.CSSProperties = {
     position: "absolute",
-    left,
-    top,
-    width: layer.size.w,
-    height: layer.size.h,
-    transform: `rotateX(${-(layer.rotationX ?? 0)}deg) rotateY(${-(layer.rotationY ?? 0)}deg) rotate(${-(layer.rotation ?? 0)}deg)`,
+    left: 0,
+    top: useYUp ? '100%' : 0,
+    width,
+    height,
+    transform: `translateX(${translateX}px) translateY(${translateY}px) rotateX(${-(rotationX ?? 0)}deg) rotateY(${-(rotationY ?? 0)}deg) rotate(${-(rotation ?? 0)}deg)`,
     transformOrigin: `${anchor.x * 100}% ${transformOriginY}%`,
     backfaceVisibility: "visible",
     display: (layer.visible === false || hiddenLayerIds.has(layer.id)) ? "none" : undefined,
-    opacity: typeof layer.opacity === 'number' ? Math.max(0, Math.min(1, layer.opacity)) : undefined,
+    opacity: typeof opacity === 'number' ? Math.max(0, Math.min(1, opacity)) : undefined,
     cursor: "move",
     pointerEvents: isWrappedContent ? 'none' : undefined,
     ...borderStyle,
@@ -173,12 +201,6 @@ export function LayerRenderer({
     ? ((layer.geometryFlipped as 0 | 1) === 0)
     : useYUp;
 
-  const transformString = useTransform({
-    layer: layer as TransformLayer,
-    useGyroControls,
-    gyroX,
-    gyroY,
-  });
   let style: React.CSSProperties = {
     ...common,
     ...bgStyleFor(layer),
@@ -195,23 +217,32 @@ export function LayerRenderer({
   if (layer.type === "transform") {
     style = {
       ...style,
-      transform: transformString,
+      transform: [style.transform, transformString].filter(Boolean).join(' '),
       transformStyle: 'preserve-3d',
     };
   }
+  const { onPointerDown, onPointerMove, onPointerUp } = useMoveablePointerDrag({
+    layerId: layer.id,
+    moveableRef,
+  });
 
   return (
     <LayerContextMenu layer={layer} siblings={siblings}>
       <div
+        id={layer.id}
         style={style}
-        onMouseDown={isWrappedContent ? undefined : (e) => startDrag(layer, e)}
-        onTouchStart={isWrappedContent ? undefined : ((e) => {
-          if (e.touches.length === 1) {
-            e.preventDefault();
-            startDrag(layer, touchToMouseLike(e.touches[0]));
-          }
-        })}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        data-y-up={useYUp}
       >
+        {layer.type === "liquidGlass" && (
+          <LiquidGlassRenderer
+            width={layer.size.w}
+            height={layer.size.h}
+            radius={layer.cornerRadius || 0}
+          />
+        )}
         {layer.type === "text" && (
           <TextRenderer layer={layer} />
         )}
@@ -227,19 +258,16 @@ export function LayerRenderer({
         {layer.type === "emitter" && (
           <EmitterCanvas layer={layer} assets={assets} />
         )}
-        {layer.type !== "replicator" && renderChildren(layer, nextUseYUp)}
+        {layer.type !== "replicator" && layer.type !== "video" && renderChildren(layer, nextUseYUp)}
         {layer.type === "replicator" && (
           <ReplicatorRenderer
             layer={layer}
-            timeSec={timeSec}
             gyroX={gyroX}
             gyroY={gyroY}
             nextUseYUp={nextUseYUp}
             assets={assets}
             hiddenLayerIds={hiddenLayerIds}
             useGyroControls={useGyroControls}
-            onStartDrag={onStartDrag}
-            onEvalLayerAnimation={onEvalLayerAnimation}
             transformOriginY={transformOriginY}
             anchor={anchor}
           />

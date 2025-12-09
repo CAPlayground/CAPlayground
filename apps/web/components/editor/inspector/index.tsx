@@ -26,9 +26,11 @@ import { EmitterTab } from "./tabs/EmitterTab";
 import { ReplicatorTab } from "./tabs/ReplicatorTab";
 import { FiltersTab } from "./tabs/FiltersTab";
 import { findById } from "@/lib/editor/layer-utils";
+import { useTimeline } from "@/context/TimelineContext";
 
 export function Inspector() {
-  const { doc, setDoc, updateLayer, updateLayerTransient, replaceImageForLayer, addEmitterCellImage, isAnimationPlaying, animatedLayers, selectLayer } = useEditor();
+  const { doc, setDoc, updateLayer, updateLayerTransient, replaceImageForLayer, addEmitterCellImage, animatedLayers, selectLayer } = useEditor();
+  const { isPlaying } = useTimeline();
   const [sidebarPosition, setSidebarPosition] = useLocalStorage<'left' | 'top' | 'right'>('caplay_inspector_tab_position', 'left');
 
   const key = doc?.activeCA ?? 'floating';
@@ -37,9 +39,9 @@ export function Inspector() {
   const selectedBase = current ? (isRootSelected ? undefined : findById(current.layers, current.selectedId)) : undefined;
 
   const selectedAnimated = useMemo(() => {
-    if (!isAnimationPlaying || !animatedLayers.length || !current?.selectedId) return null;
+    if (!isPlaying || !animatedLayers.length || !current?.selectedId) return null;
     return findById(animatedLayers, current.selectedId);
-  }, [isAnimationPlaying, animatedLayers, current?.selectedId]);
+  }, [isPlaying, animatedLayers, current?.selectedId]);
 
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const selKey = selectedBase ? selectedBase.id : "__none__";
@@ -47,7 +49,7 @@ export function Inspector() {
   useEffect(() => {
     setInputs({});
   }, [selKey]);
-  
+
   const getBuf = (key: string, fallback: string): string => {
     const bufKey = `${selKey}:${key}`;
     return inputs[bufKey] !== undefined ? inputs[bufKey] : fallback;
@@ -66,15 +68,15 @@ export function Inspector() {
       return next;
     });
   };
-  
+
   const selected = (() => {
     if (!current || !selectedBase) return selectedBase;
 
     if (selectedAnimated) return selectedAnimated;
-    
+
     const state = current.activeState;
     if (!state || state === 'Base State') return selectedBase;
-    const eff: any = JSON.parse(JSON.stringify(selectedBase));
+    const eff: any = structuredClone(selectedBase);
     const ovs = (current.stateOverrides || {})[state] || [];
     const me = ovs.filter(o => o.targetId === eff.id);
     for (const o of me) {
@@ -167,7 +169,7 @@ export function Inspector() {
       setActiveTab('image');
     } else if (selected?.type === 'video' && (['text', 'gradient', 'image', 'emitter', 'replicator', 'gyro'].includes(activeTab))) {
       setActiveTab('video');
-    } else if (!['text','emitter', 'replicator', 'gradient', 'image', 'video', 'transform'].includes(selected?.type) && ['text', 'gradient', 'image', 'video', 'emitter', 'replicator', 'gyro'].includes(activeTab)) {
+    } else if (!['text', 'emitter', 'replicator', 'gradient', 'image', 'video', 'transform'].includes(selected?.type) && ['text', 'gradient', 'image', 'video', 'emitter', 'replicator', 'gyro'].includes(activeTab)) {
       setActiveTab('geometry');
     } else if (selected?.type === 'emitter' && (['animations', 'text', 'gradient', 'image', 'video', 'content', 'replicator', 'gyro'].includes(activeTab))) {
       setActiveTab('emitter');
@@ -347,14 +349,6 @@ export function Inspector() {
 
         <div className="flex-1 overflow-y-auto p-3">
           <div className="text-sm font-bold mb-3 capitalize">{activeTab}</div>
-          {current?.activeState && current.activeState !== 'Base State' && (
-            <Alert className="text-xs mb-3">
-              <AlertDescription>
-                Note: Rotation and Bound state transitions don't work when tested. If you know a fix or it just works for you, please report in the CAPlayground Discord server.
-              </AlertDescription>
-            </Alert>
-          )}
-
           {activeTab === 'geometry' && (
             <GeometryTab
               {...tabProps}

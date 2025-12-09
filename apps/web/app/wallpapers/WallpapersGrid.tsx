@@ -18,7 +18,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { getSupabaseBrowserClient } from "@/lib/supabase"
-import type { CAAsset } from "@/lib/ca/types"
+import type { AnyLayer, CAAsset, CAProjectBundle } from "@/lib/ca/types"
 import { ensureUniqueProjectName, createProject, listProjects, putBlobFile, putTextFile } from "@/lib/storage"
 import { useToast } from "@/hooks/use-toast"
 
@@ -63,7 +63,7 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
   useEffect(() => {
     const initial = (searchParams?.get("q") || "").trim()
     setQ(initial)
-    
+
     const wallpaperId = searchParams?.get("id")
     if (wallpaperId && data.wallpapers) {
       const wallpaper = data.wallpapers.find(w => String(w.id) === wallpaperId)
@@ -103,20 +103,20 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
           if (mounted) setIsSignedIn(false)
           return
         }
-        
+
         if (mounted) setIsSignedIn(true)
-        
+
         const meta: any = user.user_metadata || {}
         const name = meta.full_name || meta.name || meta.username || user.email || ""
         if (mounted) setDisplayName(name as string)
-        
+
         const { data: profile } = await supabase
           .from("profiles")
           .select("username")
           .eq("id", user.id)
           .maybeSingle()
         if (mounted && profile?.username) setUsername(profile.username as string)
-      } catch {}
+      } catch { }
     }
     loadUser()
     return () => { mounted = false }
@@ -130,7 +130,7 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
   const filtered = useMemo(() => {
     const t = q.trim().toLowerCase()
     let result = data.wallpapers
-    
+
     if (t) {
       result = result.filter((w) => {
         const name = (w?.name || "").toString().toLowerCase()
@@ -139,7 +139,7 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
         return name.includes(t) || creator.includes(t) || desc.includes(t)
       })
     }
-  
+
     if (sortBy === 'downloads') {
       result = [...result].sort((a, b) => {
         const aDownloads = downloadStats[String(a.id)] || 0
@@ -147,7 +147,7 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
         return bDownloads - aDownloads
       })
     }
-    
+
     return result
   }, [q, data.wallpapers, sortBy, downloadStats])
 
@@ -194,88 +194,118 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
     try {
       setImportingWallpaper(item.name)
       trackDownload(String(item.id), item.name)
-      
+
       const fileUrl = `${data.base_url}${item.file}`
-      
+
       const response = await fetch(fileUrl)
       if (!response.ok) throw new Error('Failed to download wallpaper')
       const blob = await response.blob()
-      
+
       const { unpackTendies } = await import('@/lib/ca/ca-file')
       const tendies = await unpackTendies(blob)
-      
+
       const id = Date.now().toString()
       const name = await ensureUniqueProjectName(item.name || "Imported Wallpaper")
       const width = Math.round(tendies.project.width)
       const height = Math.round(tendies.project.height)
-      await createProject({ id, name, createdAt: new Date().toISOString(), width, height })
+      await createProject({
+        id,
+        name,
+        createdAt: new Date().toISOString(),
+        width,
+        height,
+        gyroEnabled: !!tendies.wallpaper,
+      })
       const folder = `${name}.ca`
       const indexXml = `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n  <key>rootDocument</key>\n  <string>main.caml</string>\n</dict>\n</plist>`
       const assetManifest = `<?xml version="1.0" encoding="UTF-8"?>\n\n<caml xmlns="http://www.apple.com/CoreAnimation/1.0">\n  <MicaAssetManifest>\n    <modules type="NSArray"/>\n  </MicaAssetManifest>\n</caml>`
-      
-      const { serializeCAML } = await import('@/lib/ca/caml')
-      
-      const mkCaml = async (doc: { root: any; assets?: Record<string, CAAsset>; states?: string[]; stateOverrides?: any; stateTransitions?: any }, docName: string) => {
-        const root = doc.root as any
+
+      const { serializeCAML } = await import('@/lib/ca/serialize/serializeCAML')
+
+      const mkCaml = async (doc: CAProjectBundle, docName: string) => {
+        const root = doc.root
         const layers = Array.isArray(root.children) ? root.children : (root ? [root] : [])
-        const group = {
+        const group: AnyLayer = {
           id: `${id}-${docName}`,
           name: `Root Layer`,
           type: 'basic',
-          position: { x: Math.round(width/2), y: Math.round(height/2) },
+          position: { x: Math.round(width / 2), y: Math.round(height / 2) },
           size: { w: width, h: height },
           backgroundColor: root?.backgroundColor ?? '#e5e7eb',
           geometryFlipped: tendies.project.geometryFlipped,
           children: layers,
-        } as any
-        return serializeCAML(group, { id, name, width, height, background: root?.backgroundColor ?? '#e5e7eb', geometryFlipped: tendies.project.geometryFlipped } as any, doc.states as any, doc.stateOverrides as any, doc.stateTransitions as any)
+        }
+        return serializeCAML(
+          group,
+          { id, name, width, height, background: root?.backgroundColor ?? '#e5e7eb', geometryFlipped: tendies.project.geometryFlipped },
+          doc.states,
+          doc.stateOverrides,
+          doc.stateTransitions,
+          doc.wallpaperParallaxGroups
+        )
       }
 
       const creditComment = `<!--\n  Original wallpaper: ${item.name}\n  Created by: ${item.creator}\n  Imported from CAPlayground Gallery\n-->\n`
-      
-      const floatingDoc = tendies.wallpaper || tendies.floating
-      if (floatingDoc) {
-        const camlFloating = await mkCaml(floatingDoc, 'Floating')
-        const camlWithCredit = camlFloating.replace('<?xml version="1.0" encoding="UTF-8"?>', `<?xml version="1.0" encoding="UTF-8"?>\n${creditComment}`)
-        await putTextFile(id, `${folder}/Floating.ca/main.caml`, camlWithCredit)
-        await putTextFile(id, `${folder}/Floating.ca/index.xml`, indexXml)
-        await putTextFile(id, `${folder}/Floating.ca/assetManifest.caml`, assetManifest)
 
-        const flAssets = (floatingDoc.assets || {}) as Record<string, CAAsset>
+      if (tendies.wallpaper) {
+        const camlWallpaper = await mkCaml(tendies.wallpaper as CAProjectBundle, 'Wallpaper');
+        const camlWithCredit = camlWallpaper.replace('<?xml version="1.0" encoding="UTF-8"?>', `<?xml version="1.0" encoding="UTF-8"?>\n${creditComment}`)
+
+        await putTextFile(id, `${folder}/Wallpaper.ca/main.caml`, camlWithCredit);
+        await putTextFile(id, `${folder}/Wallpaper.ca/index.xml`, indexXml);
+        await putTextFile(id, `${folder}/Wallpaper.ca/assetManifest.caml`, assetManifest);
+
+        const flAssets = (tendies.wallpaper.assets || {}) as Record<string, CAAsset>;
         for (const [filename, asset] of Object.entries(flAssets)) {
           try {
-            const data = asset.data instanceof Blob ? asset.data : new Blob([asset.data as ArrayBuffer])
-            await putBlobFile(id, `${folder}/Floating.ca/assets/${filename}`, data)
+            const data = asset.data instanceof Blob ? asset.data : new Blob([asset.data as ArrayBuffer]);
+            await putBlobFile(id, `${folder}/Wallpaper.ca/assets/${filename}`, data);
           } catch {}
         }
       } else {
-        const emptyFloatingCaml = `<?xml version="1.0" encoding="UTF-8"?><caml xmlns="http://www.apple.com/CoreAnimation/1.0"/>`
-        await putTextFile(id, `${folder}/Floating.ca/main.caml`, emptyFloatingCaml)
-        await putTextFile(id, `${folder}/Floating.ca/index.xml`, indexXml)
-        await putTextFile(id, `${folder}/Floating.ca/assetManifest.caml`, assetManifest)
-      }
-      
-      if (tendies.background) {
-        const camlBackground = await mkCaml(tendies.background, 'Background')
-        const camlBackgroundWithCredit = camlBackground.replace('<?xml version="1.0" encoding="UTF-8"?>', `<?xml version="1.0" encoding="UTF-8"?>\n${creditComment}`)
-        await putTextFile(id, `${folder}/Background.ca/main.caml`, camlBackgroundWithCredit)
-        await putTextFile(id, `${folder}/Background.ca/index.xml`, indexXml)
-        await putTextFile(id, `${folder}/Background.ca/assetManifest.caml`, assetManifest)
-        
-        const bgAssets = (tendies.background.assets || {}) as Record<string, CAAsset>
-        for (const [filename, asset] of Object.entries(bgAssets)) {
-          try {
-            const data = asset.data instanceof Blob ? asset.data : new Blob([asset.data as ArrayBuffer])
-            await putBlobFile(id, `${folder}/Background.ca/assets/${filename}`, data)
-          } catch {}
+        const floatingDoc = tendies.floating
+        if (floatingDoc) {
+          const camlFloating = await mkCaml(floatingDoc as CAProjectBundle, 'Floating')
+          const camlWithCredit = camlFloating.replace('<?xml version="1.0" encoding="UTF-8"?>', `<?xml version="1.0" encoding="UTF-8"?>\n${creditComment}`)
+          await putTextFile(id, `${folder}/Floating.ca/main.caml`, camlWithCredit)
+          await putTextFile(id, `${folder}/Floating.ca/index.xml`, indexXml)
+          await putTextFile(id, `${folder}/Floating.ca/assetManifest.caml`, assetManifest)
+
+          const flAssets = (floatingDoc.assets || {}) as Record<string, CAAsset>
+          for (const [filename, asset] of Object.entries(flAssets)) {
+            try {
+              const data = asset.data instanceof Blob ? asset.data : new Blob([asset.data as ArrayBuffer])
+              await putBlobFile(id, `${folder}/Floating.ca/assets/${filename}`, data)
+            } catch { }
+          }
+        } else {
+          const emptyFloatingCaml = `<?xml version="1.0" encoding="UTF-8"?><caml xmlns="http://www.apple.com/CoreAnimation/1.0"/>`
+          await putTextFile(id, `${folder}/Floating.ca/main.caml`, emptyFloatingCaml)
+          await putTextFile(id, `${folder}/Floating.ca/index.xml`, indexXml)
+          await putTextFile(id, `${folder}/Floating.ca/assetManifest.caml`, assetManifest)
         }
-      } else {
-        const emptyBackgroundCaml = `<?xml version="1.0" encoding="UTF-8"?><caml xmlns="http://www.apple.com/CoreAnimation/1.0"/>`
-        await putTextFile(id, `${folder}/Background.ca/main.caml`, emptyBackgroundCaml)
-        await putTextFile(id, `${folder}/Background.ca/index.xml`, indexXml)
-        await putTextFile(id, `${folder}/Background.ca/assetManifest.caml`, assetManifest)
+
+        if (tendies.background) {
+          const camlBackground = await mkCaml(tendies.background as CAProjectBundle, 'Background')
+          const camlBackgroundWithCredit = camlBackground.replace('<?xml version="1.0" encoding="UTF-8"?>', `<?xml version="1.0" encoding="UTF-8"?>\n${creditComment}`)
+          await putTextFile(id, `${folder}/Background.ca/main.caml`, camlBackgroundWithCredit)
+          await putTextFile(id, `${folder}/Background.ca/index.xml`, indexXml)
+          await putTextFile(id, `${folder}/Background.ca/assetManifest.caml`, assetManifest)
+
+          const bgAssets = (tendies.background.assets || {}) as Record<string, CAAsset>
+          for (const [filename, asset] of Object.entries(bgAssets)) {
+            try {
+              const data = asset.data instanceof Blob ? asset.data : new Blob([asset.data as ArrayBuffer])
+              await putBlobFile(id, `${folder}/Background.ca/assets/${filename}`, data)
+            } catch { }
+          }
+        } else {
+          const emptyBackgroundCaml = `<?xml version="1.0" encoding="UTF-8"?><caml xmlns="http://www.apple.com/CoreAnimation/1.0"/>`
+          await putTextFile(id, `${folder}/Background.ca/main.caml`, emptyBackgroundCaml)
+          await putTextFile(id, `${folder}/Background.ca/index.xml`, indexXml)
+          await putTextFile(id, `${folder}/Background.ca/assetManifest.caml`, assetManifest)
+        }
       }
-      
       router.push(`/editor/${id}`)
     } catch (err) {
       console.error('Failed to open wallpaper in editor', err)
@@ -288,6 +318,12 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
   return (
     <div className="space-y-6">
       <div className="max-w-xl mx-auto w-full space-y-3">
+        <div className="flex justify-center">
+          <Button onClick={() => setIsSubmitDialogOpen(true)} className="gap-2">
+            <Upload className="h-4 w-4" />
+            Submit Wallpaper
+          </Button>
+        </div>
         <div className="flex gap-3">
           <Input
             value={q}
@@ -305,15 +341,6 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
             </SelectContent>
           </Select>
         </div>
-        {/* Submit button (hidden) */}
-        <div className="hidden">
-          <div className="flex justify-center">
-            <Button onClick={() => setIsSubmitDialogOpen(true)} className="gap-2">
-              <Upload className="h-4 w-4" />
-              Submit Wallpaper
-            </Button>
-          </div>
-        </div>
       </div>
 
       <div className="grid gap-6 sm:gap-7 md:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -321,8 +348,8 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
           const previewUrl = `${data.base_url}${item.preview}`
           const fileUrl = `${data.base_url}${item.file}`
           return (
-            <Card 
-              key={`${item.name}-${item.file}`} 
+            <Card
+              key={`${item.name}-${item.file}`}
               className="overflow-hidden cursor-pointer transition-transform hover:scale-[1.02] p-0"
               onClick={() => {
                 setExpandedWallpaper(item)
@@ -363,32 +390,33 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
                 )}
                 <p className="text-sm text-muted-foreground line-clamp-3 mb-4">{item.description}</p>
                 <div className="flex flex-col gap-2">
-                  {isIOS ? (
-                    <Button 
+                  <Button
+                    className="w-full"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      trackDownload(String(item.id), item.name)
+                      window.open(fileUrl, '_blank')
+                    }}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download .tendies
+                  </Button>
+                  {isIOS && (
+                    <Button
                       className="w-full"
+                      asChild
                       onClick={(e) => {
                         e.stopPropagation()
                         trackDownload(String(item.id), item.name)
-                        window.location.href = `pocketposter://download?url=${fileUrl}`
                       }}
                     >
-                      <Download className="h-4 w-4 mr-2" />
-                      Open in Pocket Poster
-                    </Button>
-                  ) : (
-                    <Button 
-                      className="w-full"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        trackDownload(String(item.id), item.name)
-                        window.open(fileUrl, '_blank')
-                      }}
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Download .tendies
+                      <a href={`pocketposter://download?url=${encodeURIComponent(fileUrl)}`}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Open in Pocket Poster
+                      </a>
                     </Button>
                   )}
-                  <Button 
+                  <Button
                     variant="outline"
                     onClick={(e) => {
                       e.stopPropagation()
@@ -400,8 +428,8 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
                     <Edit className="h-4 w-4 mr-2" />
                     {importingWallpaper === item.name ? 'Opening...' : 'Open in Editor'}
                   </Button>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     className="w-full"
                     onClick={(e) => {
                       e.stopPropagation()
@@ -447,7 +475,7 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
                     by {expandedWallpaper.creator} (submitted on {expandedWallpaper.from})
                   </DialogDescription>
                 </DialogHeader>
-                
+
                 <div className="space-y-6 mt-4">
                   {/* Preview */}
                   <div className="overflow-hidden rounded-lg border bg-background">
@@ -463,10 +491,10 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
                           aria-label={`${expandedWallpaper.name} preview`}
                         />
                       ) : (
-                        <img 
-                          src={previewUrl} 
-                          alt={`${expandedWallpaper.name} preview`} 
-                          className="w-full h-full object-contain" 
+                        <img
+                          src={previewUrl}
+                          alt={`${expandedWallpaper.name} preview`}
+                          className="w-full h-full object-contain"
                         />
                       )}
                     </AspectRatio>
@@ -489,30 +517,31 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
 
                   {/* Action Buttons */}
                   <div className="flex flex-col gap-3">
-                    {isIOS ? (
-                      <Button 
+                    <Button
+                      className="w-full"
+                      onClick={() => {
+                        trackDownload(String(expandedWallpaper.id), expandedWallpaper.name)
+                        window.open(fileUrl, '_blank')
+                      }}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download .tendies
+                    </Button>
+                    {isIOS && (
+                      <Button
                         className="w-full"
+                        asChild
                         onClick={() => {
                           trackDownload(String(expandedWallpaper.id), expandedWallpaper.name)
-                          window.location.href = `pocketposter://download?url=${fileUrl}`
                         }}
                       >
-                        <Download className="h-4 w-4 mr-2" />
-                        Open in Pocket Poster
-                      </Button>
-                    ) : (
-                      <Button 
-                        className="w-full"
-                        onClick={() => {
-                          trackDownload(String(expandedWallpaper.id), expandedWallpaper.name)
-                          window.open(fileUrl, '_blank')
-                        }}
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Download .tendies
+                        <a href={`pocketposter://download?url=${encodeURIComponent(fileUrl)}`}>
+                          <Download className="h-4 w-4 mr-2" />
+                          Open in Pocket Poster
+                        </a>
                       </Button>
                     )}
-                    <Button 
+                    <Button
                       variant="outline"
                       onClick={() => {
                         setExpandedWallpaper(null)
@@ -524,16 +553,16 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
                       <Edit className="h-4 w-4 mr-2" />
                       {importingWallpaper === expandedWallpaper.name ? 'Opening...' : 'Open in Editor'}
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="w-full"
                       onClick={() => window.open('https://www.youtube.com/watch?v=nSBQIwAaAEc', '_blank')}
                     >
                       <Youtube className="h-4 w-4 mr-2" />
                       Watch Tutorial
                     </Button>
-                    <Button 
-                      variant="secondary" 
+                    <Button
+                      variant="secondary"
                       className="w-full"
                       onClick={() => handleCopyLink(expandedWallpaper)}
                     >

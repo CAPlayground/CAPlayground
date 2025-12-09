@@ -3,11 +3,12 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, MoreVertical, ChevronRight, ChevronDown, Copy, Trash2, Check, Eye, EyeOff } from "lucide-react";
+import { Plus, MoreVertical, ChevronRight, ChevronDown, Copy, Trash2, Check, Eye, EyeOff, AlertTriangle } from "lucide-react";
 import { useEditor } from "./editor-context";
 import { useEffect, useRef, useState } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { AnyLayer } from "@/lib/ca/types";
+import { isChromiumBrowser } from "@/lib/browser";
 
 export function LayersPanel() {
   const {
@@ -25,6 +26,7 @@ export function LayersPanel() {
     addEmitterLayer,
     addTransformLayer,
     addReplicatorLayer,
+    addLiquidGlassLayer,
     hiddenLayerIds,
     toggleLayerVisibility,
   } = useEditor();
@@ -46,6 +48,12 @@ export function LayersPanel() {
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [multiSelectedIds, setMultiSelectedIds] = useState<string[]>([]);
+  const [isChromium, setIsChromium] = useState(true);
+
+  useEffect(() => {
+    setIsChromium(isChromiumBrowser());
+  }, []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isSelectMode) {
@@ -59,7 +67,7 @@ export function LayersPanel() {
 
   useEffect(() => {
     if (multiSelectedIds.length === 0) return;
-    
+
     const existsInLayers = (id: string, layerList: AnyLayer[]): boolean => {
       for (const layer of layerList) {
         if (layer.id === id) return true;
@@ -140,7 +148,7 @@ export function LayersPanel() {
           onDragStart={(e) => {
             e.stopPropagation();
             e.dataTransfer.setData('text/cap-layer-id', l.id);
-            try { e.dataTransfer.effectAllowed = 'move'; } catch {}
+            try { e.dataTransfer.effectAllowed = 'move'; } catch { }
           }}
           onDragOver={(e) => {
             e.preventDefault();
@@ -216,12 +224,25 @@ export function LayersPanel() {
             )}
           </div>
           <div className="flex items-center gap-1 pr-2">
+            {l.type === 'liquidGlass' && !isChromium && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <AlertTriangle className="h-3.5 w-3.5 ml-1 text-amber-600 dark:text-amber-500 shrink-0" />
+                </TooltipTrigger>
+                <TooltipContent side="right" className="max-w-xs">
+                  <p className="font-semibold mb-1">Not Visible</p>
+                  <p className="text-xs">
+                    This layer only works in Chromium-based browsers and will not be visible in your current browser.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            )}
             <Button
               variant="ghost"
               size="icon"
               className="h-6 w-6 text-muted-foreground"
-              onClick={(e) => { 
-                e.stopPropagation(); 
+              onClick={(e) => {
+                e.stopPropagation();
                 toggleLayerVisibility(l.id);
               }}
               aria-label={isHidden ? 'Show layer' : 'Hide layer'}
@@ -320,6 +341,26 @@ export function LayersPanel() {
               {isGyro && (
                 <DropdownMenuItem onSelect={() => addTransformLayer()}>Transform Layer</DropdownMenuItem>
               )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuItem
+                    onSelect={() => addLiquidGlassLayer()}
+                    className={!isChromium ? "text-amber-600 dark:text-amber-500" : ""}
+                  >
+                    {!isChromium && <AlertTriangle className="h-3.5 w-3.5" />}
+                    Liquid Glass Layer
+                  </DropdownMenuItem>
+                </TooltipTrigger>
+                {!isChromium && (
+                  <TooltipContent side="left" className="max-w-xs">
+                    <p className="font-semibold mb-1">Chromium-Only Feature</p>
+                    <p className="text-xs">
+                      Liquid Glass layers only work in Chromium-based browsers (Chrome, Edge, Opera).
+                      The layer will not be visible in your current browser.
+                    </p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
             </DropdownMenuContent>
           </DropdownMenu>
         }
@@ -341,7 +382,7 @@ export function LayersPanel() {
             if (imageFiles.length) setUploadStatus(imageFiles.length > 1 ? `Uploading ${imageFiles.length} images...` : 'Uploading image...');
             try {
               for (const file of imageFiles) {
-                try { await addImageLayerFromFile(file); } catch {}
+                try { await addImageLayerFromFile(file); } catch { }
               }
             } finally {
               setUploadStatus(null);
@@ -421,53 +462,53 @@ export function LayersPanel() {
       </div>
 
       {isSelectMode && (
-          <div className="border-t p-2 gap-2 flex flex-col">
-            <div className="text-xs text-muted-foreground">
-              {multiSelectedIds.length} selected
-            </div>
-            <div className="flex gap-2 items-center w-full">
-              <Button
-                variant="outline"
-                size="icon"
-                disabled={multiSelectedIds.length === 0}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  for (const id of multiSelectedIds) {
-                    try { duplicateLayer(id); } catch {}
-                  }
-                }}
-                className="h-8 w-8"
-                title="Duplicate layers"
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                disabled={multiSelectedIds.length === 0}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  for (const id of multiSelectedIds) {
-                    try { deleteLayer(id); } catch {}
-                  }
-                  setMultiSelectedIds([]);
-                }}
-                className="h-8 w-8"
-                title="Delete layers"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => { setIsSelectMode(false); setMultiSelectedIds([]); }}
-                className="flex-1 gap-1.5"
-              >
-                <Check className="h-4 w-4" />
-                Done
-              </Button>
-            </div>
+        <div className="border-t p-2 gap-2 flex flex-col">
+          <div className="text-xs text-muted-foreground">
+            {multiSelectedIds.length} selected
           </div>
-        )}
+          <div className="flex gap-2 items-center w-full">
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={multiSelectedIds.length === 0}
+              onClick={(e) => {
+                e.stopPropagation();
+                for (const id of multiSelectedIds) {
+                  try { duplicateLayer(id); } catch { }
+                }
+              }}
+              className="h-8 w-8"
+              title="Duplicate layers"
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={multiSelectedIds.length === 0}
+              onClick={(e) => {
+                e.stopPropagation();
+                for (const id of multiSelectedIds) {
+                  try { deleteLayer(id); } catch { }
+                }
+                setMultiSelectedIds([]);
+              }}
+              className="h-8 w-8"
+              title="Delete layers"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => { setIsSelectMode(false); setMultiSelectedIds([]); }}
+              className="flex-1 gap-1.5"
+            >
+              <Check className="h-4 w-4" />
+              Done
+            </Button>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

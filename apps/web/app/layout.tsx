@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   title: "CAPlayground - CA Wallpaper Editor",
   description: "Create beautiful animated wallpapers for iOS and iPadOS on any desktop computer",
   verification: {
-    google: "xNuTnO5iYYm2op2KXAClg0oYMmslpl35wOv-9RfySxU",
+    google: "5CfgPBQMN4wnoC3Va9OnlfALRYaoLEekJkqMkGKLXOc",
   },
   openGraph: {
     title: "CAPlayground - CA Wallpaper Editor",

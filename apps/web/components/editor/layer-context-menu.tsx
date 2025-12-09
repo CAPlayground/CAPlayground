@@ -32,7 +32,12 @@ export function LayerContextMenu({ layer, children, siblings }: LayerContextMenu
   const [renameOpen, setRenameOpen] = useState(false);
   const [nameVal, setNameVal] = useState<string>((layer as any).name || "");
 
-  const idx = useMemo(() => siblings.findIndex((l) => l.id === layer.id), [siblings, layer.id]);
+  const siblingsIds = siblings.map((l) => l.id);
+  const idx = useMemo(() => {
+    return siblingsIds.findIndex((id) => id === layer.id)
+  },
+    [JSON.stringify(siblingsIds), layer.id]
+  );
   const n = siblings.length;
 
   const canSendBackward = idx > 0;

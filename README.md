@@ -12,7 +12,7 @@
 
 ## Overview
 
-CAPlayground is a web-based Core Animation editor for making stunning wallpapers for your iPhone and iPad. Check out the [roadmap](https://caplayground.pages.dev/roadmap) to see progress.
+CAPlayground is a web-based Core Animation editor for making stunning wallpapers for your iPhone and iPad. Check out the [roadmap](https://caplayground.vercel.app/roadmap) to see progress.
 
 ## Getting Started
 
@@ -68,7 +68,7 @@ Read [CONTRIBUTING.md](.github/CONTRIBUTING.md)
 
 [MIT License](LICENSE)
 
-**Note:** The MIT License applies to the source code. Use of the hosted service at caplayground.pages.dev is subject to our [Terms of Service](https://caplayground.pages.dev/tos), which includes attribution requirements for shared content.
+**Note:** The MIT License applies to the source code. Use of the hosted service at caplayground.vercel.app is subject to our [Terms of Service](https://caplayground.vercel.app/tos), which includes attribution requirements for shared content.
 
 ## Star History
 
