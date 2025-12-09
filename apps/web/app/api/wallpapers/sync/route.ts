@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { App } from "octokit"
 import { createClient } from "@supabase/supabase-js"
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 export async function POST(request: Request) {
     try {

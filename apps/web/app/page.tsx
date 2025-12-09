@@ -7,7 +7,7 @@ import Link from "next/link"
 import { Send, Filter as NotificationIcon, Github, Star, Download } from "lucide-react"
 import Image from "next/image"
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 interface WallpaperItem {
   id: string | number

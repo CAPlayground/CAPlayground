@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 const RATE_LIMIT_COUNT = 5
 const RATE_LIMIT_WINDOW_MS = 30 * 60 * 1000 // 30 minutes rate limit

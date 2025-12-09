@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { App } from "octokit"
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 export async function GET() {
     const appId = process.env.GITHUB_APP_ID
