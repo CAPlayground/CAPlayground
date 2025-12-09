@@ -55,7 +55,7 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
   const [isSignedIn, setIsSignedIn] = useState(false)
   const [importingWallpaper, setImportingWallpaper] = useState<string | null>(null)
   const [downloadStats, setDownloadStats] = useState<Record<string, number>>({})
-  const [sortBy, setSortBy] = useState<'default' | 'downloads'>('downloads')
+  const [sortBy, setSortBy] = useState<'default' | 'newest' | 'downloads' | 'least-downloads'>('downloads')
   const [isIOS, setIsIOS] = useState(false)
   const [expandedWallpaper, setExpandedWallpaper] = useState<WallpaperItem | null>(null)
   const [copiedWallpaperId, setCopiedWallpaperId] = useState<string | number | null>(null)
@@ -140,12 +140,18 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
       })
     }
 
-    if (sortBy === 'downloads') {
+    if (sortBy === 'downloads' || sortBy === 'least-downloads') {
       result = [...result].sort((a, b) => {
         const aDownloads = downloadStats[String(a.id)] || 0
         const bDownloads = downloadStats[String(b.id)] || 0
-        return bDownloads - aDownloads
+        return sortBy === 'downloads'
+          ? bDownloads - aDownloads
+          : aDownloads - bDownloads
       })
+    } else if (sortBy === 'newest') {
+      result = [...result].reverse()
+    } else {
+      result = [...result]
     }
 
     return result
@@ -331,13 +337,18 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
             placeholder="Search wallpapers by name, creator, or description..."
             className="flex-1"
           />
-          <Select value={sortBy} onValueChange={(value: 'default' | 'downloads') => setSortBy(value)}>
+          <Select
+            value={sortBy}
+            onValueChange={(value: 'default' | 'newest' | 'downloads' | 'least-downloads') => setSortBy(value)}
+          >
             <SelectTrigger className="w-[180px] bg-background border shadow-sm">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="default">Oldest to Newest</SelectItem>
+              <SelectItem value="newest">Newest to Oldest</SelectItem>
               <SelectItem value="downloads">Most Downloads</SelectItem>
+              <SelectItem value="least-downloads">Least Downloads</SelectItem>
             </SelectContent>
           </Select>
         </div>
