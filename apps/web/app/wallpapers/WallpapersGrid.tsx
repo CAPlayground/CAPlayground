@@ -390,29 +390,30 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
                 )}
                 <p className="text-sm text-muted-foreground line-clamp-3 mb-4">{item.description}</p>
                 <div className="flex flex-col gap-2">
-                  {isIOS ? (
+                  <Button
+                    className="w-full"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      trackDownload(String(item.id), item.name)
+                      window.open(fileUrl, '_blank')
+                    }}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download .tendies
+                  </Button>
+                  {isIOS && (
                     <Button
                       className="w-full"
+                      asChild
                       onClick={(e) => {
                         e.stopPropagation()
                         trackDownload(String(item.id), item.name)
-                        window.location.href = `pocketposter://download?url=${fileUrl}`
                       }}
                     >
-                      <Download className="h-4 w-4 mr-2" />
-                      Open in Pocket Poster
-                    </Button>
-                  ) : (
-                    <Button
-                      className="w-full"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        trackDownload(String(item.id), item.name)
-                        window.open(fileUrl, '_blank')
-                      }}
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Download .tendies
+                      <a href={`pocketposter://download?url=${encodeURIComponent(fileUrl)}`}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Open in Pocket Poster
+                      </a>
                     </Button>
                   )}
                   <Button
@@ -516,27 +517,28 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
 
                   {/* Action Buttons */}
                   <div className="flex flex-col gap-3">
-                    {isIOS ? (
+                    <Button
+                      className="w-full"
+                      onClick={() => {
+                        trackDownload(String(expandedWallpaper.id), expandedWallpaper.name)
+                        window.open(fileUrl, '_blank')
+                      }}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download .tendies
+                    </Button>
+                    {isIOS && (
                       <Button
                         className="w-full"
+                        asChild
                         onClick={() => {
                           trackDownload(String(expandedWallpaper.id), expandedWallpaper.name)
-                          window.location.href = `pocketposter://download?url=${fileUrl}`
                         }}
                       >
-                        <Download className="h-4 w-4 mr-2" />
-                        Open in Pocket Poster
-                      </Button>
-                    ) : (
-                      <Button
-                        className="w-full"
-                        onClick={() => {
-                          trackDownload(String(expandedWallpaper.id), expandedWallpaper.name)
-                          window.open(fileUrl, '_blank')
-                        }}
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Download .tendies
+                        <a href={`pocketposter://download?url=${encodeURIComponent(fileUrl)}`}>
+                          <Download className="h-4 w-4 mr-2" />
+                          Open in Pocket Poster
+                        </a>
                       </Button>
                     )}
                     <Button
