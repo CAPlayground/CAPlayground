@@ -148,7 +148,7 @@ export function CanvasPreview() {
 
   const hasAnyEnabledAnimation = useMemo(() => {
     const hasAnimation = (layer: AnyLayer): boolean => {
-      if (layer.animations?.enabled) return true;
+      if (layer.animations?.some(a => a.enabled)) return true;
       if (layer.type === 'video' || layer.type === 'emitter') return true;
       if (layer.type === 'replicator' && (layer.instanceDelay ?? 0) > 0) return true;
       return layer.children?.some(hasAnimation) ?? false;
