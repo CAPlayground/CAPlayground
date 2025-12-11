@@ -2,6 +2,41 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* iOS Native Fonts for Editor Preview (depends on local installation) */
+@font-face {
+  font-family: 'SFProText-Regular';
+  src: local('SF Pro Text'), local('SF Pro'), local('.AppleSystemUIFont');
+}
+
+@font-face {
+  font-family: 'Copperplate';
+  src: local('Copperplate');
+}
+@font-face {
+  font-family: 'CourierNewPSMT';
+  src: local('Courier New'), local('CourierNewPSMT');
+}
+@font-face {
+  font-family: 'Futura-Medium';
+  src: local('Futura'), local('Futura-Medium');
+}
+@font-face {
+  font-family: 'Georgia';
+  src: local('Georgia');
+}
+
+@font-face {
+  font-family: 'Papyrus';
+  src: local('Papyrus');
+}
+@font-face {
+  font-family: 'TimesNewRomanPSMT';
+  src: local('Times New Roman'), local('TimesNewRomanPSMT');
+}
+@font-face {
+  font-family: 'Verdana';
+  src: local('Verdana');
+}
 
 @custom-variant dark (&:is(.dark *));
 

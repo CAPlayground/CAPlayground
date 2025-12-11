@@ -67,7 +67,14 @@ export function TextTab({
             <SelectValue placeholder="Select font" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="SFProText-Regular">SFProText-Regular</SelectItem>
+            <SelectItem value="SFProText-Regular">System Default (SF Pro)</SelectItem>
+            <SelectItem value="TimesNewRomanPSMT">Times New Roman</SelectItem>
+            <SelectItem value="Copperplate">Copperplate</SelectItem>
+            <SelectItem value="CourierNewPSMT">Courier New</SelectItem>
+            <SelectItem value="Futura-Medium">Futura</SelectItem>
+            <SelectItem value="Georgia">Georgia</SelectItem>
+            <SelectItem value="Papyrus">Papyrus</SelectItem>
+            <SelectItem value="Verdana">Verdana</SelectItem>
           </SelectContent>
         </Select>
       </div>
