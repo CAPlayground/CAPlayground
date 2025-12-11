@@ -103,7 +103,7 @@ export function MoveableOverlay({
 
   if (!selectedLayer) return null;
   const isResizing = currentSize.w !== null || currentSize.h !== null;
-  const isDisabled = selectedLayer.animations?.enabled && isPlaying;
+  const isDisabled = selectedLayer.animations?.some(a => a.enabled) && isPlaying;
   return (
     <Moveable
       ables={[DimensionViewable]}

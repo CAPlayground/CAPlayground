@@ -13,8 +13,8 @@ import { getAnchor } from '../../canvas-preview/utils/coordinates';
 import Moveable from 'react-moveable';
 import { useMoveablePointerDrag } from '../../hooks/use-moveable-pointer-drag';
 import { useEditor } from '../../editor-context';
-import useKeyframeAnimation from '@/hooks/use-keyframe';
 import useStateTransition from '@/hooks/use-state-transition';
+import useLayerAnimations from '@/hooks/use-layer-animations';
 import LiquidGlassRenderer from './LiquidGlassRenderer';
 
 interface LayerRendererProps {
@@ -83,27 +83,7 @@ export function LayerRenderer({
     gyroX,
     gyroY,
   });
-  const animation = useKeyframeAnimation({
-    keyframes: layer.animations?.enabled
-      ? layer.animations?.values || []
-      : [],
-    reverse: layer.animations?.autoreverses === 1,
-    durationMs: (layer.animations?.durationSeconds ?? 0) * 1000,
-    speed: layer.animations?.speed ?? 1,
-    delayMs,
-  });
-  const animationOverrides: Record<string, number> = {};
-  if (layer.animations?.enabled && layer.animations?.keyPath) {
-    if (layer.animations.keyPath === 'position') {
-      animationOverrides['position.x'] = (animation as Vec2).x;
-      animationOverrides['position.y'] = (animation as Vec2).y;
-    } else if (layer.animations.keyPath === 'bounds') {
-      animationOverrides['bounds.size.width'] = (animation as Size).w;
-      animationOverrides['bounds.size.height'] = (animation as Size).h;
-    } else {
-      animationOverrides[layer.animations.keyPath] = animation as number;
-    }
-  }
+  const animationOverrides = useLayerAnimations(layer.animations, delayMs);
 
   const x = transformedX ?? animationOverrides['position.x'] ?? layer.position.x;
   const y = transformedY ?? animationOverrides['position.y'] ?? layer.position.y;

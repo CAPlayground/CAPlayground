@@ -486,88 +486,91 @@ export function serializeLayer(
     el.appendChild(sublayersEl);
   }
 
-  const anim = (layer as any).animations as
-    | Animations
-    | undefined;
-  if (anim?.enabled && Array.isArray(anim.values) && anim.values.length > 0) {
-    const keyPath = (anim.keyPath ?? 'position') as KeyPath;
+  const animations = layer.animations || []
+  if (animations.length > 0) {
     const animationsEl = doc.createElementNS(CAML_NS, 'animations');
-    const a = doc.createElementNS(CAML_NS, 'animation');
-    a.setAttribute('type', 'CAKeyframeAnimation');
-    a.setAttribute('keyPath', keyPath);
-    a.setAttribute('autoreverses', String((anim.autoreverses ?? 0) as number));
-    a.setAttribute('beginTime', '1e-100');
-    const providedDur = Number((anim as any).durationSeconds);
-    const duration = Number.isFinite(providedDur) && providedDur > 0
-      ? providedDur
-      : Math.max(1, (anim.values?.length || 1) - 1);
-    a.setAttribute('duration', String(duration));
-    a.setAttribute('speed', String(anim.speed || 1));
-    a.setAttribute('removedOnCompletion', '0');
-    const infinite = Number((anim as any).infinite ?? 1) === 1;
-    const providedRepeat = Number((anim as any).repeatDurationSeconds);
-    const repeatDuration = Number.isFinite(providedRepeat) && providedRepeat > 0 ? providedRepeat : duration;
-    if (infinite) {
-      a.setAttribute('repeatCount', 'inf');
-      a.setAttribute('repeatDuration', 'inf');
-    } else {
-      a.setAttribute('repeatDuration', String(repeatDuration));
-    }
-    a.setAttribute('calculationMode', 'linear');
-    const valuesEl = doc.createElementNS(CAML_NS, 'values');
-    if (keyPath === 'position') {
-      for (const ptRaw of anim.values as Array<any>) {
-        const pt = ptRaw || {};
-        const p = doc.createElementNS(CAML_NS, 'CGPoint');
-        const cx = Math.round(Number(pt?.x ?? 0));
-        const cy = Math.round(Number(pt?.y ?? 0));
-        p.setAttribute('value', `${cx} ${cy}`);
-        valuesEl.appendChild(p);
+    animations.forEach((anim, index) => {
+      if (anim?.enabled && Array.isArray(anim.values) && anim.values.length > 0) {
+        const keyPath = (anim.keyPath ?? 'position') as KeyPath;
+        const a = doc.createElementNS(CAML_NS, index == 0 ? 'animation' : 'p');
+        a.setAttribute('key', `animation-${index}`);
+        a.setAttribute('type', 'CAKeyframeAnimation');
+        a.setAttribute('keyPath', keyPath);
+        a.setAttribute('autoreverses', String((anim.autoreverses ?? 0) as number));
+        a.setAttribute('beginTime', '1e-100');
+        const providedDur = Number((anim as any).durationSeconds);
+        const duration = Number.isFinite(providedDur) && providedDur > 0
+          ? providedDur
+          : Math.max(1, (anim.values?.length || 1) - 1);
+        a.setAttribute('duration', String(duration));
+        a.setAttribute('speed', String(anim.speed || 1));
+        a.setAttribute('removedOnCompletion', '0');
+        const infinite = Number((anim as any).infinite ?? 1) === 1;
+        const providedRepeat = Number((anim as any).repeatDurationSeconds);
+        const repeatDuration = Number.isFinite(providedRepeat) && providedRepeat > 0 ? providedRepeat : duration;
+        if (infinite) {
+          a.setAttribute('repeatCount', 'inf');
+          a.setAttribute('repeatDuration', 'inf');
+        } else {
+          a.setAttribute('repeatDuration', String(repeatDuration));
+        }
+        a.setAttribute('calculationMode', 'linear');
+        const valuesEl = doc.createElementNS(CAML_NS, 'values');
+        if (keyPath === 'position') {
+          for (const ptRaw of anim.values as Array<any>) {
+            const pt = ptRaw || {};
+            const p = doc.createElementNS(CAML_NS, 'CGPoint');
+            const cx = Math.round(Number(pt?.x ?? 0));
+            const cy = Math.round(Number(pt?.y ?? 0));
+            p.setAttribute('value', `${cx} ${cy}`);
+            valuesEl.appendChild(p);
+          }
+        } else if (keyPath === 'position.x') {
+          for (const v of anim.values as Array<any>) {
+            const n = Number(v);
+            const cx = Math.round(Number.isFinite(n) ? n : 0);
+            const intEl = doc.createElementNS(CAML_NS, 'integer');
+            intEl.setAttribute('value', String(cx));
+            valuesEl.appendChild(intEl);
+          }
+        } else if (keyPath === 'position.y') {
+          for (const v of anim.values as Array<any>) {
+            const n = Number(v);
+            const cy = Math.round(Number.isFinite(n) ? n : 0);
+            const intEl = doc.createElementNS(CAML_NS, 'integer');
+            intEl.setAttribute('value', String(cy));
+            valuesEl.appendChild(intEl);
+          }
+        } else if (keyPath === 'transform.rotation.x' || keyPath === 'transform.rotation.y' || keyPath === 'transform.rotation.z') {
+          for (const v of anim.values as Array<any>) {
+            const deg = Number(v);
+            const rad = (Number.isFinite(deg) ? deg : 0) * Math.PI / 180;
+            const realEl = doc.createElementNS(CAML_NS, 'real');
+            realEl.setAttribute('value', String(rad));
+            valuesEl.appendChild(realEl);
+          }
+        } else if (keyPath === 'opacity') {
+          for (const v of anim.values as Array<any>) {
+            const n = Number(v);
+            const op = Number.isFinite(n) ? n : 1;
+            const realEl = doc.createElementNS(CAML_NS, 'real');
+            realEl.setAttribute('value', String(op));
+            valuesEl.appendChild(realEl);
+          }
+        } else if (keyPath === 'bounds') {
+          for (const ptRaw of anim.values as Array<any>) {
+            const pt = ptRaw || {};
+            const p = doc.createElementNS(CAML_NS, 'CGRect');
+            const w = Math.round(Number(pt?.w ?? 0));
+            const h = Math.round(Number(pt?.h ?? 0));
+            p.setAttribute('value', `0 0 ${w} ${h}`);
+            valuesEl.appendChild(p);
+          }
+        }
+        a.appendChild(valuesEl);
+        animationsEl.appendChild(a);
       }
-    } else if (keyPath === 'position.x') {
-      for (const v of anim.values as Array<any>) {
-        const n = Number(v);
-        const cx = Math.round(Number.isFinite(n) ? n : 0);
-        const intEl = doc.createElementNS(CAML_NS, 'integer');
-        intEl.setAttribute('value', String(cx));
-        valuesEl.appendChild(intEl);
-      }
-    } else if (keyPath === 'position.y') {
-      for (const v of anim.values as Array<any>) {
-        const n = Number(v);
-        const cy = Math.round(Number.isFinite(n) ? n : 0);
-        const intEl = doc.createElementNS(CAML_NS, 'integer');
-        intEl.setAttribute('value', String(cy));
-        valuesEl.appendChild(intEl);
-      }
-    } else if (keyPath === 'transform.rotation.x' || keyPath === 'transform.rotation.y' || keyPath === 'transform.rotation.z') {
-      for (const v of anim.values as Array<any>) {
-        const deg = Number(v);
-        const rad = (Number.isFinite(deg) ? deg : 0) * Math.PI / 180;
-        const realEl = doc.createElementNS(CAML_NS, 'real');
-        realEl.setAttribute('value', String(rad));
-        valuesEl.appendChild(realEl);
-      }
-    } else if (keyPath === 'opacity') {
-      for (const v of anim.values as Array<any>) {
-        const n = Number(v);
-        const op = Number.isFinite(n) ? n : 1;
-        const realEl = doc.createElementNS(CAML_NS, 'real');
-        realEl.setAttribute('value', String(op));
-        valuesEl.appendChild(realEl);
-      }
-    } else if (keyPath === 'bounds') {
-      for (const ptRaw of anim.values as Array<any>) {
-        const pt = ptRaw || {};
-        const p = doc.createElementNS(CAML_NS, 'CGRect');
-        const w = Math.round(Number(pt?.w ?? 0));
-        const h = Math.round(Number(pt?.h ?? 0));
-        p.setAttribute('value', `0 0 ${w} ${h}`);
-        valuesEl.appendChild(p);
-      }
-    }
-    a.appendChild(valuesEl);
-    animationsEl.appendChild(a);
+    });
     el.appendChild(animationsEl);
   }
 

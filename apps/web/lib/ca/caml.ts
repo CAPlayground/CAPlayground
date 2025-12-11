@@ -738,11 +738,12 @@ function parseCALayer(el: Element): AnyLayer {
 
 function parseCALayerAnimations(el: Element): Animations | undefined {
   // Parse per-layer keyframe animations
-  let parsedAnimations: Animations | undefined;
+  let parsedAnimations: Animations = [];
   try {
     const animationsEl = directChildByTagNS(el, 'animations');
-    const animNode = animationsEl?.getElementsByTagNameNS(CAML_NS, 'animation')[0];
-    if (animNode) {
+    const animFirst = animationsEl?.getElementsByTagNameNS(CAML_NS, 'animation') || [];
+    const animNodes = animationsEl?.getElementsByTagNameNS(CAML_NS, 'p') || [];
+    for (const animNode of [...animFirst, ...animNodes]) {
       const kp = (animNode.getAttribute('keyPath') || 'position') as KeyPath;
       const valuesNode = animNode.getElementsByTagNameNS(CAML_NS, 'values')[0];
       const vals: Array<{ x: number; y: number } | { w: number; h: number } | number> = [];
@@ -796,7 +797,7 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
       const repDurAttr = animNode.getAttribute('repeatDuration');
       const infinite: 0 | 1 = (repCount === 'inf' || repDurAttr === 'inf') ? 1 : 0;
       const repeatDurationSeconds = !infinite && Number.isFinite(Number(repDurAttr || '')) ? Number(repDurAttr) : undefined;
-      parsedAnimations = {
+      parsedAnimations.push({
         enabled,
         keyPath: kp,
         autoreverses,
@@ -805,7 +806,7 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
         infinite,
         repeatDurationSeconds: repeatDurationSeconds,
         speed: Number.isFinite(Number(speed)) ? Number(speed) : undefined,
-      };
+      });
     }
   } catch { }
   return parsedAnimations;

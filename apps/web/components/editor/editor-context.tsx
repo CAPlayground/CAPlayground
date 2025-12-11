@@ -1377,7 +1377,8 @@ export function EditorProvider({
         !('syncWWithState' in patch) &&
         !('blendMode' in patch) &&
         !('filters' in patch) &&
-        !('children' in patch);
+        !('children' in patch) &&
+        !('animations' in patch);
       if (shouldOnlyAffectState) {
         const p: any = patch;
         const nextState = { ...(cur.stateOverrides || {}) } as Record<string, Array<{ targetId: string; keyPath: string; value: number | string }>>;
