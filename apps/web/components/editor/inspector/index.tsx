@@ -93,8 +93,6 @@ export function Inspector() {
     return eff;
   })();
 
-  const animEnabled: boolean = !!(selectedBase as any)?.animations?.enabled && (selectedBase as any)?.type !== 'video';
-
   const {
     disablePosX,
     disablePosY,
@@ -136,7 +134,7 @@ export function Inspector() {
     if (selected?.type === 'video') {
       baseTabs.push({ id: 'video' as TabId, icon: Video, label: 'Video' });
     }
-    if (selected?.type !== 'transform') {
+    if (selected?.type !== 'transform' && selected?.type !== 'video') {
       baseTabs.push({ id: 'animations' as TabId, icon: Play, label: 'Animations' });
     }
     if (doc?.meta.gyroEnabled && selected?.type === 'transform') {
@@ -167,7 +165,7 @@ export function Inspector() {
       setActiveTab('gradient');
     } else if (selected?.type === 'image' && (['text', 'gradient', 'video', 'emitter', 'gyro'].includes(activeTab))) {
       setActiveTab('image');
-    } else if (selected?.type === 'video' && (['text', 'gradient', 'image', 'emitter', 'replicator', 'gyro'].includes(activeTab))) {
+    } else if (selected?.type === 'video' && (['animations', 'text', 'gradient', 'image', 'emitter', 'replicator', 'gyro'].includes(activeTab))) {
       setActiveTab('video');
     } else if (!['text', 'emitter', 'replicator', 'gradient', 'image', 'video', 'transform'].includes(selected?.type) && ['text', 'gradient', 'image', 'video', 'emitter', 'replicator', 'gyro'].includes(activeTab)) {
       setActiveTab('geometry');
@@ -404,11 +402,7 @@ export function Inspector() {
           )}
 
           {activeTab === 'animations' && (
-            <AnimationsTab
-              {...tabProps}
-              animEnabled={animEnabled}
-              activeState={current?.activeState}
-            />
+            <AnimationsTab {...tabProps} />
           )}
 
           {activeTab === 'gyro' && (
