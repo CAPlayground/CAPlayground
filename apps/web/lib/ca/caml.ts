@@ -601,11 +601,13 @@ function parseCAEmitterLayer(el: Element): AnyLayer {
 function parseCATransformLayer(el: Element): AnyLayer {
   const base = parseLayerBase(el);
   const children = parseSublayers(el);
+  const parsedAnimations = parseCALayerAnimations(el);
 
   return {
     ...base,
     type: 'transform',
     children,
+    ...(parsedAnimations ? { animations: parsedAnimations } : {} as any),
   } as AnyLayer;
 }
 

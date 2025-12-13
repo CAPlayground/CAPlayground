@@ -87,6 +87,7 @@ export function LayerRenderer({
 
   const x = transformedX ?? animationOverrides['position.x'] ?? layer.position.x;
   const y = transformedY ?? animationOverrides['position.y'] ?? layer.position.y;
+  const z = animationOverrides['zPosition'] ?? layer.zPosition;
   const rotation = animationOverrides['transform.rotation.z'] ?? layer.rotation;
   const rotationX = animationOverrides['transform.rotation.x'] ?? layer.rotationX;
   const rotationY = animationOverrides['transform.rotation.y'] ?? layer.rotationY;
@@ -132,13 +133,22 @@ export function LayerRenderer({
   const translateY = useYUp
     ? -y - ((1 - anchor.y) * height)
     : y - (anchor.y * height);
+  const translateZ = z;
+  const transforms = [
+    `translateX(${translateX}px)`,
+    `translateY(${translateY}px)`,
+    `translateZ(${translateZ}px)`,
+    `rotate(${-(rotation ?? 0)}deg)`,
+    `rotateY(${(rotationY ?? 0)}deg)`,
+    `rotateX(${-(rotationX ?? 0)}deg)`,
+  ];
   const common: React.CSSProperties = {
     position: "absolute",
     left: 0,
     top: useYUp ? '100%' : 0,
     width,
     height,
-    transform: `translateX(${translateX}px) translateY(${translateY}px) rotateX(${-(rotationX ?? 0)}deg) rotateY(${-(rotationY ?? 0)}deg) rotate(${-(rotation ?? 0)}deg)`,
+    transform: transforms.join(' '),
     transformOrigin: `${anchor.x * 100}% ${transformOriginY}%`,
     backfaceVisibility: "visible",
     display: (layer.visible === false || hiddenLayerIds.has(layer.id)) ? "none" : undefined,
