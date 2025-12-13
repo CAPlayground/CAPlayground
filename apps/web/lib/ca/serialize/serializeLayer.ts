@@ -489,7 +489,15 @@ export function serializeLayer(
   const animations = layer.animations || []
   if (animations.length > 0) {
     const animationsEl = doc.createElementNS(CAML_NS, 'animations');
-    animations.forEach((anim, index) => {
+    // This ensures proper 3D transformation order: rotation.y must be processed before other rotation properties to avoid flickering
+    const orderedAnimations = [...animations].sort((a, b) => {
+      const priority = (kp: unknown) => {
+        if (kp === 'transform.rotation.y') return 0;
+        return 1;
+      };
+      return priority(a?.keyPath) - priority(b?.keyPath);
+    });
+    orderedAnimations.forEach((anim, index) => {
       if (anim?.enabled && Array.isArray(anim.values) && anim.values.length > 0) {
         const keyPath = (anim.keyPath ?? 'position') as KeyPath;
         const a = doc.createElementNS(CAML_NS, index == 0 ? 'animation' : 'p');

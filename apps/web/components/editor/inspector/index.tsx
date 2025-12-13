@@ -96,6 +96,7 @@ export function Inspector() {
   const {
     disablePosX,
     disablePosY,
+    disablePosZ,
     disableRotX,
     disableRotY,
     disableRotZ,
@@ -108,6 +109,7 @@ export function Inspector() {
     return {
       disablePosX: on(kp === 'position' || kp === 'position.x'),
       disablePosY: on(kp === 'position' || kp === 'position.y'),
+      disablePosZ: on(kp === 'zPosition'),
       disableRotX: selectedBase?.type === 'emitter' || on(kp === 'transform.rotation.x'),
       disableRotY: selectedBase?.type === 'emitter' || on(kp === 'transform.rotation.y'),
       disableRotZ: on(kp === 'transform.rotation.z'),
@@ -134,7 +136,7 @@ export function Inspector() {
     if (selected?.type === 'video') {
       baseTabs.push({ id: 'video' as TabId, icon: Video, label: 'Video' });
     }
-    if (selected?.type !== 'transform' && selected?.type !== 'video') {
+    if (selected?.type !== 'video') {
       baseTabs.push({ id: 'animations' as TabId, icon: Play, label: 'Animations' });
     }
     if (doc?.meta.gyroEnabled && selected?.type === 'transform') {
@@ -173,7 +175,7 @@ export function Inspector() {
       setActiveTab('emitter');
     } else if (selected?.type === 'replicator' && (['animations', 'text', 'gradient', 'image', 'video', 'content', 'emitter', 'gyro'].includes(activeTab))) {
       setActiveTab('replicator');
-    } else if (selected?.type === 'transform' && (['animations', 'text', 'gradient', 'image', 'video', 'emitter', 'replicator'].includes(activeTab))) {
+    } else if (selected?.type === 'transform' && (['text', 'gradient', 'image', 'video', 'emitter', 'replicator'].includes(activeTab))) {
       setActiveTab('gyro');
     }
   }, [selected?.type, activeTab]);
@@ -352,6 +354,7 @@ export function Inspector() {
               {...tabProps}
               disablePosX={disablePosX}
               disablePosY={disablePosY}
+              disablePosZ={disablePosZ}
               disableRotX={disableRotX}
               disableRotY={disableRotY}
               disableRotZ={disableRotZ}
