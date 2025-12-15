@@ -1,12 +1,9 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Minus, Plus, Crosshair, Square, Crop, Clock, Rotate3D, TabletSmartphone } from "lucide-react";
+import { Minus, Plus, Crosshair, Square, Crop, Rotate3D, TabletSmartphone } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useCanvasSize } from "@/hooks/use-canvas-size";
@@ -26,7 +23,6 @@ import { MoveableOverlay } from "./inspector/canvas/MoveableOverlay";
 import Moveable from "react-moveable";
 import { useTimeline } from "@/context/TimelineContext";
 import DevicePreview from "./device-preview/DevicePreview";
-import { ClockOverlay } from "./device-preview/ClockOverlay";
 
 export function CanvasPreview() {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -54,11 +50,9 @@ export function CanvasPreview() {
   const [showEdgeGuide, setShowEdgeGuide] = useLocalStorage<boolean>("caplay_preview_edge_guide", false);
   const [clipToCanvas, setClipToCanvas] = useLocalStorage<boolean>("caplay_preview_clip", false);
   const [showBackground] = useLocalStorage<boolean>("caplay_preview_show_background", true);
-  const [showClockOverlay, setShowClockOverlay] = useLocalStorage<boolean>("caplay_preview_clock_overlay", false);
-  const [clockDepthEffect, setClockDepthEffect] = useLocalStorage<boolean>("caplay_preview_clock_depth", false);
+  const [clockDepthEffect] = useLocalStorage<boolean>("caplay_preview_clock_depth", false);
   const [showAnchorPoint] = useLocalStorage<boolean>("caplay_preview_anchor_point", false);
   const [pinchZoomSensitivity] = useLocalStorage<number>("caplay_settings_pinch_zoom_sensitivity", 1);
-  const [clockMenuOpen, setClockMenuOpen] = useState(false);
 
   useClipboard();
   const {
@@ -73,8 +67,11 @@ export function CanvasPreview() {
   useEffect(() => {
     if (showPreview) {
       play();
+      setUserScale(.9);
     } else {
       pause();
+      setUserScale(1);
+      setPan({ x: 0, y: 0 });
     }
   }, [showPreview]);
 
@@ -315,6 +312,7 @@ export function CanvasPreview() {
             </div>
           ) : currentKey === 'wallpaper' ? (
             <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+              {showPreview && <div id="lock-screen-clock" className="pt-[35px]" />}
               {renderedLayers.map((layer) => (
                 <LayerRenderer
                   key={layer.id}
@@ -331,15 +329,9 @@ export function CanvasPreview() {
               ))}
             </div>
           ) : null}
-          {showClockOverlay && !showPreview && (
-            <ClockOverlay
-              docWidth={doc?.meta.width ?? 0}
-              docHeight={doc?.meta.height ?? 0}
-              clockDepthEffect={clockDepthEffect}
-            />
-          )}
           {currentKey === 'floating' && (
             <div style={{ position: 'absolute', inset: 0, zIndex: clockDepthEffect ? 1000 : 100 }}>
+              {showPreview && <div id="lock-screen-clock" className="pt-[35px]" />}
               {showBackground
                 ? renderedLayers.slice(backgroundLayers.length).map((layer) => (
                   <LayerRenderer
@@ -430,7 +422,7 @@ export function CanvasPreview() {
             <TooltipContent side="left">Gyro</TooltipContent>
           </Tooltip>
         )}
-        {currentKey !== 'wallpaper' && <Tooltip>
+        <Tooltip>
           <TooltipTrigger asChild>
             <Button
               type="button"
@@ -445,70 +437,7 @@ export function CanvasPreview() {
             </Button>
           </TooltipTrigger>
           <TooltipContent side="left">Show Preview</TooltipContent>
-        </Tooltip>}
-        {(() => {
-          const w = doc?.meta.width ?? 0;
-          const h = doc?.meta.height ?? 0;
-          const targetRatio = 1170 / 2532;
-          const currentRatio = w / h;
-          const isMatchingAspectRatio = Math.abs(currentRatio - targetRatio) < 0.01;
-
-          if (isMatchingAspectRatio) {
-            return (
-              <Tooltip>
-                <Popover open={clockMenuOpen} onOpenChange={setClockMenuOpen}>
-                  <PopoverTrigger asChild>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant={showClockOverlay ? "default" : "outline"}
-                        aria-pressed={showClockOverlay}
-                        aria-label="Clock overlay settings"
-                        disabled={showPreview}
-                        className={`h-8 w-8 ${showClockOverlay ? '' : 'hover:text-primary hover:border-primary/50 hover:bg-primary/10'}`}
-                      >
-                        <Clock className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-56" align="end" side="top" sideOffset={8}>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="clock-overlay" className="text-sm font-medium cursor-pointer">
-                          Show Clock
-                        </Label>
-                        <Switch
-                          id="clock-overlay"
-                          checked={showClockOverlay}
-                          onCheckedChange={setShowClockOverlay}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="clock-depth" className="text-sm font-medium cursor-pointer">
-                          Depth Effect
-                        </Label>
-                        <Switch
-                          id="clock-depth"
-                          checked={clockDepthEffect}
-                          onCheckedChange={setClockDepthEffect}
-                          disabled={!showClockOverlay}
-                        />
-                      </div>
-                      <div className="text-xs text-muted-foreground pt-2 border-t">
-                        {clockDepthEffect
-                          ? "Floating layers appear above clock"
-                          : "Clock appears above all layers"}
-                      </div>
-                    </div>
-                  </PopoverContent>
-                  <TooltipContent side="left">Clock</TooltipContent>
-                </Popover>
-              </Tooltip>
-            );
-          }
-          return null;
-        })()}
+        </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

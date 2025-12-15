@@ -12,6 +12,7 @@ import { AnyLayer } from "@/lib/ca/types";
 
 export function StatesPanel() {
   const { doc, setDoc, setActiveState } = useEditor();
+  const gyroEnabled = doc?.meta.gyroEnabled ?? false;
   const key = doc?.activeCA ?? 'floating';
   const current = doc?.docs?.[key];
   const states = current?.states ?? [];
@@ -174,25 +175,27 @@ export function StatesPanel() {
             </div>
             </DialogContent>
           </Dialog>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7">
-                <Settings className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64 p-2">
-              <DropdownMenuLabel className="text-xs">State Settings</DropdownMenuLabel>
-              <div className="space-y-1">
-                <div className="flex items-center justify-between py-1.5 px-1">
-                  <span className="text-xs text-muted-foreground">Light/Dark per state</span>
-                  <Switch checked={split} onCheckedChange={onToggleSplit} />
+          {!gyroEnabled && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7">
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64 p-2">
+                <DropdownMenuLabel className="text-xs">State Settings</DropdownMenuLabel>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between py-1.5 px-1">
+                    <span className="text-xs text-muted-foreground">Light/Dark per state</span>
+                    <Switch checked={split} onCheckedChange={onToggleSplit} />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground px-1 pb-1">
+                    Light/Dark per state will make wallpaper not usable on iOS 16
+                  </p>
                 </div>
-                <p className="text-[10px] text-muted-foreground px-1 pb-1">
-                  Light/Dark per state will make wallpaper not usable on iOS 16
-                </p>
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
 
