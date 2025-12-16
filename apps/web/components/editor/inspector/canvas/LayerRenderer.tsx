@@ -159,6 +159,7 @@ export function LayerRenderer({
     ...(typeof layer.cornerRadius === 'number' ? { borderRadius: layer.cornerRadius } : {}),
     overflow: layer.masksToBounds ? 'hidden' : 'visible',
     mixBlendMode: blendModes[layer.blendMode || 'normalBlendMode']?.css ?? 'normal',
+    zIndex: layer.name === 'BACKGROUND' ? -1 : 0,
   };
 
   if (layer.filters) {

@@ -1,5 +1,7 @@
+import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Camera, Flashlight } from "lucide-react";
 import React from "react";
+import { createPortal } from "react-dom";
 
 interface LockScreenProps {
   onHomeBarMouseDown?: (e: React.MouseEvent) => void;
@@ -28,18 +30,9 @@ export default function IOSLockScreen({
   showBottomBar = true,
   showButtons = true
 }: LockScreenProps) {
-  const { minutes, displayHours, now } = getTime();
-
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-  const dayName = days[now.getDay()];
-  const monthName = months[now.getMonth()];
-  const date = now.getDate();
-
   return (
     <div
-      className={`absolute rounded-[48px] inset-0 flex flex-col text-white pointer-events-none ${isDragging ? '' : 'transition-transform duration-150 ease-out'
+      className={`absolute rounded-[48px] inset-0 flex flex-col justify-between text-white pointer-events-none ${isDragging ? '' : 'transition-transform duration-150 ease-out'
         }`}
       style={{
         background: isDragging ? 'linear-gradient(to top, #fafafa4f 0%, transparent 10%)' : '',
@@ -48,14 +41,7 @@ export default function IOSLockScreen({
     >
       <TopBar showTopBar={showTopBar} />
 
-      <div className="flex-1 flex flex-col items-center mt-14">
-        <div className="text-lg font-medium tracking-wide">
-          {dayName} {date} {monthName}
-        </div>
-        <div className="text-[120px] font-bold leading-[100px] tracking-tight">
-          {displayHours}:{minutes}
-        </div>
-      </div>
+      <LockScreenClock />
 
       <div
         className="flex justify-between items-end px-12 pb-8 pointer-events-auto transition-opacity duration-800 ease-out"
@@ -74,13 +60,15 @@ export default function IOSLockScreen({
         </button>
       </div>
 
-      {showBottomBar && <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 pb-2 pointer-events-none">
-        <div
-          className="w-[120px] h-1.5 rounded-full bg-white/75 pointer-events-auto cursor-grab active:cursor-grabbing select-none touch-none"
+      {showBottomBar &&
+        <div className="absolute w-full bottom-0 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 p-5  pointer-events-auto cursor-grab active:cursor-grabbing select-none touch-none"
           onMouseDown={onHomeBarMouseDown}
           onTouchStart={onHomeBarTouchStart}
-        />
-      </div>}
+        >
+          <div
+            className="w-[120px] h-1.5 rounded-full bg-white/75"
+          />
+        </div>}
     </div>
   );
 }
@@ -93,7 +81,7 @@ export const TopBar = ({
   const { minutes, displayHours } = getTime();
   return (
     <div
-      className="flex w-full justify-between items-center px-7 pt-4 text-sm font-semibold transition-opacity duration-800 ease-out"
+      className="flex h-[35px] w-full justify-between items-center px-7 pt-4 text-sm font-semibold transition-opacity duration-800 ease-out"
       style={{ opacity: showTopBar ? 1 : 0 }}
     >
       <div className="text-sm font-semibold tracking-tight">
@@ -117,3 +105,38 @@ export const TopBar = ({
     </div>
   )
 }
+
+export const LockScreenClock = () => {
+  const { minutes, displayHours, now } = getTime();
+  const [clockDepthEffect] = useLocalStorage<boolean>("caplay_preview_clock_depth", false);
+
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  const dayName = days[now.getDay()];
+  const monthName = months[now.getMonth()];
+  const date = now.getDate();
+
+  const clockContent = (
+    <div
+      className="flex-1 flex flex-col items-center mt-14"
+    >
+      <div className="text-lg font-medium tracking-wide">
+        {dayName} {date} {monthName}
+      </div>
+      <div className="text-[120px] font-bold leading-[100px] tracking-tight">
+        {displayHours}:{minutes}
+      </div>
+    </div>
+  );
+
+  if (clockDepthEffect && typeof document !== 'undefined') {
+    const lockScreenEl = document.getElementById('lock-screen-clock');
+    
+    if (lockScreenEl) {
+      return createPortal(clockContent, lockScreenEl);
+    }
+  }
+
+  return clockContent;
+};
