@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { AnyLayer } from "@/lib/ca/types";
 import { isChromiumBrowser } from "@/lib/browser";
+import VideoLayerDialog from "./VideoLayerDialog";
 
 export function LayersPanel() {
   const {
@@ -49,6 +50,7 @@ export function LayersPanel() {
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [multiSelectedIds, setMultiSelectedIds] = useState<string[]>([]);
   const [isChromium, setIsChromium] = useState(true);
+  const [videoLayerIsOpen, setVideoLayerIsOpen] = useState(false);
 
   useEffect(() => {
     setIsChromium(isChromiumBrowser());
@@ -335,7 +337,9 @@ export function LayersPanel() {
               <DropdownMenuItem onSelect={() => addShapeLayer("rect")}>Basic Layer</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => addGradientLayer()}>Gradient Layer</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => fileInputRef.current?.click()}>Image Layer…</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => videoInputRef.current?.click()}>Video Layer…</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => {
+                setTimeout(() => setVideoLayerIsOpen(true), 0);
+              }}>Video Layer…</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => addEmitterLayer()}>Emitter Layer</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => addReplicatorLayer()}>Replicator Layer</DropdownMenuItem>
               {isGyro && (
@@ -509,6 +513,7 @@ export function LayersPanel() {
           </div>
         </div>
       )}
+      <VideoLayerDialog open={videoLayerIsOpen} setVideoLayerIsOpen={setVideoLayerIsOpen} />
     </Card>
   );
 }

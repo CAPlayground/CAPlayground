@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useEditor } from "../editor-context";
 import { useEffect, useMemo, useState } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
