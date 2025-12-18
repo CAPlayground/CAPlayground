@@ -332,7 +332,6 @@ export default function VideoLayerDialog({
               <SelectItem value="15">15 fps</SelectItem>
               <SelectItem value="30">30 fps</SelectItem>
               <SelectItem value="60">60 fps</SelectItem>
-              <SelectItem value="120">120 fps</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -352,7 +351,7 @@ export default function VideoLayerDialog({
           <AlertDescription>
             {isGif
               ? "For GIFs, the frame rate is automatically set to 15 fps for optimal performance."
-              : "Note: 30 fps is recommended for optimal performance. Higher frame rates (60-120 fps) are better for videos synced with state transitions but will increase file size."
+              : "Note: 30 fps is recommended for optimal performance. Higher frame rates (60 fps) are better for videos synced with state transitions but will increase file size."
             }
           </AlertDescription>
         </Alert>
