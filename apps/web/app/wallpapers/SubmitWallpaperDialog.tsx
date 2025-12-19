@@ -46,6 +46,7 @@ interface WallpaperEntry {
   description: string
   file: string
   preview: string
+  date: number
   from: string
 }
 
@@ -219,19 +220,6 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
         encoding: "base64",
       })
 
-      const { data: currentJsonData } = await octokit.rest.repos.getContent({
-        owner: upstreamOwner,
-        repo: upstreamRepo,
-        path: "wallpapers.json",
-        ref: "dev"
-      })
-
-      let currentWallpapers: { base_url: string; wallpapers: WallpaperEntry[] } = { base_url: "https://raw.githubusercontent.com/CAPlayground/wallpapers/main/", wallpapers: [] }
-      if ('content' in currentJsonData && !Array.isArray(currentJsonData)) {
-        const content = atob(currentJsonData.content.replace(/\s/g, ''))
-        // currentWallpapers = JSON.parse(content)
-      }
-
       const safeName = name.replace(/[^a-z0-9]/gi, '_')
       const tendiesPath = `wallpapers/${safeName}.tendies`
       const jsonPath = `jsons/${safeName}.json`
@@ -246,6 +234,7 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
         description: description,
         file: tendiesPath,
         preview: gifPreviewPath,
+        date: new Date().getTime(),
         from: "website"
       }
 
@@ -308,8 +297,7 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
         owner: upstreamOwner,
         repo: upstreamRepo,
         title: `Submission: ${name}`,
-        body: `Wallpaper submission from ${username}\n\nDescription: ${description}\nID: ${idString}
-        ### Download build artifact\n[Download .tendies file](${tendiesUrl})`,
+        body: `Wallpaper submission from ${username}\n\nDescription: ${description}\nID: ${idString}\n[Download .tendies file](${tendiesUrl})`,
         head: branchName,
         base: "dev-test",
       })

@@ -29,6 +29,7 @@ interface WallpaperItem {
   description: string
   file: string
   preview: string
+  date: number
   from: string
 }
 
@@ -149,9 +150,9 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
           : aDownloads - bDownloads
       })
     } else if (sortBy === 'newest') {
-      result = [...result].reverse()
+      result = [...result].reverse().sort((a, b) => b.date - a.date)
     } else {
-      result = [...result]
+      result = [...result].sort((a, b) => a.date - b.date)
     }
 
     return result
