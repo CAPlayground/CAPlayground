@@ -316,11 +316,11 @@ function DashboardContent() {
                         )}
                       </div>
                       <span className="text-xs text-muted-foreground">
-                        {awaitingSubmissions.length}/3 slots used
+                        {awaitingSubmissions.length}/5 slots used
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      You can have up to three wallpapers awaiting review at a time.
+                      You can have up to five wallpapers awaiting review at a time.
                     </p>
 
                     {awaitingSubmissions.length === 0 ? (

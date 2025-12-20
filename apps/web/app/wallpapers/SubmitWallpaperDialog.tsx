@@ -142,8 +142,8 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
 
       if (awaitingError) {
         console.warn('Failed to check existing submissions limit:', awaitingError)
-      } else if (typeof awaitingCount === 'number' && awaitingCount >= 3) {
-        throw new Error('You already have 3 wallpapers awaiting review. Please wait until one is approved or rejected before submitting more.')
+      } else if (typeof awaitingCount === 'number' && awaitingCount >= 5) {
+        throw new Error('You already have 5 wallpapers awaiting review. Please wait until one is approved or rejected before submitting more.')
       }
 
       setSubmissionStatus({ message: "Authenticating..." })
