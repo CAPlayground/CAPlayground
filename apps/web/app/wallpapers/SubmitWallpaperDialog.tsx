@@ -299,7 +299,7 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
         title: `Submission: ${name}`,
         body: `Wallpaper submission from ${username}\n\nDescription: ${description}\nID: ${idString}\n[Download .tendies file](${tendiesUrl})`,
         head: branchName,
-        base: "dev-test",
+        base: "dev",
       })
 
       setPrUrl(pr.html_url)
