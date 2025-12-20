@@ -41,7 +41,7 @@ export default function IOSLockScreen({
     >
       <TopBar showTopBar={showTopBar} />
 
-      <LockScreenClock />
+      <LockScreenClock homeBarTranslateY={homeBarTranslateY} />
 
       <div
         className="flex justify-between items-end px-12 pb-8 pointer-events-auto transition-opacity duration-800 ease-out"
@@ -106,7 +106,7 @@ export const TopBar = ({
   )
 }
 
-export const LockScreenClock = () => {
+export const LockScreenClock = ({ homeBarTranslateY }: { homeBarTranslateY: number }) => {
   const { minutes, displayHours, now } = getTime();
   const [clockDepthEffect] = useLocalStorage<boolean>("caplay_preview_clock_depth", false);
 
@@ -120,6 +120,7 @@ export const LockScreenClock = () => {
   const clockContent = (
     <div
       className="flex-1 flex flex-col items-center mt-14"
+      style={{ transform: `translateY(${clockDepthEffect ? homeBarTranslateY : 0}px)` }}
     >
       <div className="text-lg font-medium tracking-wide">
         {dayName} {date} {monthName}

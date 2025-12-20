@@ -50,7 +50,6 @@ export function CanvasPreview() {
   const [showEdgeGuide, setShowEdgeGuide] = useLocalStorage<boolean>("caplay_preview_edge_guide", false);
   const [clipToCanvas, setClipToCanvas] = useLocalStorage<boolean>("caplay_preview_clip", false);
   const [showBackground] = useLocalStorage<boolean>("caplay_preview_show_background", true);
-  const [clockDepthEffect] = useLocalStorage<boolean>("caplay_preview_clock_depth", false);
   const [showAnchorPoint] = useLocalStorage<boolean>("caplay_preview_anchor_point", false);
   const [pinchZoomSensitivity] = useLocalStorage<number>("caplay_settings_pinch_zoom_sensitivity", 1);
 
@@ -330,7 +329,7 @@ export function CanvasPreview() {
             </div>
           ) : null}
           {currentKey === 'floating' && (
-            <div style={{ position: 'absolute', inset: 0, zIndex: clockDepthEffect ? 1000 : 100 }}>
+            <div style={{ position: 'absolute', inset: 0, zIndex: 100 }}>
               {showPreview && <div id="lock-screen-clock" className="pt-[35px]" />}
               {showBackground
                 ? renderedLayers.slice(backgroundLayers.length).map((layer) => (

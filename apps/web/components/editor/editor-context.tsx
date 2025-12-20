@@ -225,7 +225,6 @@ export function EditorProvider({
               type: 'basic',
               position: { x: meta.width / 2, y: meta.height / 2 },
               size: { w: meta.width, h: meta.height },
-              backgroundColor: "#e5e7eb",
               children: [],
             })
           }
