@@ -46,6 +46,7 @@ interface WallpaperEntry {
   description: string
   file: string
   preview: string
+  date: number
   from: string
 }
 
@@ -141,8 +142,8 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
 
       if (awaitingError) {
         console.warn('Failed to check existing submissions limit:', awaitingError)
-      } else if (typeof awaitingCount === 'number' && awaitingCount >= 3) {
-        throw new Error('You already have 3 wallpapers awaiting review. Please wait until one is approved or rejected before submitting more.')
+      } else if (typeof awaitingCount === 'number' && awaitingCount >= 5) {
+        throw new Error('You already have 5 wallpapers awaiting review. Please wait until one is approved or rejected before submitting more.')
       }
 
       setSubmissionStatus({ message: "Authenticating..." })
@@ -219,21 +220,9 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
         encoding: "base64",
       })
 
-      const { data: currentJsonData } = await octokit.rest.repos.getContent({
-        owner: upstreamOwner,
-        repo: upstreamRepo,
-        path: "wallpapers.json",
-        ref: "dev"
-      })
-
-      let currentWallpapers: { base_url: string; wallpapers: WallpaperEntry[] } = { base_url: "https://raw.githubusercontent.com/CAPlayground/wallpapers/main/", wallpapers: [] }
-      if ('content' in currentJsonData && !Array.isArray(currentJsonData)) {
-        const content = atob(currentJsonData.content.replace(/\s/g, ''))
-        currentWallpapers = JSON.parse(content)
-      }
-
       const safeName = name.replace(/[^a-z0-9]/gi, '_')
       const tendiesPath = `wallpapers/${safeName}.tendies`
+      const jsonPath = `jsons/${safeName}.json`
       const videoExtension = videoFile.name.split('.').pop()
       const videoUploadPath = `previews/video/${safeName}.${videoExtension}`
       const gifPreviewPath = `previews/gif/${safeName}.gif`
@@ -245,15 +234,14 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
         description: description,
         file: tendiesPath,
         preview: gifPreviewPath,
+        date: new Date().getTime(),
         from: "website"
       }
-
-      currentWallpapers.wallpapers.push(newEntry)
 
       const { data: jsonBlob } = await octokit.rest.git.createBlob({
         owner: upstreamOwner,
         repo: upstreamRepo,
-        content: JSON.stringify(currentWallpapers, null, 2),
+        content: JSON.stringify(newEntry, null, 2),
         encoding: "utf-8",
       })
 
@@ -275,7 +263,7 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
             sha: videoBlob.sha,
           },
           {
-            path: "wallpapers.json",
+            path: jsonPath,
             mode: "100644",
             type: "blob",
             sha: jsonBlob.sha,
@@ -304,11 +292,12 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
       })
 
       setSubmissionStatus({ message: "Creating Pull Request..." })
+      const tendiesUrl = `https://raw.githubusercontent.com/${upstreamOwner}/${upstreamRepo}/${branchName}/${tendiesPath}`
       const { data: pr } = await octokit.rest.pulls.create({
         owner: upstreamOwner,
         repo: upstreamRepo,
         title: `Submission: ${name}`,
-        body: `Wallpaper submission from ${username}\n\nDescription: ${description}\nID: ${idString}`,
+        body: `Wallpaper submission from ${username}\n\nDescription: ${description}\nID: ${idString}\n[Download .tendies file](${tendiesUrl})`,
         head: branchName,
         base: "dev",
       })
