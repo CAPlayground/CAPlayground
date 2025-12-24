@@ -343,9 +343,18 @@ export default function VideoLayerDialog({
         }
         <Label>Dimensions: {width}x{height}px</Label>
         <Label>Duration: {duration.toFixed(2)}s </Label>
-        <Label>
-          Layer Size: {isLoading ? `Generating frames... (${currentFrame}/${frameCount})` : frameAssetsSize > 0 ? formatBytes(frameAssetsSize) : '0 Bytes'}
-        </Label>
+        <div className="space-y-2">
+          <Label>
+            Layer Size: {isLoading ? `Generating frames... (${currentFrame}/${frameCount})` : frameAssetsSize > 0 ? formatBytes(frameAssetsSize) : '0 Bytes'}
+          </Label>
+          {!isLoading && frameAssetsSize > 30 * 1024 * 1024 && (
+            <Alert variant="destructive">
+              <AlertDescription>
+                Warning: Layer size exceeds 30MB. This may impact performance and memory usage.
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
         <Progress value={frameCount > 0 ? (currentFrame / frameCount) * 100 : 0} max={100} />
         <Alert>
           <AlertDescription>
