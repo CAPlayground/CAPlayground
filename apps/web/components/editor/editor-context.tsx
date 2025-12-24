@@ -59,6 +59,7 @@ export type EditorContextValue = {
   addShapeLayer: (shape?: ShapeLayer["shape"]) => void;
   addGradientLayer: () => void;
   addVideoLayerFromFile: (file: File) => Promise<void>;
+  addVideoLayer: (videoLayer: Partial<VideoLayer>, width: number, height: number, frameAssets: Array<{ dataURL: string; filename: string }>) => void;
   addEmitterLayer: () => void;
   addTransformLayer: () => void;
   addReplicatorLayer: () => void;
@@ -1259,6 +1260,65 @@ export function EditorProvider({
     });
   }, [addBase, pushHistory]);
 
+  const addVideoLayer = useCallback((
+    {
+      name,
+      frameCount = 0,
+      fps,
+      duration,
+      framePrefix,
+      frameExtension,
+    }: Partial<VideoLayer>,
+    videoWidth: number,
+    videoHeight: number,
+    frameAssets: Array<{ dataURL: string; filename: string }>
+  ) => {
+
+    setDoc((prev) => {
+      if (!prev) return prev;
+      pushHistory(prev);
+      const canvasW = prev.meta.width || 390;
+      const canvasH = prev.meta.height || 844;
+      const videoW = videoWidth;
+      const videoH = videoHeight;
+      let w = videoW;
+      let h = videoH;
+      if (w > canvasW || h > canvasH) {
+        const scaleW = canvasW / videoW;
+        const scaleH = canvasH / videoH;
+        const scale = Math.min(scaleW, scaleH);
+        w = videoW * scale;
+        h = videoH * scale;
+      }
+      const x = canvasW / 2;
+      const y = canvasH / 2;
+      const layer: VideoLayer = {
+        ...addBase(name || 'Video Layer'),
+        type: 'video',
+        position: { x, y },
+        size: { w, h },
+        frameCount,
+        fps,
+        duration,
+        autoReverses: false,
+        framePrefix,
+        frameExtension,
+      };
+      const key = prev.activeCA;
+      const cur = prev.docs[key];
+      const assets = { ...(cur.assets || {}) };
+      frameAssets.forEach((frame, idx) => {
+        const frameId = `${layer.id}_frame_${idx}`;
+        assets[frameId] = { filename: `${framePrefix}${idx}${frameExtension}`, dataURL: frame.dataURL };
+      });
+      const selId = cur.selectedId || null;
+      const nextLayers = insertIntoSelected(cur.layers, selId, layer);
+
+      const next = { ...cur, layers: nextLayers, selectedId: layer.id, assets };
+      return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
+    });
+  }, [addBase, pushHistory]);
+
   const moveLayer = useCallback((sourceId: string, beforeId: string | null, position: 'before' | 'after' | 'into' = 'before') => {
     if (!sourceId || sourceId === beforeId) return;
     setDoc((prev) => {
@@ -1726,6 +1786,7 @@ export function EditorProvider({
     addShapeLayer,
     addGradientLayer,
     addVideoLayerFromFile,
+    addVideoLayer,
     addEmitterLayer,
     addTransformLayer,
     addReplicatorLayer,
@@ -1765,6 +1826,7 @@ export function EditorProvider({
     addShapeLayer,
     addGradientLayer,
     addVideoLayerFromFile,
+    addVideoLayer,
     addEmitterLayer,
     addTransformLayer,
     addReplicatorLayer,
