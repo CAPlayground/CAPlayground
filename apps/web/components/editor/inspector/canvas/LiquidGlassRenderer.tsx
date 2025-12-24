@@ -36,14 +36,17 @@ export default function LiquidGlassRenderer({
     depth,
   }), [height, width, radius, depth]);
 
+  // 在 LiquidGlassRenderer.tsx 中修改 style 的定义
   let style: CSSProperties = useMemo(() => ({
     height: `${height}px`,
     width: `${width}px`,
     borderRadius: `${radius}px`,
+    WebkitBackdropFilter: `url('${filter}')`, // 添加这一行
     backdropFilter: `url('${filter}')`,
     background: debug ? `url("${map}")` : "none",
     boxShadow: "none",
-  }), [filter, map]);
+    transform: 'translateZ(0)', // 强制开启 GPU 合成层
+  }), [filter, map, height, width, radius, debug]);
 
   return (
     <div style={style}>
