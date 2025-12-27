@@ -136,9 +136,16 @@ export function parseStateOverrides(xml: string): CAStateOverrides {
         const layer = doc.querySelector(`[name="${layerName}"]`);
         const targetId = layer?.getAttribute('id') || '';
         const keyPath = directChildByTagNS(dict, 'keyPath')?.getAttribute('value') || '';
-        const lockedValue = directChildByTagNS(dict, 'v_lock')?.getAttribute('value') || '';
-        const homeValue = directChildByTagNS(dict, 'v_home')?.getAttribute('value') || '';
-        const sleepValue = directChildByTagNS(dict, 'v_sleep')?.getAttribute('value') || '';
+        let lockedValue = directChildByTagNS(dict, 'v_lock')?.getAttribute('value') || '';
+        let homeValue = directChildByTagNS(dict, 'v_home')?.getAttribute('value') || '';
+        let sleepValue = directChildByTagNS(dict, 'v_sleep')?.getAttribute('value') || '';
+        const isRotation = keyPath === 'transform.rotation.z' || keyPath === 'transform.rotation.x' || keyPath === 'transform.rotation.y';
+        
+        if (isRotation) {
+          homeValue = radToDeg(Number(homeValue)).toFixed(5);
+          sleepValue = radToDeg(Number(sleepValue)).toFixed(5);
+          lockedValue = radToDeg(Number(lockedValue)).toFixed(5);
+        }
         result.Locked = [...(result.Locked || []), { targetId, keyPath, value: Number(lockedValue) }];
         result.Unlock = [...(result.Unlock || []), { targetId, keyPath, value: Number(homeValue) }];
         result.Sleep = [...(result.Sleep || []), { targetId, keyPath, value: Number(sleepValue) }];

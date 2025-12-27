@@ -12,6 +12,8 @@ export default function useStateTransition(
     },
     zPosition: layer.zPosition ?? 0,
     rotation: layer.rotation ?? 0,
+    rotationX: layer.rotationX ?? 0,
+    rotationY: layer.rotationY ?? 0,
     cornerRadius: layer.cornerRadius ?? 0,
     opacity: layer.opacity ?? 1,
     size: {
@@ -41,6 +43,8 @@ export default function useStateTransition(
     const overrideW = layer.size.w;
     const overrideH = layer.size.h;
     const overrideRotation = layer.rotation ?? 0;
+    const overrideRotationX = layer.rotationX ?? 0;
+    const overrideRotationY = layer.rotationY ?? 0;
     const overrideCornerRadius = layer.cornerRadius ?? 0;
     const overrideOpacity = layer.opacity ?? 1;
     const overrideZPosition = layer.zPosition ?? 0;
@@ -52,6 +56,8 @@ export default function useStateTransition(
       },
       zPosition: overrideZPosition,
       rotation: overrideRotation,
+      rotationX: overrideRotationX,
+      rotationY: overrideRotationY,
       cornerRadius: overrideCornerRadius,
       opacity: overrideOpacity,
       size: {
@@ -70,6 +76,8 @@ export default function useStateTransition(
         },
         zPosition: layer.zPosition ?? 0,
         rotation: layer.rotation ?? 0,
+        rotationX: layer.rotationX ?? 0,
+        rotationY: layer.rotationY ?? 0,
         cornerRadius: layer.cornerRadius ?? 0,
         opacity: layer.opacity ?? 1,
         size: {
@@ -115,6 +123,8 @@ export default function useStateTransition(
           },
           zPosition: lerp(startValue.current.zPosition, targetValue.zPosition),
           rotation: lerp(startValue.current.rotation, targetValue.rotation),
+          rotationX: lerp(startValue.current.rotationX, targetValue.rotationX),
+          rotationY: lerp(startValue.current.rotationY, targetValue.rotationY),
           cornerRadius: lerp(startValue.current.cornerRadius, targetValue.cornerRadius),
           opacity: lerp(startValue.current.opacity, targetValue.opacity),
           size: {
