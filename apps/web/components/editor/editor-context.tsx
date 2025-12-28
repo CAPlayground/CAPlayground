@@ -3,7 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { AnyLayer, CAProject, ImageLayer, LayerBase, ShapeLayer, TextLayer, VideoLayer, GyroParallaxDictionary, EmitterLayer, TransformLayer, ReplicatorLayer, LiquidGlassLayer } from "@/lib/ca/types";
 import { serializeCAML } from "@/lib/ca/serialize/serializeCAML";
-import { deleteFile, getProject, listFiles, putBlobFile, putBlobFilesBatch, putTextFile } from "@/lib/storage";
+import { deleteFile, getProject, listFiles, putBlobFile, putTextFile } from "@/lib/storage";
 import {
   genId,
   findById,
@@ -16,13 +16,13 @@ import {
   insertIntoSelected,
   getNextLayerName,
 } from "@/lib/editor/layer-utils";
-import { sanitizeFilename, dataURLToBlob, normalize } from "@/lib/editor/file-utils";
+import { sanitizeFilename, dataURLToBlob, normalize, uploadFrameAssets, cleanupOrphanedAssets } from "@/lib/editor/file-utils";
 import { CAEmitterCell } from "./emitter/emitter";
+import { assetCache } from "@/hooks/use-asset-url";
 
 type CADoc = {
   layers: AnyLayer[];
   selectedId?: string | null;
-  assets?: Record<string, { filename: string; dataURL: string }>;
   states: string[];
   stateOverrides?: Record<string, Array<{ targetId: string; keyPath: string; value: string | number }>>;
   activeState?: 'Base State' | 'Locked' | 'Unlock' | 'Sleep' | 'Locked Light' | 'Unlock Light' | 'Sleep Light' | 'Locked Dark' | 'Unlock Dark' | 'Sleep Dark';
@@ -43,6 +43,7 @@ export type ProjectDocument = {
 };
 
 export type EditorContextValue = {
+  projectId: string;
   doc: ProjectDocument | null;
   setDoc: React.Dispatch<React.SetStateAction<ProjectDocument | null>>;
   activeCA: 'background' | 'floating' | 'wallpaper';
@@ -50,6 +51,7 @@ export type EditorContextValue = {
   savingStatus: 'idle' | 'saving' | 'saved';
   lastSavedAt?: number;
   flushPersist: () => Promise<void>;
+  cleanupAssets: () => Promise<void>;
   addTextLayer: () => void;
   addImageLayer: (src?: string) => void;
   addImageLayerFromFile: (file: File) => Promise<void>;
@@ -181,7 +183,6 @@ export function EditorProvider({
           const caFolder = caType === 'floating' ? 'Floating.ca' : caType === 'wallpaper' ? 'Wallpaper.ca' : 'Background.ca';
           const main = byPath.get(`${folder}/${caFolder}/main.caml`);
           let layers: AnyLayer[] = [];
-          let assets: Record<string, { filename: string; dataURL: string }> = {};
           let states: string[] = [...fixedStates];
           let stateOverrides: Record<string, Array<{ targetId: string; keyPath: string; value: string | number }>> = {};
           let wallpaperParallaxGroups: GyroParallaxDictionary[] = [];
@@ -276,43 +277,9 @@ export function EditorProvider({
             return matches;
           };
 
-          for (const f of files) {
-            if (f.path.includes('/assets/')) {
-              const filename = f.path.split('/assets/')[1];
-              try {
-                const buf = f.data as ArrayBuffer;
-                const blob = new Blob([buf]);
-                const dataURL = await new Promise<string>((resolve) => {
-                  const r = new FileReader();
-                  r.onload = () => {
-                    let result = String(r.result);
-                    if (filename.endsWith('.svg')) {
-                      result = result.replace(/^data:application\/octet-stream/, 'data:image/svg+xml');
-                    }
-                    if (filename.endsWith('.jpg')) {
-                      result = result.replace(/^data:application\/octet-stream/, 'data:image/jpeg');
-                    }
-                    resolve(result);
-                  }
-                  r.readAsDataURL(blob);
-                });
-                const bindingKeys = findAssetBindings(layers, filename);
-                if (bindingKeys.length) {
-                  for (const k of bindingKeys) {
-                    assets[k] = { filename, dataURL };
-                  }
-                } else {
-                  const assetPath = `${caFolder}/assets/${filename}`;
-                  await deleteFile(projectId, assetPath);
-                }
-              } catch { }
-            }
-          }
-
           return {
             layers,
             selectedId: null,
-            assets,
             states: states.length ? states : [...fixedStates],
             activeState: 'Base State',
             stateOverrides,
@@ -323,7 +290,7 @@ export function EditorProvider({
           };
         };
 
-        const emptyDoc: CADoc = { layers: [], selectedId: null, assets: {}, states: [...fixedStates], activeState: 'Base State', stateOverrides: {}, appearanceSplit: false, appearanceMode: 'light' };
+        const emptyDoc: CADoc = { layers: [], selectedId: null, states: [...fixedStates], activeState: 'Base State', stateOverrides: {}, appearanceSplit: false, appearanceMode: 'light' };
 
         let floatingDoc: CADoc, backgroundDoc: CADoc, wallpaperDoc: CADoc;
         if (isGyro) {
@@ -411,7 +378,7 @@ export function EditorProvider({
         }
       } catch {
         skipPersistRef.current = true;
-        const emptyDoc: CADoc = { layers: [], selectedId: null, assets: {}, states: ["Locked", "Unlock", "Sleep"], activeState: 'Base State', stateOverrides: {}, appearanceSplit: false, appearanceMode: 'light' };
+        const emptyDoc: CADoc = { layers: [], selectedId: null, states: ["Locked", "Unlock", "Sleep"], activeState: 'Base State', stateOverrides: {}, appearanceSplit: false, appearanceMode: 'light' };
         setDoc({
           meta: {
             id: initialMeta.id,
@@ -504,33 +471,6 @@ export function EditorProvider({
       for (const key of caKeys) {
         const caFolder = key === 'floating' ? 'Floating.ca' : key === 'wallpaper' ? 'Wallpaper.ca' : 'Background.ca';
         const caDoc = snapshot.docs[key];
-        const toCamlLayers = (layers: AnyLayer[], assetsMap: CADoc["assets"] | undefined): AnyLayer[] => {
-          const mapOne = (l: AnyLayer): AnyLayer => {
-            const newL = { ...l };
-            if (l.type === 'image') {
-              const asset = assetsMap ? assetsMap[l.id] : undefined;
-              if (asset && asset.filename) {
-                (newL as ImageLayer).src = `assets/${asset.filename}`;
-              }
-            }
-            if (l.type === 'emitter') {
-              const cells = (l as EmitterLayer).emitterCells;
-              const newCells = cells?.map((c) => {
-                const asset = assetsMap ? assetsMap[c.id] : undefined;
-                if (asset && asset.filename) {
-                  return { ...c, src: `assets/${asset.filename}` };
-                }
-                return c;
-              });
-              (newL as EmitterLayer).emitterCells = newCells;
-            }
-            if (l.children?.length) {
-              (newL as AnyLayer).children = l.children.map(mapOne);
-            }
-            return newL;
-          };
-          return layers.map(mapOne);
-        };
         const rootBase: AnyLayer = {
           id: snapshot.meta.id,
           name: 'Root Layer',
@@ -538,7 +478,7 @@ export function EditorProvider({
           position: { x: Math.round((snapshot.meta.width || 0) / 2), y: Math.round((snapshot.meta.height || 0) / 2) },
           size: { w: snapshot.meta.width || 0, h: snapshot.meta.height || 0 },
           geometryFlipped: (snapshot.meta as any).geometryFlipped ?? 0,
-          children: toCamlLayers((caDoc.layers as AnyLayer[]) || [], caDoc.assets),
+          children: (caDoc.layers as AnyLayer[]) || [],
         };
 
         const root = key === 'floating'
@@ -604,46 +544,34 @@ export function EditorProvider({
         await putTextFile(projectId, `${prefix}${caFolder}/index.xml`, indexXml);
         const assetManifest = `<?xml version="1.0" encoding="UTF-8"?>\n\n<caml xmlns="http://www.apple.com/CoreAnimation/1.0">\n  <MicaAssetManifest>\n    <modules type="NSArray"/>\n  </MicaAssetManifest>\n</caml>`;
         await putTextFile(projectId, `${prefix}${caFolder}/assetManifest.caml`, assetManifest);
-
-        const assets = caDoc.assets || {};
-        const assetFiles: Array<{ path: string; data: Blob }> = [];
-
-        for (const [assetId, info] of Object.entries(assets)) {
-          try {
-            const dataURL = info.dataURL;
-            const blob = await dataURLToBlob(dataURL);
-            const assetPath = `${prefix}${caFolder}/assets/${info.filename}`;
-            assetFiles.push({ path: assetPath, data: blob });
-          } catch (err) {
-            console.error('Failed to prepare asset:', info.filename, err);
-          }
-        }
-
-        if (assetFiles.length > 0) {
-          try {
-            await putBlobFilesBatch(projectId, assetFiles);
-          } catch (err) {
-            console.error('Failed to write assets batch:', err);
-          }
-        }
-
-        const dbAssets = (await listFiles(projectId) || [])
-          ?.filter(f => f.path.includes('/assets/') && f.path.includes(caFolder));
-        for (const dbAsset of dbAssets) {
-          try {
-            const filename = dbAsset.path.split('/assets/')[1];
-            const fileNorm = normalize(filename);
-            const assetBinding = Object.values(assets).find((a) => normalize(a.filename) === fileNorm);
-            if (!assetBinding) {
-              const assetPath = `${caFolder}/assets/${filename}`;
-              await deleteFile(projectId, assetPath);
-            }
-          } catch { }
-        }
       }
     } catch (e) {
     }
   }, [projectId]);
+
+  const cleanupAssets = useCallback(async () => {
+    if (!doc) return;
+    const projectName = doc.meta.name;
+    const isGyro = doc.meta.gyroEnabled ?? false;
+    const caKeys: Array<"background" | "floating" | "wallpaper"> = isGyro
+      ? ["wallpaper"]
+      : ["background", "floating"];
+
+    let totalDeleted = 0;
+    for (const key of caKeys) {
+      const caFolder = key === "floating" ? "Floating.ca" : key === "wallpaper" ? "Wallpaper.ca" : "Background.ca";
+      const layers = doc.docs[key].layers;
+      const deletedCount = await cleanupOrphanedAssets(projectId, projectName, caFolder, layers);
+      totalDeleted += deletedCount;
+    }
+
+    // Clear undo/redo history after cleanup to prevent restoring layers
+    // that reference deleted asset files
+    if (totalDeleted > 0) {
+      pastRef.current = [];
+      futureRef.current = [];
+    }
+  }, [doc, projectId]);
 
   const selectLayer = useCallback((id: string | null) => {
     setDoc((prev) => {
@@ -702,6 +630,14 @@ export function EditorProvider({
     if (isGif) {
       throw new Error('GIFs must be imported via Video Layer');
     }
+    const safe = sanitizeFilename(filename || `pasted-${Date.now()}.png`);
+    
+    try {
+      const caFolder = (currentKey === 'floating') ? 'Floating.ca' : (currentKey === 'wallpaper') ? 'Wallpaper.ca' : 'Background.ca';
+      const projName = doc?.meta.name || initialMeta.name;
+      const folder = `${projName}.ca`;
+      await putBlobFile(projectId, `${folder}/${caFolder}/assets/${safe}`, blob);
+    } catch { }
     const dataURL = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result));
@@ -744,15 +680,13 @@ export function EditorProvider({
         type: "image",
         position: { x, y },
         size: { w, h },
-        src: dataURL,
+        src: `assets/${safe}`,
         fit: "fill",
       };
 
-      const assets = { ...(cur.assets || {}) };
-      assets[layer.id] = { filename: sanitizeFilename(filename || `pasted-${Date.now()}.png`), dataURL };
       const selId = cur.selectedId || null;
       const nextLayers = insertIntoSelected(cur.layers, selId, layer);
-      const next = { ...cur, layers: nextLayers, selectedId: layer.id, assets };
+      const next = { ...cur, layers: nextLayers, selectedId: layer.id };
       return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
   }, [addBase]);
@@ -761,40 +695,32 @@ export function EditorProvider({
     if (/image\/gif/i.test(file.type || '') || /\.gif$/i.test(file.name || '')) {
       throw new Error('Cannot replace image with a GIF. Please use Video Layer to import GIFs.');
     }
-    const dataURL = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result));
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
     // Eagerly write asset to storage
+    const safe = sanitizeFilename(file.name) || `image-${Date.now()}.png`;
     try {
       const caFolder = (currentKey === 'floating') ? 'Floating.ca' : (currentKey === 'wallpaper') ? 'Wallpaper.ca' : 'Background.ca';
       const projName = doc?.meta.name || initialMeta.name;
       const folder = `${projName}.ca`;
-      const safe = sanitizeFilename(file.name) || `image-${Date.now()}.png`;
       await putBlobFile(projectId, `${folder}/${caFolder}/assets/${safe}`, file);
     } catch { }
+    assetCache.set(layerId, '');
 
     setDoc((prev) => {
       if (!prev) return prev;
       pushHistory(prev);
-      const filename = sanitizeFilename(file.name) || `image-${Date.now()}.png`;
       const key = prev.activeCA;
       const cur = prev.docs[key];
-      const assets = { ...(cur.assets || {}) };
-      assets[layerId] = { filename, dataURL };
       const updateRec = (layers: AnyLayer[]): AnyLayer[] =>
         layers.map((l) => {
           if (l.id === layerId && l.type === "image") {
-            return { ...l, src: dataURL } as AnyLayer;
+            return { ...l, src: `assets/${safe}` } as AnyLayer;
           }
           if (l.children?.length) {
             return { ...l, children: updateRec(l.children) } as AnyLayer;
           }
           return l;
         });
-      const next = { ...cur, assets, layers: updateRec(cur.layers) };
+      const next = { ...cur, layers: updateRec(cur.layers) };
       return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
   }, []);
@@ -803,36 +729,25 @@ export function EditorProvider({
     if (/image\/gif/i.test(file.type || '') || /\.gif$/i.test(file.name || '')) {
       throw new Error('Cannot add emitter cell with a GIF. Please use Video Layer to import GIFs.');
     }
-    const dataURL = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result));
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-
-    // Eagerly write asset to storage
+    const safe = sanitizeFilename(file.name) || `image-${Date.now()}.png`;
     try {
       const caFolder = (currentKey === 'floating') ? 'Floating.ca' : (currentKey === 'wallpaper') ? 'Wallpaper.ca' : 'Background.ca';
       const projName = doc?.meta.name || initialMeta.name;
       const folder = `${projName}.ca`;
-      const safe = sanitizeFilename(file.name) || `image-${Date.now()}.png`;
       await putBlobFile(projectId, `${folder}/${caFolder}/assets/${safe}`, file);
     } catch { }
 
     setDoc((prev) => {
       if (!prev) return prev;
       pushHistory(prev);
-      const filename = sanitizeFilename(file.name) || `image-${Date.now()}.png`;
       const key = prev.activeCA;
       const cur = prev.docs[key];
-      const assets = { ...(cur.assets || {}) };
       const cellId = genId();
-      assets[cellId] = { filename, dataURL };
       const updateRec = (layers: AnyLayer[]): AnyLayer[] =>
         layers.map((l) => {
           if (l.id === layerId) {
             const newCell = new CAEmitterCell()
-            newCell.contents = dataURL
+            newCell.src = `assets/${safe}`
             newCell.id = cellId
             return {
               ...l,
@@ -847,7 +762,7 @@ export function EditorProvider({
           }
           return l;
         });
-      const next = { ...cur, assets, layers: updateRec(cur.layers) };
+      const next = { ...cur, layers: updateRec(cur.layers) };
       return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
 
@@ -926,7 +841,16 @@ export function EditorProvider({
       img.onerror = reject;
       img.src = dataURL;
     });
-
+    // Eagerly write asset to storage
+    const safe = sanitizeFilename(file.name) || `image-${Date.now()}.png`;
+    
+    try {
+      const caFolder = (currentKey === 'floating') ? 'Floating.ca' : (currentKey === 'wallpaper') ? 'Wallpaper.ca' : 'Background.ca';
+      const projName = doc?.meta.name || initialMeta.name;
+      const folder = `${projName}.ca`;
+      await putBlobFile(projectId, `${folder}/${caFolder}/assets/${safe}`, file);
+    } catch { }
+    
     setDoc((prev) => {
       if (!prev) return prev;
       pushHistory(prev);
@@ -954,15 +878,13 @@ export function EditorProvider({
         type: "image",
         position: { x, y },
         size: { w, h },
-        src: dataURL,
+        src: `assets/${safe}`,
         fit: "fill",
       };
 
-      const assets = { ...(cur.assets || {}) };
-      assets[layer.id] = { filename: sanitizeFilename(file.name) || `image-${Date.now()}.png`, dataURL };
       const selId = cur.selectedId || null;
       const nextLayers = insertIntoSelected(cur.layers, selId, layer);
-      const next = { ...cur, layers: nextLayers, selectedId: layer.id, assets };
+      const next = { ...cur, layers: nextLayers, selectedId: layer.id };
       return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
   }, [addBase]);
@@ -1131,7 +1053,11 @@ export function EditorProvider({
       const fps = assumedFps;
       const frameCount = frameAssets.length;
       const duration = frameCount > 0 ? (frameCount / fps) : 0;
-
+      const caFolder = (currentKey === 'floating') ? 'Floating.ca' : (currentKey === 'wallpaper') ? 'Wallpaper.ca' : 'Background.ca';
+      const projName = doc?.meta.name || initialMeta.name;
+      const folder = `${projName}.ca`;
+      const uploaded = await uploadFrameAssets(projectId, folder, caFolder, frameAssets);
+      if (!uploaded) return;
       setDoc((prev) => {
         if (!prev) return prev;
         pushHistory(prev);
@@ -1164,15 +1090,10 @@ export function EditorProvider({
           framePrefix,
           frameExtension,
         };
-        const assets = { ...(cur.assets || {}) };
-        frameAssets.forEach((frame, idx) => {
-          const frameId = `${layer.id}_frame_${idx}`;
-          assets[frameId] = { filename: `${framePrefix}${idx}${frameExtension}`, dataURL: frame.dataURL };
-        });
         const selId = cur.selectedId || null;
         const nextLayers = insertIntoSelected(cur.layers, selId, layer);
 
-        const next = { ...cur, layers: nextLayers, selectedId: layer.id, assets };
+        const next = { ...cur, layers: nextLayers, selectedId: layer.id };
         return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
       });
       return;
@@ -1214,6 +1135,11 @@ export function EditorProvider({
       });
     }
     URL.revokeObjectURL(videoURL);
+    const caFolder = (currentKey === 'floating') ? 'Floating.ca' : (currentKey === 'wallpaper') ? 'Wallpaper.ca' : 'Background.ca';
+    const projName = doc?.meta.name || initialMeta.name;
+    const folder = `${projName}.ca`;
+    const uploaded = await uploadFrameAssets(projectId, folder, caFolder, frameAssets);
+    if (!uploaded) return;
     setDoc((prev) => {
       if (!prev) return prev;
       pushHistory(prev);
@@ -1247,20 +1173,18 @@ export function EditorProvider({
       };
       const key = prev.activeCA;
       const cur = prev.docs[key];
-      const assets = { ...(cur.assets || {}) };
       frameAssets.forEach((frame, idx) => {
         const frameId = `${layer.id}_frame_${idx}`;
-        assets[frameId] = { filename: `${framePrefix}${idx}${frameExtension}`, dataURL: frame.dataURL };
       });
       const selId = cur.selectedId || null;
       const nextLayers = insertIntoSelected(cur.layers, selId, layer);
 
-      const next = { ...cur, layers: nextLayers, selectedId: layer.id, assets };
+      const next = { ...cur, layers: nextLayers, selectedId: layer.id };
       return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
   }, [addBase, pushHistory]);
 
-  const addVideoLayer = useCallback((
+  const addVideoLayer = useCallback(async (
     {
       name,
       frameCount = 0,
@@ -1273,7 +1197,11 @@ export function EditorProvider({
     videoHeight: number,
     frameAssets: Array<{ dataURL: string; filename: string }>
   ) => {
-
+    const caFolder = (currentKey === 'floating') ? 'Floating.ca' : (currentKey === 'wallpaper') ? 'Wallpaper.ca' : 'Background.ca';
+    const projName = doc?.meta.name || initialMeta.name;
+    const folder = `${projName}.ca`;
+    const uploaded = await uploadFrameAssets(projectId, folder, caFolder, frameAssets);
+    if (!uploaded) return;
     setDoc((prev) => {
       if (!prev) return prev;
       pushHistory(prev);
@@ -1306,15 +1234,10 @@ export function EditorProvider({
       };
       const key = prev.activeCA;
       const cur = prev.docs[key];
-      const assets = { ...(cur.assets || {}) };
-      frameAssets.forEach((frame, idx) => {
-        const frameId = `${layer.id}_frame_${idx}`;
-        assets[frameId] = { filename: `${framePrefix}${idx}${frameExtension}`, dataURL: frame.dataURL };
-      });
       const selId = cur.selectedId || null;
       const nextLayers = insertIntoSelected(cur.layers, selId, layer);
 
-      const next = { ...cur, layers: nextLayers, selectedId: layer.id, assets };
+      const next = { ...cur, layers: nextLayers, selectedId: layer.id };
       return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
   }, [addBase, pushHistory]);
@@ -1524,11 +1447,6 @@ export function EditorProvider({
 
       const nextLayers = deleteInTree(cur.layers, id);
 
-      const nextAssets = { ...(cur.assets || {}) } as NonNullable<CADoc['assets']>;
-      for (const rid of removedIds) {
-        if (nextAssets[rid]) delete nextAssets[rid];
-      }
-
       const nextStateOverrides: NonNullable<CADoc['stateOverrides']> = {};
       const curSO = cur.stateOverrides || {};
       for (const [stateName, list] of Object.entries(curSO)) {
@@ -1536,7 +1454,7 @@ export function EditorProvider({
       }
 
       const nextSelected = cur.selectedId === id || (cur.selectedId ? !containsId(nextLayers, cur.selectedId) : false) ? null : cur.selectedId;
-      const nextCur = { ...cur, layers: nextLayers, selectedId: nextSelected, assets: nextAssets, stateOverrides: nextStateOverrides };
+      const nextCur = { ...cur, layers: nextLayers, selectedId: nextSelected, stateOverrides: nextStateOverrides };
       return { ...prev, docs: { ...prev.docs, [key]: nextCur } } as ProjectDocument;
     });
   }, [pushHistory]);
@@ -1547,20 +1465,9 @@ export function EditorProvider({
       const cur = prev.docs[prev.activeCA];
       const sel = findById(cur.layers, cur.selectedId ?? null);
       if (!sel) return prev;
-      const images: Record<string, { filename: string; dataURL: string }> = {};
-      const walk = (l: AnyLayer) => {
-        if (l.type === 'image') {
-          const a = (cur.assets || {})[l.id];
-          if (a) images[l.id] = { ...a };
-        }
-        if (l.children?.length) {
-          for (const c of l.children) walk(c);
-        }
-      };
-      walk(sel);
-      clipboardRef.current = { type: 'layers', data: [JSON.parse(JSON.stringify(sel)) as AnyLayer], assets: images };
+      clipboardRef.current = { type: 'layers', data: [JSON.parse(JSON.stringify(sel)) as AnyLayer] };
       try {
-        navigator.clipboard?.writeText?.(JSON.stringify({ __caplay__: true, type: 'layers', data: clipboardRef.current.data, assets: clipboardRef.current.assets }));
+        navigator.clipboard?.writeText?.(JSON.stringify({ __caplay__: true, type: 'layers', data: clipboardRef.current.data }));
       } catch { }
       return prev;
     });
@@ -1588,14 +1495,8 @@ export function EditorProvider({
         }
       };
       collectMap(src.data as AnyLayer[], cloned);
-      const assets = { ...(cur.assets || {}) };
-      const srcAssets = ((src as any).assets || {}) as Record<string, { filename: string; dataURL: string }>;
-      for (const [oldId, asset] of Object.entries(srcAssets) as Array<[string, { filename: string; dataURL: string }]>) {
-        const newId = idMap.get(oldId);
-        if (newId) assets[newId] = { filename: asset.filename, dataURL: asset.dataURL };
-      }
       pushHistory(prev);
-      const next = { ...cur, layers: [...cur.layers, ...cloned], selectedId: cloned[cloned.length - 1]?.id ?? cur.selectedId, assets };
+      const next = { ...cur, layers: [...cur.layers, ...cloned], selectedId: cloned[cloned.length - 1]?.id ?? cur.selectedId };
       return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
   }, [pushHistory]);
@@ -1609,19 +1510,7 @@ export function EditorProvider({
       if (!targetId) return prev;
       const sel = findById(cur.layers, targetId);
       if (!sel) return prev;
-      const images: Record<string, { filename: string; dataURL: string }> = {};
-      const walk = (l: AnyLayer) => {
-        if (l.type === 'image') {
-          const a = (cur.assets || {})[l.id];
-          if (a) images[l.id] = { ...a };
-        }
-        if (l.children?.length) {
-          for (const c of l.children) walk(c);
-        }
-      };
-      walk(sel);
       const cloned = cloneLayerDeep(sel);
-      const assets = { ...(cur.assets || {}) };
       const idMap = new Map<string, string>();
       const buildMap = (o: AnyLayer, c: AnyLayer) => {
         idMap.set((o as any).id, (c as any).id);
@@ -1630,12 +1519,8 @@ export function EditorProvider({
         }
       };
       buildMap(sel, cloned);
-      for (const [oldId, asset] of Object.entries(images)) {
-        const newId = idMap.get(oldId);
-        if (newId) assets[newId] = { filename: asset.filename, dataURL: asset.dataURL };
-      }
       pushHistory(prev);
-      const next = { ...cur, layers: [...cur.layers, cloned], selectedId: (cloned as any).id, assets };
+      const next = { ...cur, layers: [...cur.layers, cloned], selectedId: (cloned as any).id };
       return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
   }, [pushHistory]);
@@ -1769,6 +1654,7 @@ export function EditorProvider({
   }, []);
 
   const value = useMemo<EditorContextValue>(() => ({
+    projectId,
     doc,
     setDoc,
     activeCA: doc?.activeCA ?? 'floating',
@@ -1776,6 +1662,7 @@ export function EditorProvider({
     savingStatus,
     lastSavedAt,
     flushPersist,
+    cleanupAssets,
     addTextLayer,
     addImageLayer,
     addImageLayerFromFile,
@@ -1811,11 +1698,13 @@ export function EditorProvider({
     hiddenLayerIds,
     toggleLayerVisibility,
   }), [
+    projectId,
     doc,
     setDoc,
     savingStatus,
     lastSavedAt,
     flushPersist,
+    cleanupAssets,
     addTextLayer,
     addImageLayer,
     addImageLayerFromFile,

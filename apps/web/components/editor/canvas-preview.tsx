@@ -283,7 +283,6 @@ export function CanvasPreview() {
                   layer={layer}
                   useYUp={getRootFlip(doc?.meta.geometryFlipped) === 0}
                   siblings={renderedLayers}
-                  assets={other?.assets}
                   gyroX={gyroX}
                   gyroY={gyroY}
                   useGyroControls={useGyroControls}
@@ -300,7 +299,6 @@ export function CanvasPreview() {
                   layer={layer}
                   useYUp={getRootFlip(doc?.meta.geometryFlipped) === 0}
                   siblings={renderedLayers}
-                  assets={current?.assets}
                   gyroX={gyroX}
                   gyroY={gyroY}
                   useGyroControls={useGyroControls}
@@ -318,7 +316,6 @@ export function CanvasPreview() {
                   layer={layer}
                   useYUp={getRootFlip(doc?.meta.geometryFlipped) === 0}
                   siblings={renderedLayers}
-                  assets={current?.assets}
                   gyroX={gyroX}
                   gyroY={gyroY}
                   useGyroControls={useGyroControls}
@@ -338,7 +335,6 @@ export function CanvasPreview() {
                     layer={layer}
                     useYUp={getRootFlip(doc?.meta.geometryFlipped) === 0}
                     siblings={renderedLayers}
-                    assets={current?.assets}
                     gyroX={gyroX}
                     gyroY={gyroY}
                     useGyroControls={useGyroControls}
@@ -352,7 +348,6 @@ export function CanvasPreview() {
                     layer={layer}
                     useYUp={getRootFlip(doc?.meta.geometryFlipped) === 0}
                     siblings={renderedLayers}
-                    assets={current?.assets}
                     gyroX={gyroX}
                     gyroY={gyroY}
                     useGyroControls={useGyroControls}

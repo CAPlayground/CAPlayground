@@ -21,7 +21,6 @@ interface LayerRendererProps {
   layer: AnyLayer;
   useYUp: boolean;
   siblings: AnyLayer[];
-  assets?: Record<string, { dataURL?: string }>;
   disableHitTesting?: boolean;
   hiddenLayerIds: Set<string>;
   gyroX: number;
@@ -55,7 +54,6 @@ export function LayerRenderer({
   layer: initialLayer,
   useYUp,
   siblings,
-  assets,
   disableHitTesting = false,
   hiddenLayerIds,
   gyroX,
@@ -113,7 +111,6 @@ export function LayerRenderer({
           layer={c}
           useYUp={nextUseYUp}
           siblings={layer.children || []}
-          assets={assets}
           hiddenLayerIds={hiddenLayerIds}
           gyroX={gyroX}
           gyroY={gyroY}
@@ -238,16 +235,16 @@ export function LayerRenderer({
           <TextRenderer layer={layer} />
         )}
         {layer.type === "image" && (
-          <ImageRenderer layer={layer} assets={assets} />
+          <ImageRenderer layer={layer} />
         )}
         {layer.type === "video" && (
-          <VideoRenderer layer={layer} assets={assets} />
+          <VideoRenderer layer={layer} />
         )}
         {layer.type === "gradient" && (
           <GradientRenderer layer={layer} />
         )}
         {layer.type === "emitter" && (
-          <EmitterCanvas layer={layer} assets={assets} />
+          <EmitterCanvas layer={layer} />
         )}
         {layer.type !== "replicator" && layer.type !== "video" && renderChildren(layer, nextUseYUp)}
         {layer.type === "replicator" && (
@@ -256,7 +253,6 @@ export function LayerRenderer({
             gyroX={gyroX}
             gyroY={gyroY}
             nextUseYUp={nextUseYUp}
-            assets={assets}
             hiddenLayerIds={hiddenLayerIds}
             useGyroControls={useGyroControls}
             transformOriginY={transformOriginY}

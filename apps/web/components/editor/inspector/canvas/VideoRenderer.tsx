@@ -1,18 +1,16 @@
 import { useTimeline } from "@/context/TimelineContext";
 import { VideoLayer } from "@/lib/ca/types";
 import useStateTransition from "@/hooks/use-state-transition";
+import { assetCache, useVideoFrames } from "@/hooks/use-asset-url";
 
 interface VideoRendererProps {
   layer: VideoLayer;
-  assets?: Record<string, { dataURL?: string }>;
 }
 
 function SyncWithStateRenderer({ 
   video, 
-  assets 
 }: { 
   video: VideoLayer; 
-  assets?: Record<string, { dataURL?: string }>;
 }) {
   if (!video.children || video.children.length === 0) return null;
   
@@ -31,8 +29,9 @@ function SyncWithStateRenderer({
   if (!topChild) return null;
   
   if (topChild.type === 'image') {
-    const imageAsset = assets?.[topChild.id];
-    const imageSrc = imageAsset?.dataURL;
+    const frameIndex = video.children.findIndex((child) => child.id === topChild.id);
+    const frameAssetId = `${video.id}_frame_${frameIndex}`;
+    const imageSrc = assetCache.get(frameAssetId);
     if (!imageSrc) return null;
     
     return (
@@ -57,20 +56,26 @@ function SyncWithStateRenderer({
 
 export default function VideoRenderer({
   layer: video,
-  assets,
 }: VideoRendererProps) {
   const { currentTime } = useTimeline();
-  
-  if (video.syncWWithState) {
-    return <SyncWithStateRenderer video={video} assets={assets} />;
-  }
-  
   const frameCount = video.frameCount || 0;
   const fps = video.fps || 30;
   const duration = video.duration || (frameCount / fps);
   const autoReverses = video.autoReverses || false;
 
-  if (frameCount <= 1) return;
+  const { frames, loading } = useVideoFrames({
+    videoId: video.id,
+    frameCount,
+    framePrefix: video.framePrefix || "",
+    frameExtension: video.frameExtension || "",
+    skip: frameCount <= 1,
+  });
+
+  if (frameCount <= 1) return null;
+  
+  if (video.syncWWithState) {
+    return <SyncWithStateRenderer video={video} />;
+  }
 
   let localT = (currentTime / 1000) % duration;
   if (autoReverses) {
@@ -80,14 +85,12 @@ export default function VideoRenderer({
   }
 
   const frameIndex = Math.floor(localT * fps) % frameCount;
-  const frameAssetId = `${video.id}_frame_${frameIndex}`;
-  const assetsMap = assets || {};
-  const frameAsset = assetsMap[frameAssetId];
-  const previewSrc = frameAsset?.dataURL;
-  if (!previewSrc) return null;
+  const src = frames.get(frameIndex);
+  
+  if (loading || !src) return null;
   return (
     <img
-      src={previewSrc}
+      src={src}
       alt={video.name}
       style={{
         width: "100%",

@@ -9,7 +9,6 @@ export default function ReplicatorRenderer({
   useGyroControls,
   transformOriginY,
   nextUseYUp,
-  assets,
   hiddenLayerIds,
   anchor,
 }: {
@@ -19,7 +18,6 @@ export default function ReplicatorRenderer({
   useGyroControls: boolean;
   transformOriginY: number;
   nextUseYUp: boolean;
-  assets?: Record<string, { dataURL?: string }>;
   hiddenLayerIds: Set<string>;
   anchor: { x: number; y: number };
 }) {
@@ -61,7 +59,6 @@ export default function ReplicatorRenderer({
                 layer={c}
                 useYUp={nextUseYUp}
                 siblings={layer.children || []}
-                assets={assets}
                 disableHitTesting={i > 0}
                 hiddenLayerIds={hiddenLayerIds}
                 gyroX={gyroX}
