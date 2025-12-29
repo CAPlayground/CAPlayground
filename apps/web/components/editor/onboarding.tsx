@@ -45,8 +45,7 @@ export function EditorOnboarding({ showLeft, showRight }: { showLeft: boolean; s
       id: "states",
       selector: '[data-tour-id="states-panel"]',
       title: "States",
-      body: "Switch between states of what the wallpaper is in, like when your phone is in Locked, Unlocked, or in Sleep state. You can make state transitions here.",
-      placement: "right",
+              body: "在壁纸的不同状态之间切换，例如当手机处于锁定、解锁或休眠状态时。您可以在此处制作状态转换。",      placement: "right",
     },
     {
       id: "canvas",

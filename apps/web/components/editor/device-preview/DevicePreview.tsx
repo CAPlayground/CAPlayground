@@ -10,9 +10,9 @@ import { Label } from "@/components/ui/label";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 
 const PHONE_STATES = {
-  LOCKED: "Locked",
-  UNLOCK: "Unlock",
-  SLEEP: "Sleep",
+  LOCKED: "锁定",
+  UNLOCK: "解锁",
+  SLEEP: "休眠",
 };
 
 type Props = {

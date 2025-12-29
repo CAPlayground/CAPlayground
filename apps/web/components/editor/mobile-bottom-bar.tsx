@@ -109,17 +109,17 @@ export function MobileBottomBar({ mobileView, setMobileView }: MobileBottomBarPr
           <DropdownMenuTrigger asChild>
             <button
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border bg-background shadow-sm hover:bg-accent transition-colors touch-manipulation"
-              aria-label={`Active CA: ${activeCA === 'floating' ? 'Floating' : 'Background'}`}
+              aria-label={`激活的CA: ${activeCA === 'floating' ? '浮动' : '背景'}`}
               aria-expanded={false}
               role="button"
             >
-              <span className="text-sm">{activeCA === 'floating' ? 'Floating' : 'Background'}</span>
+              <span className="text-sm">{activeCA === 'floating' ? '浮动' : '背景'}</span>
               <ArrowUpDown className="h-4 w-4 opacity-70" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" side="top" className="w-80 p-2 mb-2">
             <DropdownMenuLabel>
-              <div className="text-sm font-medium">Choose Active CA</div>
+              <div className="text-sm font-medium">选择激活的CA</div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             {activeCA === 'floating' && (
@@ -185,20 +185,20 @@ export function MobileBottomBar({ mobileView, setMobileView }: MobileBottomBarPr
           <DropdownMenuTrigger asChild>
             <button
               className="inline-flex items-center justify-center w-10 h-10 rounded-lg border bg-background shadow-sm hover:bg-accent transition-colors touch-manipulation"
-              aria-label="Add Layer"
+              aria-label="添加图层"
             >
               <Plus className="h-5 w-5" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" side="top" className="mb-2">
-            <DropdownMenuItem onSelect={() => addTextLayer()}>Text Layer</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => addShapeLayer("rect")}>Basic Layer</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => addGradientLayer()}>Gradient Layer</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => fileInputRef.current?.click()}>Image Layer…</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => videoInputRef.current?.click()}>Video Layer…</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => addEmitterLayer()}>Emitter Layer</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => addTextLayer()}>文本图层</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => addShapeLayer("rect")}>基础图层</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => addGradientLayer()}>渐变图层</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => fileInputRef.current?.click()}>图像图层…</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => videoInputRef.current?.click()}>视频图层…</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => addEmitterLayer()}>发射器图层</DropdownMenuItem>
             {isGyro && (
-              <DropdownMenuItem onSelect={() => addTransformLayer()}>Transform Layer</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => addTransformLayer()}>变换图层</DropdownMenuItem>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -208,7 +208,7 @@ export function MobileBottomBar({ mobileView, setMobileView }: MobileBottomBarPr
           <DropdownMenuTrigger asChild>
             <button
               className="inline-flex items-center justify-center w-10 h-10 rounded-lg border bg-background shadow-sm hover:bg-accent transition-colors touch-manipulation"
-              aria-label="States"
+              aria-label="状态"
             >
               {statesOpen ? <X className="h-5 w-5" /> : <CircleDot className="h-5 w-5" />}
             </button>
@@ -230,40 +230,39 @@ export function MobileBottomBar({ mobileView, setMobileView }: MobileBottomBarPr
             >
               Base State
             </DropdownMenuItem>
-            {states.includes('Locked') && (
-              <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                  setActiveState('Locked');
-                }}
-                className={`cursor-pointer ${activeState === 'Locked' ? 'bg-accent' : ''}`}
-              >
-                Locked
-              </DropdownMenuItem>
-            )}
-            {states.includes('Unlock') && (
-              <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                  setActiveState('Unlock');
-                }}
-                className={`cursor-pointer ${activeState === 'Unlock' ? 'bg-accent' : ''}`}
-              >
-                Unlock
-              </DropdownMenuItem>
-            )}
-            {states.includes('Sleep') && ( 
-              <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                  setActiveState('Sleep'); 
-                }}
-                className={`cursor-pointer ${activeState === 'Sleep' ? 'bg-accent' : ''}`}
-              >
-                Sleep
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
+                        {states.includes('Locked') && (
+                          <DropdownMenuItem
+                            onSelect={(e) => {
+                              e.preventDefault();
+                              setActiveState('Locked');
+                            }}
+                            className={`cursor-pointer ${activeState === 'Locked' ? 'bg-accent' : ''}`}
+                          >
+                            锁定
+                          </DropdownMenuItem>
+                        )}
+                        {states.includes('Unlock') && (
+                          <DropdownMenuItem
+                            onSelect={(e) => {
+                              e.preventDefault();
+                              setActiveState('Unlock');
+                            }}
+                            className={`cursor-pointer ${activeState === 'Unlock' ? 'bg-accent' : ''}`}
+                          >
+                            解锁
+                          </DropdownMenuItem>
+                        )}
+                        {states.includes('Sleep') && (
+                          <DropdownMenuItem
+                            onSelect={(e) => {
+                              e.preventDefault();
+                              setActiveState('Sleep');
+                            }}
+                            className={`cursor-pointer ${activeState === 'Sleep' ? 'bg-accent' : ''}`}
+                          >
+                            休眠
+                          </DropdownMenuItem>
+                        )}          </DropdownMenuContent>
         </DropdownMenu>
       )}
 

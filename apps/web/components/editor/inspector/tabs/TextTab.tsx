@@ -30,7 +30,7 @@ export function TextTab({
           onChange={(e) => updateLayer(selected.id, { text: e.target.value } as any)} />
       </div>
       <div className="space-y-1">
-        <Label htmlFor="fontSize">Font size</Label>
+        <Label htmlFor="fontSize">字体大小</Label>
         <Tooltip>
           <TooltipTrigger asChild>
             <div>
@@ -43,11 +43,11 @@ export function TextTab({
           }} />
             </div>
           </TooltipTrigger>
-          {inState && <TooltipContent sideOffset={6}>Not supported for state transitions</TooltipContent>}
+          {inState && <TooltipContent sideOffset={6}>状态转换不支持</TooltipContent>}
         </Tooltip>
       </div>
       <div className="space-y-1">
-        <Label htmlFor="color">Color</Label>
+        <Label htmlFor="color">颜色</Label>
         <Tooltip>
           <TooltipTrigger asChild>
             <div>
@@ -56,18 +56,18 @@ export function TextTab({
           onChange={(e) => updateLayer(selected.id, { color: e.target.value } as any)} />
             </div>
           </TooltipTrigger>
-          {inState && <TooltipContent sideOffset={6}>Not supported for state transitions</TooltipContent>}
+          {inState && <TooltipContent sideOffset={6}>状态转换不支持</TooltipContent>}
         </Tooltip>
       </div>
       <div className="space-y-1 col-span-2">
-        <Label htmlFor="fontFamily">Font</Label>
+        <Label htmlFor="fontFamily">字体</Label>
         <Select value={(selected as any).fontFamily || 'SFProText-Regular'}
           onValueChange={(v) => updateLayer(selected.id, { fontFamily: v } as any)}>
           <SelectTrigger className="h-8 text-xs w-full" id="fontFamily">
-            <SelectValue placeholder="Select font" />
+            <SelectValue placeholder="选择字体" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="SFProText-Regular">System Default (SF Pro)</SelectItem>
+            <SelectItem value="SFProText-Regular">系统默认 (SF Pro)</SelectItem>
             <SelectItem value="TimesNewRomanPSMT">Times New Roman</SelectItem>
             <SelectItem value="Copperplate">Copperplate</SelectItem>
             <SelectItem value="CourierNewPSMT">Courier New</SelectItem>
@@ -79,7 +79,7 @@ export function TextTab({
         </Select>
       </div>
       <div className="space-y-1 col-span-2">
-        <Label>Alignment</Label>
+        <Label>对齐方式</Label>
         <Tooltip>
           <TooltipTrigger asChild>
             <div className={inState ? 'opacity-50 pointer-events-none' : ''}>
@@ -131,11 +131,11 @@ export function TextTab({
         </div>
             </div>
           </TooltipTrigger>
-          {inState && <TooltipContent sideOffset={6}>Not supported for state transitions</TooltipContent>}
+          {inState && <TooltipContent sideOffset={6}>状态转换不支持</TooltipContent>}
         </Tooltip>
       </div>
       <div className="space-y-1 col-span-2">
-        <Label>Wrap lines</Label>
+        <Label>换行</Label>
         <div className="flex items-center gap-2 h-8">
           <Tooltip>
             <TooltipTrigger asChild>
@@ -145,7 +145,7 @@ export function TextTab({
             onCheckedChange={(checked) => updateLayer(selected.id, { wrapped: (checked ? 1 : 0) as any } as any)} />
               </div>
             </TooltipTrigger>
-            {inState && <TooltipContent sideOffset={6}>Not supported for state transitions</TooltipContent>}
+            {inState && <TooltipContent sideOffset={6}>状态转换不支持</TooltipContent>}
           </Tooltip>
           <span className="text-xs text-muted-foreground">When on, drag horizontal bounds to wrap text.</span>
         </div>

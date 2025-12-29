@@ -22,7 +22,7 @@ export default function AuthPage() {
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
-    document.title = mode === "signin" ? "CAPlayground - Sign In" : "CAPlayground - Sign Up";
+    document.title = mode === "signin" ? "CAPlayground - 登录" : "CAPlayground - 注册";
   }, [mode]);
 
   const [emailOrUsername, setEmailOrUsername] = useState("");
@@ -74,28 +74,26 @@ export default function AuthPage() {
           <Card className="border-border/80 shadow-none">
             <CardHeader className="text-center">
               <CardTitle className="text-3xl md:text-4xl font-bold">
-                Sign in disabled
+                登录已禁用
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-5">
                 <p className="text-sm text-muted-foreground">
-                  Authentication is disabled in this environment because
-                  required environment variables are not set.
+                  此环境中已禁用身份验证，因为未设置必需的环境变量。
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  The rest of the site still works. To enable accounts, set{" "}
-                  <code>NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
-                  <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>.
+                  网站其余部分仍可正常使用。要启用账户功能，请设置{" "}
+                  <code>NEXT_PUBLIC_SUPABASE_URL</code> 和{" "}
+                  <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>。
                 </p>
                 <div className="flex gap-3">
                   <Link href="/">
-                    <Button className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold">
-                      Go to Home
-                    </Button>
-                  </Link>
+                                      <Button className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold">
+                                        返回首页
+                                      </Button>                  </Link>
                   <Link href="/docs">
-                    <Button variant="outline">Docs</Button>
+                    <Button variant="outline">文档</Button>
                   </Link>
                 </div>
               </div>
@@ -233,21 +231,20 @@ export default function AuthPage() {
       <div className="w-full max-w-md">
         <Card className="border-border/80 shadow-none">
           <CardHeader className="text-center">
-            <CardTitle className="text-3xl md:text-4xl font-bold">
-              {mode === "signin" ? "Welcome Back" : "Create an Account"}
-            </CardTitle>
-          </CardHeader>
+                          <CardTitle className="text-3xl md:text-4xl font-bold">
+                            {mode === "signin" ? "欢迎回来" : "创建账户"}
+                          </CardTitle>          </CardHeader>
           <CardContent>
             {mode === "signin" ? (
               <div className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="signin-identifier">Email</Label>
+                  <Label htmlFor="signin-identifier">邮箱</Label>
                   <div className="relative">
                     <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="signin-identifier"
                       type="email"
-                      placeholder="Your Email"
+                      placeholder="您的邮箱"
                       className="pl-9"
                       value={emailOrUsername}
                       onChange={(e) => setEmailOrUsername(e.target.value)}
@@ -256,13 +253,13 @@ export default function AuthPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="signin-password">Password</Label>
+                  <Label htmlFor="signin-password">密码</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="signin-password"
                       type="password"
-                      placeholder="Your Password"
+                      placeholder="您的密码"
                       className="pl-9"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -273,7 +270,7 @@ export default function AuthPage() {
                       href="/forgot-password"
                       className="text-accent hover:underline"
                     >
-                      Forgot password?
+                      忘记密码？
                     </Link>
                   </div>
                 </div>
@@ -284,7 +281,7 @@ export default function AuthPage() {
                   onClick={handleSignIn}
                   className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-semibold"
                 >
-                  {loading ? "Signing In..." : "Sign In"}
+                  {loading ? "登录中..." : "登录"}
                 </Button>
 
                 <div className="flex items-center gap-3">
@@ -300,7 +297,7 @@ export default function AuthPage() {
                   disabled={loading}
                 >
                   <GoogleColorIcon className="h-4 w-4" />
-                  Continue with Google
+                  使用 Google 继续
                 </Button>
 
                 <Button
@@ -310,7 +307,7 @@ export default function AuthPage() {
                   disabled={loading}
                 >
                   <GithubIcon className="h-4 w-4" />
-                  Continue with GitHub
+                  使用 GitHub 继续
                 </Button>
 
                 <Button
@@ -320,7 +317,7 @@ export default function AuthPage() {
                   disabled={loading}
                 >
                   <DiscordIcon className="h-4 w-4" />
-                  Continue with Discord
+                  使用 Discord 继续
                 </Button>
 
                 <p className="text-center text-sm text-muted-foreground">
@@ -329,38 +326,38 @@ export default function AuthPage() {
                     onClick={() => setMode("signup")}
                     className="text-accent hover:underline font-medium"
                   >
-                    Create an account
+                    创建账户
                   </button>
                 </p>
               </div>
             ) : (
               <div className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-username">Username</Label>
+                  <Label htmlFor="signup-username">用户名</Label>
                   <div className="relative">
                     <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="signup-username"
                       type="text"
-                      placeholder="Choose a username"
+                      placeholder="选择一个用户名"
                       className="pl-9"
                       value={signupUsername}
                       onChange={(e) => setSignupUsername(e.target.value)}
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    3–20 chars. Letters, numbers, and ! - _ . only.
+                    3-20个字符。仅限字母、数字和 ! - _ . 。
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
+                  <Label htmlFor="signup-email">邮箱</Label>
                   <div className="relative">
                     <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="signup-email"
                       type="email"
-                      placeholder="Your Email"
+                      placeholder="您的邮箱"
                       className="pl-9"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -369,13 +366,13 @@ export default function AuthPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="signup-password">Password</Label>
+                  <Label htmlFor="signup-password">密码</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="signup-password"
                       type="password"
-                      placeholder="Create a Password"
+                      placeholder="创建密码"
                       className="pl-9"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -385,23 +382,22 @@ export default function AuthPage() {
 
                 {error && <p className="text-sm text-red-500">{error}</p>}
                 <p className="text-xs text-muted-foreground">
-                  By signing up, you agree to our{" "}
+                  注册即表示您同意我们的{" "}
                   <Link href="/tos" className="underline">
-                    Terms of Service
+                    服务条款
                   </Link>{" "}
-                  and{" "}
+                  和{" "}
                   <Link href="/privacy" className="underline">
-                    Privacy Policy
+                    隐私政策
                   </Link>
-                  . You must be at least 13 years old, or the minimum age of
-                  digital consent in your country.
+                  。您必须年满13岁，或达到您所在国家的最低数字同意年龄。
                 </p>
                 <Button
                   disabled={loading}
                   onClick={handleSignUp}
                   className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-semibold"
                 >
-                  {loading ? "Signing Up..." : "Sign Up"}
+                  {loading ? "注册中..." : "注册"}
                 </Button>
 
                 <div className="flex items-center gap-3">
@@ -417,7 +413,7 @@ export default function AuthPage() {
                   disabled={loading}
                 >
                   <GoogleColorIcon className="h-4 w-4" />
-                  Sign up with Google
+                  使用 Google 注册
                 </Button>
 
                 <Button
@@ -427,7 +423,7 @@ export default function AuthPage() {
                   disabled={loading}
                 >
                   <GithubIcon className="h-4 w-4" />
-                  Sign up with GitHub
+                  使用 GitHub 注册
                 </Button>
 
                 <Button
@@ -437,16 +433,16 @@ export default function AuthPage() {
                   disabled={loading}
                 >
                   <DiscordIcon className="h-4 w-4" />
-                  Sign up with Discord
+                  使用 Discord 注册
                 </Button>
 
                 <p className="text-center text-sm text-muted-foreground">
-                  Already have an account?{" "}
+                  已有账户？{" "}
                   <button
                     onClick={() => setMode("signin")}
                     className="text-accent hover:underline font-medium"
                   >
-                    Sign in
+                    登录
                   </button>
                 </p>
               </div>

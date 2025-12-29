@@ -41,7 +41,7 @@ export function FiltersTab({
         onValueChange={addFilter}
       >
         <SelectTrigger className="w-full">
-          <SelectValue placeholder="Add filter" />
+          <SelectValue placeholder="添加滤镜" />
         </SelectTrigger>
         <SelectContent>
           {Object.keys(supportedFilters).map((filter) => (

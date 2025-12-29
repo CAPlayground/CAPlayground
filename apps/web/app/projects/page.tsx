@@ -954,8 +954,7 @@ function ProjectsContent() {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        setSyncResultMessage('Please sign in to sync to Google Drive');
-        setSyncResultOpen(true);
+                    setSyncResultMessage('请登录以同步到Google云端硬盘');        setSyncResultOpen(true);
         return;
       }
 
@@ -1104,8 +1103,7 @@ function ProjectsContent() {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
-          setSyncResultMessage('Please sign in to access cloud projects');
-          setSyncResultOpen(true);
+                      setSyncResultMessage('请登录以访问云端项目');          setSyncResultOpen(true);
           return;
         }
         
@@ -1547,7 +1545,7 @@ function ProjectsContent() {
               </Link>
             </div>
             <div className="flex items-center gap-2">
-              <h1 className="font-sfpro text-3xl md:text-4xl font-bold">Your Projects</h1>
+              <h1 className="font-sfpro text-3xl md:text-4xl font-bold">您的项目</h1>
               {loadingCloud && (
                 <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800 border border-blue-200 flex items-center gap-1">
                   <span className="inline-block h-3 w-3 border-2 border-t-transparent border-blue-800 rounded-full animate-spin" />
@@ -1560,13 +1558,13 @@ function ProjectsContent() {
                 </span>
               )}
             </div>
-            <p className="text-muted-foreground">Create and manage your CoreAnimation projects stored locally on your device.</p>
+            <p className="text-muted-foreground">创建和管理存储在您设备上的CoreAnimation项目。</p>
             {/* Search & filters */}
             <div className="mt-4 flex gap-2 items-center">
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search projects by name..."
+                placeholder="按名称搜索项目..."
                 className="max-w-md"
               />
               <div className="border rounded-md p-0.5 flex">
@@ -1703,7 +1701,7 @@ function ProjectsContent() {
           </div>
           <div className="w-full md:w-auto flex gap-2">
             <Button variant={isSelectMode ? "secondary" : "outline"} onClick={toggleSelectMode}>
-              {isSelectMode ? "Done" : "Select"}
+              {isSelectMode ? "完成" : "选择"}
             </Button>
             <input
               ref={importInputRef}
@@ -1721,11 +1719,10 @@ function ProjectsContent() {
             />
             {!isSelectMode && (
               <>
-                <Button variant="outline" onClick={handleImportClick}>
-                  <Upload className="h-4 w-4 mr-2" /> Import
-                </Button>
-                <Button onClick={() => setIsCreateOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" /> New Project
+                        <Button variant="outline" onClick={handleImportClick}>
+                          <Upload className="h-4 w-4 mr-2" /> 导入
+                        </Button>                <Button onClick={() => setIsCreateOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" /> 新建项目
                 </Button>
               </>
             )}
@@ -1754,7 +1751,7 @@ function ProjectsContent() {
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create New Project</DialogTitle>
+              <DialogTitle>创建新项目</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
@@ -1864,7 +1861,7 @@ function ProjectsContent() {
         }
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">
-            Your Projects ({filteredProjects.length}
+            您的项目 ({filteredProjects.length}
             {query || dateFilter !== "all" ? ` of ${projectsArray.length}` : ""})
           </h2>
           
@@ -1958,7 +1955,7 @@ function ProjectsContent() {
                             ) : (
                               <>
                                 <HardDrive className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-xs text-muted-foreground">Saved to Device</span>
+                                <span className="text-xs text-muted-foreground">已保存到设备</span>
                               </>
                             )}
                           </div>
@@ -2009,7 +2006,7 @@ function ProjectsContent() {
                           disabled={isSelectMode}
                           onClick={(e) => { e.stopPropagation(); openProject(project); }}
                         >
-                          Open Project <ArrowRight className="h-4 w-4 ml-2" />
+                          打开项目 <ArrowRight className="h-4 w-4 ml-2" />
                         </Button>
                       </div>
                     </CardContent>
@@ -2182,11 +2179,11 @@ function ProjectsContent() {
         <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Import Project</DialogTitle>
+              <DialogTitle>导入项目</DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Choose the type of file you want to import:
+                选择您要导入的文件类型：
               </p>
               <div className="grid gap-3">
                 <Button
@@ -2194,29 +2191,28 @@ function ProjectsContent() {
                   onClick={handleImportCAClick}
                   className="w-full justify-start text-left py-8"
                 >
-                  <div className="flex flex-col items-start gap-1">
-                    <span className="font-medium">Import .ca file</span>
-                    <span className="text-xs text-muted-foreground">
-                      Import a CoreAnimation package or zip file
-                    </span>
-                  </div>
-                </Button>
+                                  <div className="flex flex-col items-start gap-1">
+                                    <span className="font-medium">导入.ca文件</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      导入CoreAnimation包或zip文件
+                                    </span>
+                                  </div>                </Button>
                 <Button
                   variant="outline"
                   onClick={handleImportTendiesClick}
                   className="w-full justify-start text-left py-8"
                 >
                   <div className="flex flex-col items-start gap-1">
-                    <span className="font-medium">Import .tendies file</span>
+                    <span className="font-medium">导入.tendies文件</span>
                     <span className="text-xs text-muted-foreground">
-                      Import a tendies wallpaper file
+                      导入tendies壁纸文件
                     </span>
                   </div>
                 </Button>
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsImportDialogOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setIsImportDialogOpen(false)}>取消</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -2261,11 +2257,11 @@ function ProjectsContent() {
         <Dialog open={isBulkDeleteOpen} onOpenChange={setIsBulkDeleteOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Delete {selectedIds.length} Selected Projects</DialogTitle>
+              <DialogTitle>删除 {selectedIds.length} 个选中项目</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Choose where to delete the selected projects from:
+                选择从何处删除选中的项目：
               </p>
               <div className="space-y-3">
                 <div className="flex items-center space-x-2">
@@ -2293,18 +2289,18 @@ function ProjectsContent() {
               </div>
               {!deleteFromDevice && !deleteFromCloud && (
                 <p className="text-sm text-amber-600">
-                  Please select at least one location to delete from.
+                  请至少选择一个要删除的位置。
                 </p>
               )}
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsBulkDeleteOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setIsBulkDeleteOpen(false)}>取消</Button>
               <Button 
                 variant="destructive" 
                 onClick={performBulkDelete}
                 disabled={!deleteFromDevice && !deleteFromCloud}
               >
-                Delete
+                删除
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -2382,13 +2378,13 @@ function ProjectsContent() {
               </div>
               {!deleteFromDevice && !deleteFromCloud && (
                 <p className="text-sm text-amber-600">
-                  Please select at least one location to delete from.
+                  请至少选择一个要删除的位置。
                 </p>
               )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDeleteOptionsOpen(false)}>
-                Cancel
+                取消
               </Button>
               <Button 
                 variant="destructive" 

@@ -116,7 +116,7 @@ export function GyroTab({
 
       {layerDicts.length === 0 ? (
         <div className="border rounded-lg p-4 text-center text-sm text-muted-foreground">
-          No gyro dictionaries yet. Click "+ Add Dictionary" to create one.
+          暂无陀螺仪字典。点击"+ 添加字典"来创建一个。
         </div>
       ) : (
         layerDicts.map((dict, index) => (
@@ -171,13 +171,12 @@ export function GyroTab({
                     <SelectValue placeholder="Select property" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="position.x">position.x</SelectItem>
-                    <SelectItem value="position.y">position.y</SelectItem>
-                    <SelectItem value="transform.translation.x">transform.translation.x</SelectItem>
-                    <SelectItem value="transform.translation.y">transform.translation.y</SelectItem>
-                    <SelectItem value="transform.rotation.x">transform.rotation.x</SelectItem>
-                    <SelectItem value="transform.rotation.y">transform.rotation.y</SelectItem>
-                    {/* TODO: <SelectItem value="transform.rotation.z">transform.rotation.z</SelectItem> */}
+                                <SelectItem value="position.x">位置X</SelectItem>
+                                <SelectItem value="position.y">位置Y</SelectItem>
+                                <SelectItem value="transform.translation.x">变换平移X</SelectItem>
+                                <SelectItem value="transform.translation.y">变换平移Y</SelectItem>
+                                <SelectItem value="transform.rotation.x">变换旋转X</SelectItem>
+                                <SelectItem value="transform.rotation.y">变换旋转Y</SelectItem>                    {/* TODO: <SelectItem value="transform.rotation.z">transform.rotation.z</SelectItem> */}
                   </SelectContent>
                 </Select>
               </div>
@@ -224,7 +223,7 @@ export function GyroTab({
                   className="bg-muted"
                 />
                 <p className="text-xs text-muted-foreground">
-                  View type is locked to Floating for gyro wallpapers
+                  陀螺仪壁纸的视图类型锁定为浮动
                 </p>
               </div>
             </div>

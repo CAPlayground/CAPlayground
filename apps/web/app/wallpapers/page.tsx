@@ -64,22 +64,22 @@ export async function generateMetadata({
           const previewUrl = `${data.base_url}${wallpaper.preview}`
 
           return {
-            title: `CAPlayground Community - ${wallpaper.name}`,
+            title: `CAPlayground 社区 - ${wallpaper.name}`,
             description,
             openGraph: {
-              title: `CAPlayground Community - ${wallpaper.name}`,
+              title: `CAPlayground 社区 - ${wallpaper.name}`,
               description,
               type: "website",
               images: [
                 {
                   url: previewUrl,
-                  alt: `${wallpaper.name} preview`,
+                  alt: `${wallpaper.name} 预览`,
                 },
               ],
             },
             twitter: {
               card: "summary_large_image",
-              title: `CAPlayground Community - ${wallpaper.name}`,
+              title: `CAPlayground 社区 - ${wallpaper.name}`,
               description,
               images: [previewUrl],
             },
@@ -92,11 +92,11 @@ export async function generateMetadata({
   }
 
   return {
-    title: "CAPlayground - Wallpapers",
-    description: "Browse wallpapers made by the CAPlayground community",
+    title: "CAPlayground - 壁纸",
+    description: "浏览由CAPlayground社区制作的壁纸",
     openGraph: {
-      title: "CAPlayground - Wallpapers",
-      description: "Browse wallpapers made by the CAPlayground community",
+      title: "CAPlayground - 壁纸",
+      description: "浏览由CAPlayground社区制作的壁纸",
       type: "website",
     },
   }
@@ -151,20 +151,20 @@ export default async function WallpapersPage() {
           <section className="py-8 md:py-12">
             <div className="container mx-auto px-3 min-[600px]:px-4 lg:px-6">
               <div className="max-w-5xl mx-auto text-center mb-8 md:mb-10">
-                <h1 className="font-heading text-5xl md:text-[50px] font-bold">Wallpaper Gallery</h1>
+                <h1 className="font-heading text-5xl md:text-[50px] font-bold">壁纸画廊</h1>
                 <p className="text-muted-foreground mt-3">
-                  Browse wallpapers made by the CAPlayground community.
+                  浏览由CAPlayground社区制作的壁纸。
                 </p>
               </div>
 
               {!data && (
                 <div className="max-w-xl mx-auto text-center text-sm text-muted-foreground">
-                  Unable to load wallpapers right now. Please try again later.
+                  目前无法加载壁纸。请稍后重试。
                 </div>
               )}
 
               {data && (
-                <Suspense fallback={<div className="text-center text-muted-foreground">Loading...</div>}>
+                <Suspense fallback={<div className="text-center text-muted-foreground">加载中...</div>}>
                   <WallpapersGrid data={data} />
                 </Suspense>
               )}

@@ -320,37 +320,37 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
         {!isSignedIn ? (
           <>
             <DialogHeader>
-              <DialogTitle>Sign In Required</DialogTitle>
+              <DialogTitle>需要登录</DialogTitle>
               <DialogDescription>
-                You need to be signed in to submit wallpapers
+                您需要登录才能提交壁纸
               </DialogDescription>
             </DialogHeader>
 
             <div className="py-6 text-center space-y-4">
               <p className="text-muted-foreground">
-                Please sign in to your account to submit wallpapers to the gallery.
+                请登录您的账户以向画廊提交壁纸。
               </p>
               <Link href="/signin">
-                <Button className="w-full sm:w-auto">Sign In</Button>
+                <Button className="w-full sm:w-auto">登录</Button>
               </Link>
             </div>
           </>
         ) : step === "form" ? (
           <>
             <DialogHeader>
-              <DialogTitle>Submit Wallpaper</DialogTitle>
+              <DialogTitle>提交壁纸</DialogTitle>
               <DialogDescription>
-                Share your wallpaper with the CAPlayground community
+                与CAPlayground社区分享您的壁纸
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-6 py-4">
               {/* Wallpaper Name */}
               <div className="space-y-2">
-                <Label htmlFor="name">Wallpaper Name *</Label>
+                <Label htmlFor="name">壁纸名称 *</Label>
                 <Input
                   id="name"
-                  placeholder="Enter wallpaper name"
+                  placeholder="输入壁纸名称"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   maxLength={42}
@@ -396,7 +396,7 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
                     className="w-full"
                   >
                     <Upload className="h-4 w-4 mr-2" />
-                    {tendiesFile ? tendiesFile.name : "Choose .tendies file"}
+                    {tendiesFile ? tendiesFile.name : "选择.tendies文件"}
                   </Button>
                 </div>
               </div>
@@ -420,7 +420,7 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
                     className="w-full"
                   >
                     <Upload className="h-4 w-4 mr-2" />
-                    {videoFile ? videoFile.name : "Choose video file"}
+                    {videoFile ? videoFile.name : "选择视频文件"}
                   </Button>
                 </div>
                 {videoPreviewUrl && videoPreviewUrl.startsWith('blob:') && (
@@ -444,17 +444,17 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
                   {username}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Your username will be displayed as the wallpaper creator
+                  您的用户名将显示为壁纸创作者
                 </p>
               </div>
             </div>
 
             <DialogFooter className="gap-2">
               <Button variant="outline" onClick={handleCancel}>
-                Cancel
+                取消
               </Button>
               <Button onClick={handleContinue} disabled={!isFormValid}>
-                Continue
+                继续
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </DialogFooter>
@@ -462,9 +462,9 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
         ) : step === "preview" ? (
           <>
             <DialogHeader>
-              <DialogTitle>Preview Submission</DialogTitle>
+              <DialogTitle>预览提交</DialogTitle>
               <DialogDescription>
-                This is how your wallpaper will appear in the gallery
+                这是您的壁纸在画廊中的显示效果
               </DialogDescription>
             </DialogHeader>
 
@@ -500,14 +500,13 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <div>
-                            <Button className="w-full bg-accent hover:bg-accent/90 text-white" disabled>
-                              Download .tendies
-                            </Button>
-                          </div>
-                        </TooltipTrigger>
+                                                <div>
+                                                  <Button className="w-full bg-accent hover:bg-accent/90 text-white" disabled>
+                                                    下载.tendies
+                                                  </Button>
+                                                </div>                        </TooltipTrigger>
                         <TooltipContent>
-                          <p>Download not available in preview</p>
+                          <p>预览中不可用下载</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -526,51 +525,49 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
             <DialogFooter className="gap-2">
               <Button variant="outline" onClick={handleBack}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
+                返回
               </Button>
               <Button onClick={handleSubmit}>
                 <Github className="h-4 w-4 mr-2" />
-                Submit Wallpaper
+                提交壁纸
               </Button>
             </DialogFooter>
           </>
         ) : step === "submitting" ? (
-          <div className="py-12 flex flex-col items-center justify-center text-center space-y-4">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <div className="space-y-1">
-              <h3 className="font-semibold text-lg">Submitting Wallpaper</h3>
-              <p className="text-muted-foreground">{submissionStatus.message}</p>
-            </div>
-          </div>
-        ) : (
-          <div className="py-8 flex flex-col items-center justify-center text-center space-y-6">
-            <div className="h-16 w-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-              <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
-            </div>
-            <div className="space-y-2">
-              <h3 className="font-semibold text-xl">Submission Successful!</h3>
-              <p className="text-muted-foreground max-w-sm mx-auto">
-                Your wallpaper has been submitted as a Pull Request. Once approved, it will appear in the gallery.
-              </p>
-            </div>
-
-            {prUrl && (
-              <a
-                href={prUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-primary hover:underline"
-              >
-                <Github className="h-4 w-4" />
-                View Pull Request
-              </a>
-            )}
-
-            <Button onClick={handleCancel} className="w-full sm:w-auto min-w-[120px]">
-              Done
-            </Button>
-          </div>
-        )}
+                      <div className="py-12 flex flex-col items-center justify-center text-center space-y-4">
+                        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                        <div className="space-y-1">
+                          <h3 className="font-semibold text-lg">提交壁纸</h3>
+                          <p className="text-muted-foreground">{submissionStatus.message}</p>
+                        </div>
+                      </div>        ) : (
+                      <div className="py-8 flex flex-col items-center justify-center text-center space-y-6">
+                        <div className="h-16 w-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                          <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
+                        </div>
+                        <div className="space-y-2">
+                          <h3 className="font-semibold text-xl">提交成功！</h3>
+                          <p className="text-muted-foreground max-w-sm mx-auto">
+                            您的壁纸已作为拉取请求提交。一旦获得批准，它将出现在画廊中。
+                          </p>
+                        </div>
+          
+                        {prUrl && (
+                          <a
+                            href={prUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 text-primary hover:underline"
+                          >
+                            <Github className="h-4 w-4" />
+                            查看拉取请求
+                          </a>
+                        )}
+          
+                        <Button onClick={handleCancel} className="w-full sm:w-auto min-w-[120px]">
+                          完成
+                        </Button>
+                      </div>        )}
       </DialogContent>
     </Dialog>
   )

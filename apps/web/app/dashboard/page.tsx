@@ -61,7 +61,7 @@ function DashboardContent() {
   const [isSyncing, setIsSyncing] = useState(false)
 
   useEffect(() => {
-    document.title = "CAPlayground - Dashboard";
+    document.title = "CAPlayground - 仪表板";
   }, []);
 
   useEffect(() => {
@@ -69,16 +69,16 @@ function DashboardContent() {
     const error = searchParams?.get('error');
 
     if (driveConnected === 'true') {
-      setMessageDialogTitle('Success');
-      setMessageDialogContent('Signed in to Google Drive successfully! You can now sync projects to the cloud.');
+      setMessageDialogTitle('成功');
+      setMessageDialogContent('成功登录 Google Drive！您现在可以将项目同步到云端。');
       setMessageDialogVariant('success');
       setMessageDialogOpen(true);
       setDriveConnected(true);
       setCheckingGoogle(false);
       window.history.replaceState({}, '', '/dashboard');
     } else if (error) {
-      setMessageDialogTitle('Error');
-      setMessageDialogContent(`Failed to sign in to Google Drive: ${error}`);
+      setMessageDialogTitle('错误');
+      setMessageDialogContent(`登录 Google Drive 失败: ${error}`);
       setMessageDialogVariant('error');
       setMessageDialogOpen(true);
       window.history.replaceState({}, '', '/dashboard');
@@ -278,55 +278,53 @@ function DashboardContent() {
       {/* Back to home */}
       <div className="absolute left-4 top-6">
         <Link href="/">
-          <Button variant="ghost" size="sm" className="h-8 px-2">
-            <ArrowLeft className="h-4 w-4 mr-1" /> Back
-          </Button>
-        </Link>
+                      <Button variant="ghost" size="sm" className="h-8 px-2">
+                        <ArrowLeft className="h-4 w-4 mr-1" /> 返回
+                      </Button>        </Link>
       </div>
 
       <div className="w-full max-w-3xl">
-        <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight">Welcome back{displayName ? `, ${displayName}` : ""}!</h1>
-        <p className="mt-6 text-muted-foreground text-lg">Manage your cloud projects and account settings.</p>
+        <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight">欢迎回来{displayName ? `，${displayName}` : ""}！</h1>
+        <p className="mt-6 text-muted-foreground text-lg">管理您的云端项目和账户设置。</p>
         <div className="mt-8 space-y-6">
           {/* Wallpaper Submissions */}
           <Card className="border-border/80">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>Wallpaper Submissions</CardTitle>
+                <CardTitle>壁纸提交</CardTitle>
                 <Button onClick={() => setIsSubmitDialogOpen(true)} size="sm">
                   <Plus className="h-4 w-4 mr-2" />
-                  Submit Wallpaper
+                  提交壁纸
                 </Button>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
               {submissionsLoading ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">Loading your submissions...</p>
+                <p className="text-sm text-muted-foreground py-4 text-center">正在加载您的提交...</p>
               ) : (
                 <>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-semibold">Awaiting Review</h3>
+                        <h3 className="text-sm font-semibold">等待审核</h3>
                         {isSyncing && (
-                          <span className="flex items-center text-[10px] text-muted-foreground animate-pulse">
-                            <Cloud className="h-3 w-3 mr-1 animate-spin" />
-                            Syncing...
-                          </span>
-                        )}
+                                                  <span className="flex items-center text-[10px] text-muted-foreground animate-pulse">
+                                                    <Cloud className="h-3 w-3 mr-1 animate-spin" />
+                                                    同步中...
+                                                  </span>                        )}
                       </div>
                       <span className="text-xs text-muted-foreground">
-                        {awaitingSubmissions.length}/5 slots used
+                        {awaitingSubmissions.length}/5 个插槽已使用
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      You can have up to five wallpapers awaiting review at a time.
+                      您最多可以同时有五个等待审核的壁纸。
                     </p>
 
                     {awaitingSubmissions.length === 0 ? (
                       <div className="border border-dashed border-border/70 rounded-lg py-6 px-4 text-center">
-                        <p className="text-sm text-muted-foreground">No wallpapers awaiting review</p>
-                        <p className="text-xs text-muted-foreground mt-1">Click "Submit Wallpaper" to get started</p>
+                        <p className="text-sm text-muted-foreground">没有等待审核的壁纸</p>
+                        <p className="text-xs text-muted-foreground mt-1">点击"提交壁纸"开始</p>
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -344,7 +342,7 @@ function DashboardContent() {
                               </p>
                             </div>
                             <span className="ml-3 flex-shrink-0 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-100 border-amber-200 dark:border-amber-700">
-                              Awaiting Review
+                              等待审核
                             </span>
                           </div>
                         ))}
@@ -355,14 +353,13 @@ function DashboardContent() {
 
                   {rejectedSubmissions.length > 0 && (
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold">Rejected (Last 30 Days)</h3>
-                        <span className="text-xs text-muted-foreground">
-                          {rejectedSubmissions.length} rejected
+                                              <div className="flex items-center justify-between">
+                                                <h3 className="text-sm font-semibold">已拒绝（最近30天）</h3>                        <span className="text-xs text-muted-foreground">
+                          {rejectedSubmissions.length} 个已拒绝
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Submissions that were not accepted. These will disappear after 30 days.
+                        未被接受的提交。这些将在30天后消失。
                       </p>
 
                       <div className="space-y-3">
@@ -380,7 +377,7 @@ function DashboardContent() {
                               </p>
                             </div>
                             <span className="ml-3 flex-shrink-0 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200 border-red-200 dark:border-red-700">
-                              Rejected
+                              已拒绝
                             </span>
                           </div>
                         ))}
@@ -389,20 +386,19 @@ function DashboardContent() {
                   )}
 
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-semibold">Published</h3>
-                      <span className="text-xs text-muted-foreground">
-                        {approvedSubmissions.length === 0 ? 'None yet' : `${approvedSubmissions.length} published`}
+                                            <div className="flex items-center justify-between">
+                                              <h3 className="text-sm font-semibold">已发布</h3>                      <span className="text-xs text-muted-foreground">
+                        {approvedSubmissions.length === 0 ? '暂无' : `${approvedSubmissions.length} 个已发布`}
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Wallpapers that have been approved and are live in the gallery.
+                      已被批准并在线上画廊中展示的壁纸。
                     </p>
 
                     {approvedSubmissions.length === 0 ? (
                       <div className="border border-dashed border-border/70 rounded-lg py-6 px-4 text-center">
-                        <p className="text-sm text-muted-foreground">No published wallpapers yet</p>
-                        <p className="text-xs text-muted-foreground mt-1">They'll appear here once approved</p>
+                        <p className="text-sm text-muted-foreground">暂无已发布的壁纸</p>
+                        <p className="text-xs text-muted-foreground mt-1">批准后会在此显示</p>
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -420,7 +416,7 @@ function DashboardContent() {
                               </p>
                             </div>
                             <span className="ml-3 flex-shrink-0 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200 border-emerald-200 dark:border-emerald-700">
-                              Published
+                              已发布
                             </span>
                           </div>
                         ))}
@@ -436,28 +432,28 @@ function DashboardContent() {
           <Card className="border-border/80">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                Cloud Projects
+                云端项目
                 <span className="text-[10px] md:text-xs px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-normal">
-                  BETA
+                  测试版
                 </span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Sync and manage your projects in the cloud with Google Drive.
+                使用 Google Drive 在云端同步和管理您的项目。
               </p>
               {checkingGoogle ? (
-                <p className="text-sm text-muted-foreground">Checking connection...</p>
+                <p className="text-sm text-muted-foreground">正在检查连接...</p>
               ) : driveConnected ? (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 px-4 py-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
                     <GoogleDriveIcon className="h-5 w-5 flex-shrink-0" />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-green-900 dark:text-green-100">
-                        Signed in to Google Drive
+                        已登录 Google Drive
                       </p>
                       <p className="text-xs text-green-700 dark:text-green-300">
-                        Your projects can be synced to the cloud
+                        您的项目可同步到云端
                       </p>
                     </div>
                   </div>
@@ -465,7 +461,7 @@ function DashboardContent() {
                     <div className="flex gap-2">
                       <Link href="/projects" className="flex-1">
                         <Button variant="outline" className="w-full">
-                          Manage Projects
+                          管理项目
                         </Button>
                       </Link>
                       <Button
@@ -473,7 +469,7 @@ function DashboardContent() {
                         onClick={() => setDeleteAllOpen(true)}
                         className="text-destructive hover:text-destructive"
                       >
-                        Delete All
+                        全部删除
                       </Button>
                     </div>
                     <Button
@@ -483,8 +479,8 @@ function DashboardContent() {
                         try {
                           await fetch('/api/auth/signout', { method: 'POST' });
                           setDriveConnected(false);
-                          setMessageDialogTitle('Success');
-                          setMessageDialogContent('Signed out from Google Drive successfully.');
+                          setMessageDialogTitle('成功');
+                          setMessageDialogContent('已成功从 Google Drive 登出。');
                           setMessageDialogVariant('success');
                           setMessageDialogOpen(true);
                         } catch (error) {
@@ -494,7 +490,7 @@ function DashboardContent() {
                       className="w-full"
                     >
                       <Cloud className="h-4 w-4 mr-2" />
-                      Sign out from Google Drive
+                      从 Google Drive 登出
                     </Button>
                   </div>
                 </div>
@@ -517,10 +513,10 @@ function DashboardContent() {
                     }
                   }}>
                     <GoogleDriveIcon className="h-4 w-4 mr-2" />
-                    Sign in to Google Drive
+                    登录 Google Drive
                   </Button>
                   <p className="text-sm text-muted-foreground">
-                    Once signed in, you can sync projects directly from the projects page.
+                    登录后，您可以直接从项目页面同步项目。
                   </p>
                 </div>
               )}
@@ -554,18 +550,18 @@ function DashboardContent() {
 
           <Card className="border-border/80">
             <CardHeader>
-              <CardTitle>Account Options</CardTitle>
+              <CardTitle>账户选项</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Manage your email, username, password, or delete your account.
+                管理您的邮箱、用户名、密码或删除您的账户。
               </p>
               <div className="flex flex-wrap gap-3">
                 <Link href="/account">
-                  <Button variant="default">Manage Account</Button>
+                  <Button variant="default">管理账户</Button>
                 </Link>
                 <Button onClick={handleSignOut} disabled={loading} variant="outline">
-                  {loading ? "Signing out..." : "Sign Out"}
+                  {loading ? "登出中..." : "登出"}
                 </Button>
               </div>
             </CardContent>
@@ -584,28 +580,28 @@ function DashboardContent() {
       <Dialog open={deleteAllOpen} onOpenChange={setDeleteAllOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete All Cloud Projects</DialogTitle>
+            <DialogTitle>删除所有云端项目</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <p className="text-sm text-muted-foreground">
-              This will permanently delete the entire CAPlayground folder and all projects from your Google Drive.
+              这将永久删除您 Google Drive 上的整个 CAPlayground 文件夹和所有项目。
             </p>
             <div className="rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 p-3">
               <p className="text-xs text-red-800 dark:text-red-300">
-                <strong>⚠️ Warning:</strong> This action cannot be undone. All cloud projects will be permanently deleted from Drive. Projects on your device will not be affected.
+                <strong>⚠️ 警告：</strong>此操作无法撤销。所有云端项目将从 Drive 中永久删除。设备上的项目不受影响。
               </p>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteAllOpen(false)} disabled={deleting}>
-              Cancel
+              取消
             </Button>
             <Button
               variant="destructive"
               onClick={handleDeleteAllCloudProjects}
               disabled={deleting}
             >
-              {deleting ? 'Deleting...' : 'Delete All'}
+              {deleting ? '删除中...' : '全部删除'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -624,7 +620,7 @@ function DashboardContent() {
           </div>
           <DialogFooter>
             <Button onClick={() => setMessageDialogOpen(false)}>
-              OK
+              确定
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -635,14 +631,13 @@ function DashboardContent() {
 
 export default function DashboardPage() {
   return (
-    <Suspense fallback={
-      <main className="min-h-screen px-4 py-20 flex items-start justify-center">
-        <div className="w-full max-w-5xl">
-          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight">Loading...</h1>
-        </div>
-      </main>
-    }>
-      <DashboardContent />
+          <Suspense fallback={
+            <main className="min-h-screen px-4 py-20 flex items-start justify-center">
+              <div className="w-full max-w-5xl">
+                <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight">加载中...</h1>
+              </div>
+            </main>
+          }>      <DashboardContent />
     </Suspense>
   )
 }

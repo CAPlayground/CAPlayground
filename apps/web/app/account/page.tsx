@@ -67,7 +67,7 @@ export default function AccountPage() {
   const [linkingProvider, setLinkingProvider] = useState<string | null>(null)
 
   useEffect(() => {
-    document.title = "CAPlayground - Account";
+    document.title = "CAPlayground - 账户";
   }, []);
 
   useEffect(() => {
@@ -131,36 +131,35 @@ export default function AccountPage() {
 
   async function unlinkProvider(identity: any) {
     const providerName = identity.provider
-    const confirmed = window.confirm(`Are you sure you want to unlink your ${providerName} account?`)
+    const confirmed = window.confirm(`您确定要取消链接您的 ${providerName} 账户吗？`)
     if (!confirmed) return
     
     setMessage(null)
     setError(null)
     
     if (linkedIdentities.length <= 1) {
-      setError("You cannot unlink your only authentication method. Please link another provider first.")
+      setError("您不能取消链接唯一的身份验证方法。请先链接其他提供商。")
       return
     }
     
     try {
       const { error } = await supabase.auth.unlinkIdentity(identity)
       if (error) throw error
-      setMessage(`Successfully unlinked ${providerName} account`)
+      setMessage(`成功取消链接 ${providerName} 账户`)
       await loadIdentities()
     } catch (e: any) {
-      setError(e.message ?? `Failed to unlink ${providerName} account`)
+      setError(e.message ?? `取消链接 ${providerName} 账户失败`)
     }
   }
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const linked = params.get('linked')
-    if (linked) {
-      setMessage(`Successfully linked ${linked} account!`)
-      loadIdentities()
-      window.history.replaceState({}, '', '/account')
-    }
-  }, [])
+      const params = new URLSearchParams(window.location.search)
+      const linked = params.get('linked')
+      if (linked) {
+        setMessage(`成功链接 ${linked} 账户！`)
+        loadIdentities()
+        window.history.replaceState({}, '', '/account')
+      }  }, [])
 
   async function saveUsername() {
     if (!userId) return
@@ -171,7 +170,7 @@ export default function AccountPage() {
       if (error) throw error
       setMessage("Username saved")
     } catch (e: any) {
-      setError(e.message ?? "Failed to save username. Ensure a 'profiles' table exists with columns: id uuid primary key, username text.")
+      setError(e.message ?? "保存用户名失败。请确保存在一个包含以下列的 'profiles' 表：id uuid 主键，username text。")
     }
   }
 
@@ -179,7 +178,7 @@ export default function AccountPage() {
     setMessage(null)
     setError(null)
     if (!canChangeEmail) {
-      setError("Email is managed by your Google account. To change it, update your Google Account email.")
+      setError("邮箱由您的 Google 账户管理。要更改邮箱，请更新您的 Google 账户邮箱。")
       return
     }
     const next = newEmail.trim()
@@ -190,7 +189,7 @@ export default function AccountPage() {
     try {
       const { error } = await supabase.auth.updateUser({ email: next })
       if (error) throw error
-      setMessage("Verification email sent to update your email. You'll be signed out now; please sign back in after verifying.")
+      setMessage("验证邮件已发送以更新您的邮箱。您将立即退出登录；验证后请重新登录。")
       await fetch('/api/auth/signout', { method: 'POST' })
       await supabase.auth.signOut()
       window.location.href = "/signin"
@@ -206,7 +205,7 @@ export default function AccountPage() {
       const origin = window.location.origin
       const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${origin}/reset-password` })
       if (error) throw error
-      setMessage("Password reset email sent (if the email exists)")
+      setMessage("密码重置邮件已发送（如果邮箱存在）")
     } catch (e: any) {
       setError(e.message ?? "Failed to send reset email")
     }
@@ -219,15 +218,14 @@ export default function AccountPage() {
   }
 
   async function deleteAccount() {
-    const confirmed = window.confirm("This will delete your account permanently. Continue?")
+    const confirmed = window.confirm("这将永久删除您的账户。继续？")
     if (!confirmed) return
     setMessage(null)
     setError(null)
     try {
       const { data: sessionData } = await supabase.auth.getSession()
       const token = sessionData.session?.access_token
-      if (!token) throw new Error("No session token. Please sign in again.")
-
+                if (!token) throw new Error("无会话令牌。请重新登录。")
       const res = await fetch("/api/account/delete", {
         method: "POST",
         headers: {
@@ -242,14 +240,14 @@ export default function AccountPage() {
       await supabase.auth.signOut()
       window.location.href = "/"
     } catch (e: any) {
-      setError(e.message ?? "Failed to delete account (ensure server is configured with SUPABASE_SERVICE_ROLE_KEY)")
+      setError(e.message ?? "删除账户失败（请确保服务器配置了 SUPABASE_SERVICE_ROLE_KEY）")
     }
   }
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
-        <p className="text-sm text-muted-foreground">Loading account…</p>
+        <p className="text-sm text-muted-foreground">正在加载账户…</p>
       </div>
     )
   }
@@ -257,18 +255,17 @@ export default function AccountPage() {
   return (
     <div className="min-h-screen px-4 py-12 relative flex items-start justify-center">
       {/* Back to dashboard */}
-      <div className="absolute left-4 top-6">
-        <Link href="/dashboard">
-          <Button variant="ghost" size="sm" className="h-8 px-2">
-            <ArrowLeft className="h-4 w-4 mr-1" /> Back
-          </Button>
-        </Link>
-      </div>
-
+              <div className="absolute left-4 top-6">
+                <Link href="/dashboard">
+                  <Button variant="ghost" size="sm" className="h-8 px-2">
+                    <ArrowLeft className="h-4 w-4 mr-1" /> 返回
+                  </Button>
+                </Link>
+              </div>
       <div className="w-full max-w-2xl space-y-6">
         <div className="space-y-2">
-          <h1 className="text-3xl md:text-4xl font-bold">Manage Account</h1>
-          <p className="text-muted-foreground">Update your account settings and linked providers</p>
+          <h1 className="text-3xl md:text-4xl font-bold">管理账户</h1>
+          <p className="text-muted-foreground">更新您的账户设置和链接的提供商</p>
         </div>
 
         {message && <p className="text-sm text-green-600">{message}</p>}
@@ -279,35 +276,35 @@ export default function AccountPage() {
             <Card className="border-border/80 shadow-none">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle>Account Information</CardTitle>
-                  <Button variant="outline" onClick={signOut}>Sign out</Button>
+                  <CardTitle>账户信息</CardTitle>
+                  <Button variant="outline" onClick={signOut}>退出登录</Button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label className="text-sm font-medium">Email</Label>
-                  <p className="text-sm text-muted-foreground mt-1">{email || "(loading)"}</p>
+                  <Label className="text-sm font-medium">电子邮箱</Label>
+                  <p className="text-sm text-muted-foreground mt-1">{email || "(加载中)"}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium">Username</Label>
-                  <p className="text-sm text-muted-foreground mt-1">{username || "Not set"}</p>
+                  <Label className="text-sm font-medium">用户名</Label>
+                  <p className="text-sm text-muted-foreground mt-1">{username || "未设置"}</p>
                 </div>
               </CardContent>
             </Card>
 
             <Card className="border-border/80 shadow-none">
               <CardHeader>
-                <CardTitle>Linked Accounts</CardTitle>
+                <CardTitle>已链接的账户</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Sign in with any of these providers to access your account.
+                  使用以下任一提供商登录以访问您的账户。
                 </p>
                 
                 <div className="space-y-3">
-                  <h3 className="text-sm font-medium">Currently Linked</h3>
+                  <h3 className="text-sm font-medium">当前已链接</h3>
                   {linkedIdentities.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No linked accounts found.</p>
+                    <p className="text-sm text-muted-foreground">未找到已链接的账户。</p>
                   ) : (
                     <div className="space-y-2">
                       {linkedIdentities.map((identity) => (
@@ -328,7 +325,7 @@ export default function AccountPage() {
                             <div>
                               <p className="text-sm font-medium capitalize">{identity.provider}</p>
                               <p className="text-xs text-muted-foreground">
-                                {identity.identity_data?.email || 'No email'}
+                                {identity.identity_data?.email || '无邮箱'}
                               </p>
                             </div>
                           </div>
@@ -339,7 +336,7 @@ export default function AccountPage() {
                               onClick={() => unlinkProvider(identity)}
                             >
                               <Unlink className="h-4 w-4 mr-1" />
-                              Unlink
+                              取消链接
                             </Button>
                           )}
                         </div>
@@ -351,7 +348,7 @@ export default function AccountPage() {
                 <Separator />
 
                 <div className="space-y-3">
-                  <h3 className="text-sm font-medium">Link New Provider</h3>
+                  <h3 className="text-sm font-medium">链接新提供商</h3>
                   <div className="grid gap-2">
                     {!linkedIdentities.some(i => i.provider === 'google') && (
                       <Button
@@ -361,7 +358,7 @@ export default function AccountPage() {
                         className="justify-start"
                       >
                         <LinkIcon className="h-4 w-4 mr-2" />
-                        {linkingProvider === 'google' ? 'Linking...' : 'Link Google Account'}
+                        {linkingProvider === 'google' ? '链接中...' : '链接 Google 账户'}
                       </Button>
                     )}
                     {!linkedIdentities.some(i => i.provider === 'github') && (
@@ -372,7 +369,7 @@ export default function AccountPage() {
                         className="justify-start"
                       >
                         <LinkIcon className="h-4 w-4 mr-2" />
-                        {linkingProvider === 'github' ? 'Linking...' : 'Link GitHub Account'}
+                        {linkingProvider === 'github' ? '链接中...' : '链接 GitHub 账户'}
                       </Button>
                     )}
                     {!linkedIdentities.some(i => i.provider === 'discord') && (
@@ -383,14 +380,14 @@ export default function AccountPage() {
                         className="justify-start"
                       >
                         <LinkIcon className="h-4 w-4 mr-2" />
-                        {linkingProvider === 'discord' ? 'Linking...' : 'Link Discord Account'}
+                        {linkingProvider === 'discord' ? '链接中...' : '链接 Discord 账户'}
                       </Button>
                     )}
                   </div>
                   {linkedIdentities.some(i => i.provider === 'google') && 
                    linkedIdentities.some(i => i.provider === 'github') && 
                    linkedIdentities.some(i => i.provider === 'discord') && (
-                    <p className="text-sm text-muted-foreground">All available providers are linked.</p>
+                    <p className="text-sm text-muted-foreground">所有可用的提供商都已链接。</p>
                   )}
                 </div>
               </CardContent>
@@ -398,27 +395,27 @@ export default function AccountPage() {
 
             <Card className="border-border/80 shadow-none">
               <CardHeader>
-                <CardTitle>Account Actions</CardTitle>
+                <CardTitle>账户操作</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-2">
                   {canChangeEmail ? (
                     <Button variant="outline" onClick={() => { setMode("email"); setMessage(null); setError(null); setNewEmail(""); }}>
-                      Update Email
+                      更新邮箱
                     </Button>
                   ) : (
-                    <Button variant="outline" disabled title="Email is managed by OAuth provider">
-                      Update Email (OAuth-managed)
+                    <Button variant="outline" disabled title="邮箱由 OAuth 提供商管理">
+                      更新邮箱 (OAuth 管理)
                     </Button>
                   )}
                   <Button variant="outline" onClick={() => { setMode("username"); setMessage(null); setError(null); }}>
-                    Change Username
+                    更改用户名
                   </Button>
                   <Button variant="outline" onClick={() => { setMode("password"); setMessage(null); setError(null); }}>
-                    Change Password
+                    更改密码
                   </Button>
                   <Button variant="destructive" onClick={deleteAccount}>
-                    Delete Account
+                    删除账户
                   </Button>
                 </div>
               </CardContent>
@@ -429,29 +426,29 @@ export default function AccountPage() {
         {mode === "email" && (
           <Card className="border-border/80 shadow-none">
             <CardHeader>
-              <CardTitle>Update Email</CardTitle>
+              <CardTitle>更新邮箱</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {!canChangeEmail ? (
                 <>
-                  <p className="text-sm text-muted-foreground">This account uses Google sign-in. You can't change your email.</p>
+                  <p className="text-sm text-muted-foreground">此账户使用 Google 登录。您无法更改邮箱。</p>
                   <div className="flex gap-2">
-                    <Button variant="ghost" onClick={() => setMode("view")}>Back</Button>
+                    <Button variant="ghost" onClick={() => setMode("view")}>返回</Button>
                   </div>
                 </>
               ) : (
                 <>
                   <div>
-                    <Label>Current Email</Label>
+                    <Label>当前邮箱</Label>
                     <Input value={email} readOnly className="mt-1" />
                   </div>
                   <div>
-                    <Label htmlFor="new-email">New Email</Label>
+                    <Label htmlFor="new-email">新邮箱</Label>
                     <Input id="new-email" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} className="mt-1" placeholder="you@example.com" />
                   </div>
                   <div className="flex gap-2">
-                    <Button onClick={updateEmail}>Send Verification & Sign Out</Button>
-                    <Button variant="ghost" onClick={() => setMode("view")}>Back</Button>
+                    <Button onClick={updateEmail}>发送验证并退出登录</Button>
+                    <Button variant="ghost" onClick={() => setMode("view")}>返回</Button>
                   </div>
                   <p className="text-xs text-muted-foreground">We’ll email a verification link to your new address. After confirming, sign back in.</p>
                 </>
@@ -463,16 +460,16 @@ export default function AccountPage() {
         {mode === "username" && (
           <Card className="border-border/80 shadow-none">
             <CardHeader>
-              <CardTitle>Change Username</CardTitle>
+              <CardTitle>更改用户名</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="username">Username</Label>
-                <Input id="username" placeholder="Pick a username" value={username} onChange={(e) => setUsername(e.target.value)} className="mt-1" />
+                <Label htmlFor="username">用户名</Label>
+                <Input id="username" placeholder="选择一个用户名" value={username} onChange={(e) => setUsername(e.target.value)} className="mt-1" />
               </div>
               <div className="flex gap-2">
-                <Button onClick={saveUsername}>Save Username</Button>
-                <Button variant="ghost" onClick={() => setMode("view")}>Back</Button>
+                <Button onClick={saveUsername}>保存用户名</Button>
+                <Button variant="ghost" onClick={() => setMode("view")}>返回</Button>
               </div>
             </CardContent>
           </Card>
@@ -481,13 +478,13 @@ export default function AccountPage() {
         {mode === "password" && (
           <Card className="border-border/80 shadow-none">
             <CardHeader>
-              <CardTitle>Change Password</CardTitle>
+              <CardTitle>更改密码</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">For security, password changes are done via email. We’ll send a reset link to your current address.</p>
               <div className="flex gap-2">
-                <Button onClick={sendResetEmail}>Send Reset Email</Button>
-                <Button variant="ghost" onClick={() => setMode("view")}>Back</Button>
+                <Button onClick={sendResetEmail}>发送重置邮件</Button>
+                <Button variant="ghost" onClick={() => setMode("view")}>返回</Button>
               </div>
             </CardContent>
           </Card>

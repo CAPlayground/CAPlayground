@@ -326,16 +326,15 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
     <div className="space-y-6">
       <div className="max-w-xl mx-auto w-full space-y-3">
         <div className="flex justify-center">
-          <Button onClick={() => setIsSubmitDialogOpen(true)} className="gap-2">
-            <Upload className="h-4 w-4" />
-            Submit Wallpaper
-          </Button>
-        </div>
+                    <Button onClick={() => setIsSubmitDialogOpen(true)} className="gap-2">
+                    <Upload className="h-4 w-4" />
+                    提交壁纸
+                  </Button>        </div>
         <div className="flex gap-3">
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search wallpapers by name, creator, or description..."
+            placeholder="按名称、创建者或描述搜索壁纸..."
             className="flex-1"
           />
           <Select
@@ -345,13 +344,12 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
             <SelectTrigger className="w-[180px] bg-background border shadow-sm">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="default">Oldest to Newest</SelectItem>
-              <SelectItem value="newest">Newest to Oldest</SelectItem>
-              <SelectItem value="downloads">Most Downloads</SelectItem>
-              <SelectItem value="least-downloads">Least Downloads</SelectItem>
-            </SelectContent>
-          </Select>
+                      <SelectContent>
+                      <SelectItem value="default">从旧到新</SelectItem>
+                      <SelectItem value="newest">从新到旧</SelectItem>
+                      <SelectItem value="downloads">最多下载</SelectItem>
+                      <SelectItem value="least-downloads">最少下载</SelectItem>
+                    </SelectContent>          </Select>
         </div>
       </div>
 
@@ -390,10 +388,9 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
                 </div>
 
                 <h3 className="font-medium line-clamp-1 mb-1">{item.name}</h3>
-                <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                  by {item.creator} (submitted on {item.from})
-                </p>
-                {downloadStats[String(item.id)] > 0 && (
+                              <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                              作者：{item.creator}（提交于 {item.from}）
+                            </p>                {downloadStats[String(item.id)] > 0 && (
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
                     <Download className="h-3.5 w-3.5" />
                     <span>{downloadStats[String(item.id)]}</span>

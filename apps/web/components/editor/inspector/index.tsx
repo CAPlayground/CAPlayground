@@ -120,48 +120,47 @@ export function Inspector() {
 
   const [activeTab, setActiveTab] = useState<TabId>('geometry');
 
-  const tabs = useMemo(() => {
-    let baseTabs = [
-      { id: 'geometry' as TabId, icon: Box, label: 'Geometry' },
-      { id: 'compositing' as TabId, icon: Layers, label: 'Compositing' },
-      { id: 'content' as TabId, icon: Palette, label: 'Content' },
-    ];
-    if (selected?.type === 'text') {
-      baseTabs.push({ id: 'text' as TabId, icon: Type, label: 'Text' });
-    }
-    if (selected?.type === 'gradient') {
-      baseTabs.push({ id: 'gradient' as TabId, icon: Blend, label: 'Gradient' });
-    }
-    if (selected?.type === 'image') {
-      baseTabs.push({ id: 'image' as TabId, icon: ImageIcon, label: 'Image' });
-    }
-    if (selected?.type === 'video') {
-      baseTabs.push({ id: 'video' as TabId, icon: Video, label: 'Video' });
-    }
-    if (selected?.type !== 'video') {
-      baseTabs.push({ id: 'animations' as TabId, icon: Play, label: 'Animations' });
-    }
-    if (doc?.meta.gyroEnabled && selected?.type === 'transform') {
-      baseTabs.push({ id: 'gyro' as TabId, icon: Smartphone, label: 'Gyro (Parallax)' });
-    }
-    if (selected?.type === 'emitter') {
-      baseTabs = [
-        { id: 'geometry' as TabId, icon: Box, label: 'Geometry' },
-        { id: 'compositing' as TabId, icon: Layers, label: 'Compositing' },
-        { id: 'emitter' as TabId, icon: Cog, label: 'Emitter' },
-      ]
-    }
-    if (selected?.type === 'replicator') {
-      baseTabs = [
-        { id: 'geometry' as TabId, icon: Box, label: 'Geometry' },
-        { id: 'compositing' as TabId, icon: Layers, label: 'Compositing' },
-        { id: 'replicator' as TabId, icon: Cog, label: 'Replicator' },
-      ]
-    }
-    baseTabs.push({ id: 'filters' as TabId, icon: Filter, label: 'Filters' });
-    return baseTabs;
-  }, [selected?.type, doc?.meta.gyroEnabled]);
-
+        const tabs = useMemo(() => {
+      let baseTabs = [
+        { id: 'geometry' as TabId, icon: Box, label: '几何' },
+        { id: 'compositing' as TabId, icon: Layers, label: '合成' },
+        { id: 'content' as TabId, icon: Palette, label: '内容' },
+      ];
+      if (selected?.type === 'text') {
+        baseTabs.push({ id: 'text' as TabId, icon: Type, label: '文本' });
+      }
+      if (selected?.type === 'gradient') {
+        baseTabs.push({ id: 'gradient' as TabId, icon: Blend, label: '渐变' });
+      }
+      if (selected?.type === 'image') {
+        baseTabs.push({ id: 'image' as TabId, icon: ImageIcon, label: '图像' });
+      }
+      if (selected?.type === 'video') {
+        baseTabs.push({ id: 'video' as TabId, icon: Video, label: '视频' });
+      }
+      if (selected?.type !== 'video') {
+        baseTabs.push({ id: 'animations' as TabId, icon: Play, label: '动画' });
+      }
+      if (doc?.meta.gyroEnabled && selected?.type === 'transform') {
+        baseTabs.push({ id: 'gyro' as TabId, icon: Smartphone, label: '陀螺仪（视差）' });
+      }
+      if (selected?.type === 'emitter') {
+        baseTabs = [
+          { id: 'geometry' as TabId, icon: Box, label: '几何' },
+          { id: 'compositing' as TabId, icon: Layers, label: '合成' },
+          { id: 'emitter' as TabId, icon: Cog, label: '发射器' },
+        ]
+      }
+      if (selected?.type === 'replicator') {
+        baseTabs = [
+          { id: 'geometry' as TabId, icon: Box, label: '几何' },
+          { id: 'compositing' as TabId, icon: Layers, label: '合成' },
+          { id: 'replicator' as TabId, icon: Cog, label: '复制器' },
+        ]
+      }
+      baseTabs.push({ id: 'filters' as TabId, icon: Filter, label: '滤镜' });
+      return baseTabs;
+    }, [selected?.type, doc?.meta.gyroEnabled]);
   useEffect(() => {
     if (selected?.type === 'text' && (['gradient', 'image', 'video', 'emitter', 'gyro'].includes(activeTab))) {
       setActiveTab('text');
@@ -198,30 +197,29 @@ export function Inspector() {
           }}
         >
           <div className="grid grid-cols-2 gap-1.5">
-            <div className="space-y-1">
-              <Label htmlFor="root-w">Width</Label>
-              <Input id="root-w" type="number" step="1" value={String(widthVal)}
-                onChange={(e) => {
-                  const n = Number(e.target.value);
-                  if (!Number.isFinite(n)) return;
-                  setDoc((prev) => prev ? ({ ...prev, meta: { ...prev.meta, width: Math.max(0, Math.round(n)) } }) : prev);
-                }} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="root-h">Height</Label>
-              <Input id="root-h" type="number" step="1" value={String(heightVal)}
-                onChange={(e) => {
-                  const n = Number(e.target.value);
-                  if (!Number.isFinite(n)) return;
-                  setDoc((prev) => prev ? ({ ...prev, meta: { ...prev.meta, height: Math.max(0, Math.round(n)) } }) : prev);
-                }} />
-            </div>
-            <div className="space-y-1 col-span-2">
-              <Label>Flip Geometry</Label>
+                      <div className="space-y-1">
+                        <Label htmlFor="root-w">宽度</Label>
+                        <Input id="root-w" type="number" step="1" value={String(widthVal)}
+                          onChange={(e) => {
+                            const n = Number(e.target.value);
+                            if (!Number.isFinite(n)) return;
+                            setDoc((prev) => prev ? ({ ...prev, meta: { ...prev.meta, width: Math.max(0, Math.round(n)) } }) : prev);
+                          }} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="root-h">高度</Label>
+                        <Input id="root-h" type="number" step="1" value={String(heightVal)}
+                          onChange={(e) => {
+                            const n = Number(e.target.value);
+                            if (!Number.isFinite(n)) return;
+                            setDoc((prev) => prev ? ({ ...prev, meta: { ...prev.meta, height: Math.max(0, Math.round(n)) } }) : prev);
+                          }} />
+                      </div>            <div className="space-y-1 col-span-2">
+              <Label>翻转几何</Label>
               <div className="flex items-center gap-2 h-8">
                 <Switch checked={gf === 1}
                   onCheckedChange={(checked) => setDoc((prev) => prev ? ({ ...prev, meta: { ...prev.meta, geometryFlipped: checked ? 1 : 0 } }) : prev)} />
-                <span className="text-xs text-muted-foreground">When on, origin becomes top-left and Y increases down.</span>
+                <span className="text-xs text-muted-foreground">开启后，原点变为左上角，Y轴向下递增。</span>
               </div>
             </div>
           </div>
@@ -239,7 +237,7 @@ export function Inspector() {
         <div className="flex-1 flex items-center justify-center">
           <div className="flex flex-col items-center text-center text-muted-foreground">
             <SquareSlash className="h-20 w-20 mb-3" />
-            <div className="text-m">Select a layer to edit its properties.</div>
+            <div className="text-m">选择一个图层来编辑其属性。</div>
           </div>
         </div>
       </Card>
@@ -270,9 +268,9 @@ export function Inspector() {
               size="sm"
               className="h-7 px-2"
               onClick={() => selectLayer(null)}
-              title="Deselect current layer"
+              title="取消选择当前图层"
             >
-              Deselect
+              取消选择
             </Button>
           )}
           <Tooltip>
@@ -286,7 +284,7 @@ export function Inspector() {
                 <PanelLeft className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Sidebar Left</TooltipContent>
+            <TooltipContent>侧边栏左</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -299,7 +297,7 @@ export function Inspector() {
                 <PanelTop className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Sidebar Top</TooltipContent>
+            <TooltipContent>侧边栏顶部</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -312,7 +310,7 @@ export function Inspector() {
                 <PanelRight className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Sidebar Right</TooltipContent>
+            <TooltipContent>侧边栏右</TooltipContent>
           </Tooltip>
         </div>
       </div>
@@ -350,7 +348,19 @@ export function Inspector() {
         )}
 
         <div className="flex-1 overflow-y-auto p-3">
-          <div className="text-sm font-bold mb-3 capitalize">{activeTab}</div>
+          <div className="text-sm font-bold mb-3 capitalize">{activeTab === 'geometry' ? '几何' : 
+          activeTab === 'compositing' ? '合成' : 
+          activeTab === 'content' ? '内容' : 
+          activeTab === 'text' ? '文本' : 
+          activeTab === 'gradient' ? '渐变' : 
+          activeTab === 'image' ? '图像' : 
+          activeTab === 'video' ? '视频' : 
+          activeTab === 'emitter' ? '发射器' : 
+          activeTab === 'replicator' ? '复制器' : 
+          activeTab === 'animations' ? '动画' : 
+          activeTab === 'gyro' ? '陀螺仪' : 
+          activeTab === 'filters' ? '滤镜' : 
+          activeTab}</div>
           {activeTab === 'geometry' && (
             <GeometryTab
               {...tabProps}

@@ -195,10 +195,10 @@ export function ExportDialog() {
       URL.revokeObjectURL(url);
       return true;
     } catch (e) {
-      console.error("Export failed", e);
+      console.error("导出失败", e);
       toast({
-        title: "Export failed",
-        description: "Failed to export .ca file. Please try again.",
+        title: "导出失败",
+        description: "导出.ca文件失败。请重试。",
         variant: "destructive",
       });
       return false;
@@ -336,15 +336,15 @@ export function ExportDialog() {
       URL.revokeObjectURL(url);
 
       toast({
-        title: "Export successful",
-        description: `Tendies file "${nameSafe}.tendies" has been downloaded.`,
+        title: "导出成功",
+        description: `Tendies文件"${nameSafe}.tendies"已下载。`,
       });
       return true;
     } catch (e) {
-      console.error("Tendies export failed", e);
+      console.error("Tendies导出失败", e);
       toast({
-        title: "Export failed",
-        description: "Failed to export tendies file. Please try again.",
+        title: "导出失败",
+        description: "导出tendies文件失败。请重试。",
         variant: "destructive",
       });
       return false;
@@ -364,7 +364,7 @@ export function ExportDialog() {
         }}
         className="px-3 sm:px-4"
       >
-        Export
+        导出
       </Button>
       <Dialog
         open={exportOpen}
@@ -374,31 +374,30 @@ export function ExportDialog() {
         }}
       >
         <DialogContent className="sm:max-w-md p-4">
-          <DialogHeader
-            className={`${
-              exportView === "success"
-                ? "flex items-center justify-start py-1"
-                : "py-2"
-            }`}
-          >
-            {exportView === "success" ? (
-              <Button
-                variant="ghost"
-                className="h-8 w-auto px-2 gap-1 self-start"
-                onClick={() => setExportView("select")}
-              >
-                <ArrowLeft className="h-4 w-4" /> Back
-              </Button>
-            ) : (
-              <>
-                <DialogTitle>Export</DialogTitle>
-                <DialogDescription>
-                  Choose a filename, format, and license, then export your project.
-                </DialogDescription>
-              </>
-            )}
-          </DialogHeader>
-          <div className="relative overflow-hidden">
+                      <DialogHeader
+                      className={`${
+                        exportView === "success"
+                          ? "flex items-center justify-start py-1"
+                          : "py-2"
+                      }`}
+                    >
+                      {exportView === "success" ? (
+                        <Button
+                          variant="ghost"
+                          className="h-8 w-auto px-2 gap-1 self-start"
+                          onClick={() => setExportView("select")}
+                        >
+                          <ArrowLeft className="h-4 w-4" /> 返回
+                        </Button>
+                      ) : (
+                        <>
+                          <DialogTitle>导出</DialogTitle>
+                          <DialogDescription>
+                            选择文件名、格式和许可证，然后导出您的项目。
+                          </DialogDescription>
+                        </>
+                      )}
+                    </DialogHeader>          <div className="relative overflow-hidden">
             <div
               className="flex w-[200%] transition-transform duration-300 ease-out"
               style={{
@@ -413,16 +412,16 @@ export function ExportDialog() {
               >
                 <div className="space-y-4">
                   <div className="space-y-1">
-                    <Label htmlFor="export-filename">File name</Label>
+                    <Label htmlFor="export-filename">文件名</Label>
                     <Input
                       id="export-filename"
                       value={exportFilename}
                       onChange={(e) => setExportFilename(e.target.value)}
-                      placeholder={doc?.meta.name || "Project"}
+                      placeholder={doc?.meta.name || "项目"}
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="export-format">Format</Label>
+                    <Label htmlFor="export-format">格式</Label>
                     <ToggleGroup
                       type="single"
                       value={exportFormat}
@@ -438,7 +437,7 @@ export function ExportDialog() {
                         aria-label="Export CA bundle"
                         className="flex-1 text-xs sm:text-sm"
                       >
-                        .ca bundle
+                        .ca 包
                       </ToggleGroupItem>
                       <ToggleGroupItem
                         value="tendies"
@@ -450,12 +449,12 @@ export function ExportDialog() {
                     </ToggleGroup>
                     <p className="text-xs text-muted-foreground mt-1">
                       {exportFormat === "ca"
-                        ? "Download a .zip containing your Background.ca and Floating.ca files."
-                        : "Create a .tendies wallpaper file compatible with Nugget and Pocket Poster."}
+                        ? "下载包含Background.ca和Floating.ca文件的.zip文件。"
+                        : "创建与Nugget和Pocket Poster兼容的.tendies壁纸文件。"}
                     </p>
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="export-license">License</Label>
+                    <Label htmlFor="export-license">许可证</Label>
                     <Select
                       value={exportLicense}
                       onValueChange={(value) =>
@@ -463,10 +462,10 @@ export function ExportDialog() {
                       }
                     >
                       <SelectTrigger className="w-full" id="export-license">
-                        <SelectValue placeholder="Choose a license" />
+                        <SelectValue placeholder="选择许可证" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">No license</SelectItem>
+                        <SelectItem value="none">无许可证</SelectItem>
                         <SelectItem value="cc-by-4.0">CC BY 4.0</SelectItem>
                         <SelectItem value="cc-by-sa-4.0">CC BY-SA 4.0</SelectItem>
                         <SelectItem value="cc-by-nc-4.0">CC BY-NC 4.0</SelectItem>
@@ -474,13 +473,13 @@ export function ExportDialog() {
                     </Select>
                     <p className="text-xs text-muted-foreground mt-1">
                       {exportLicense === "none" &&
-                        "No license text is included. You retain all rights; sharing terms are not specified."}
+                        "不包含许可证文本。您保留所有权利；未指定共享条款。"}
                       {exportLicense === "cc-by-4.0" &&
-                        "Requires attribution. Allows sharing and adaptation, including commercial use. Not recommended to allow commercial use."}
+                        "需要署名。允许共享和改编，包括商业使用。不建议允许商业使用。"}
                       {exportLicense === "cc-by-sa-4.0" &&
-                        "Requires attribution and share-alike. Adaptations must use the same license. Not recommended to allow commercial use."}
+                        "需要署名和相同许可。改编作品必须使用相同的许可证。不建议允许商业使用。"}
                       {exportLicense === "cc-by-nc-4.0" &&
-                        "Requires attribution. Non-commercial use only; adaptations are allowed with the same terms. This license is recommended to prevent work from being sold."}
+                        "需要署名。仅限非商业使用；允许改编但需使用相同条款。建议使用此许可证以防止作品被出售。"}
                     </p>
                   </div>
                   <div className="space-y-2 pt-2">
@@ -494,46 +493,45 @@ export function ExportDialog() {
                           }
                           aria-invalid={!exportConfirmed}
                         />
-                        <label
-                          htmlFor="export-confirmation"
-                          className="text-xs text-muted-foreground leading-snug cursor-pointer select-none"
-                        >
-                          I confirm that I created or have permission to use all content in this wallpaper and that I grant the selected license to the exported file.
-                        </label>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground leading-snug">
-                        By exporting, you confirm that you created or have permission to use all content in this wallpaper.
-                      </p>
-                    )}
-                    <Button
-                      className="w-full"
-                      disabled={
-                        !doc ||
-                        exportingTendies ||
-                        (requiresLicenseConfirmation && !exportConfirmed)
-                      }
-                      onClick={async () => {
-                        if (!doc) return;
-                        if (requiresLicenseConfirmation && !exportConfirmed) return;
-                        const base =
-                          exportFilename.trim() || doc.meta.name || "Project";
-                        if (exportFormat === "ca") {
-                          const ok = await exportCA(base);
-                          if (ok) setExportView("success");
-                        } else {
-                          const ok = await exportTendies(base);
-                          if (ok) setExportView("success");
-                        }
-                      }}
-                    >
-                      {exportFormat === "ca"
-                        ? "Export .ca"
-                        : exportingTendies
-                          ? "Exporting tendies…"
-                          : "Export tendies"}
-                    </Button>
-                  </div>
+                                              <label
+                                                htmlFor="export-confirmation"
+                                                className="text-xs text-muted-foreground leading-snug cursor-pointer select-none"
+                                              >
+                                                我确认我创建了或有权使用此壁纸中的所有内容，并且我向导出的文件授予所选的许可证。
+                                              </label>
+                                            </div>
+                                          ) : (
+                                            <p className="text-xs text-muted-foreground leading-snug">
+                                              通过导出，您确认您创建了或有权使用此壁纸中的所有内容。
+                                            </p>
+                                          )}
+                                          <Button
+                                            className="w-full"
+                                            disabled={
+                                              !doc ||
+                                              exportingTendies ||
+                                              (requiresLicenseConfirmation && !exportConfirmed)
+                                            }
+                                            onClick={async () => {
+                                              if (!doc) return;
+                                              if (requiresLicenseConfirmation && !exportConfirmed) return;
+                                              const base =
+                                                exportFilename.trim() || doc.meta.name || "项目";
+                                              if (exportFormat === "ca") {
+                                                const ok = await exportCA(base);
+                                                if (ok) setExportView("success");
+                                              } else {
+                                                const ok = await exportTendies(base);
+                                                if (ok) setExportView("success");
+                                              }
+                                            }}
+                                          >
+                                            {exportFormat === "ca"
+                                              ? "导出 .ca"
+                                              : exportingTendies
+                                                ? "正在导出tendies…"
+                                                : "导出 tendies"}
+                                          </Button>                  </div>
                 </div>
               </div>
               <div
@@ -543,17 +541,17 @@ export function ExportDialog() {
               >
                 <div className="pt-0 pb-4 flex flex-col items-center text-center gap-2.5">
                   <div className="text-2xl font-semibold">
-                    Thank you for using CAPlayground!
+                    感谢使用CAPlayground！
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    What should I do next?
+                    接下来我应该做什么？
                   </div>
                   <div className="w-full max-w-md text-left space-y-3 text-sm sm:text-base">
                     <div className="flex gap-3 border rounded-md px-4 py-3">
                       <div className="font-medium">1.</div>
                       <div className="space-y-1">
-                        <div className="font-medium">Watch video</div>
-                        <div>Watch the video on how to use Pocket Poster or Nugget.</div>
+                        <div className="font-medium">观看视频</div>
+                        <div>观看关于如何使用Pocket Poster或Nugget的视频。</div>
                         <a
                           href="https://www.youtube.com/watch?v=nSBQIwAaAEc"
                           target="_blank"
@@ -561,28 +559,28 @@ export function ExportDialog() {
                           className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
                         >
                           <Youtube className="h-4 w-4" />
-                          Watch the video
+                          观看视频
                         </a>
                       </div>
                     </div>
                     <div className="flex gap-3 border rounded-md px-4 py-3">
                       <div className="font-medium">2.</div>
                       <div className="space-y-1">
-                        <div className="font-medium">Test your wallpaper</div>
-                        <div>Apply the wallpaper to your device and test it.</div>
+                        <div className="font-medium">测试您的壁纸</div>
+                        <div>将壁纸应用到您的设备并进行测试。</div>
                       </div>
                     </div>
                     <div className="flex gap-3 border rounded-md px-4 py-3">
                       <div className="font-medium">3.</div>
                       <div className="space-y-1">
-                        <div className="font-medium">Showcase your work (Optional)</div>
-                        <div>Submit the wallpaper if you want to showcase your work.</div>
+                        <div className="font-medium">展示您的作品（可选）</div>
+                        <div>如果您想展示您的作品，请提交壁纸。</div>
                         <button
                           type="button"
                           onClick={() => setIsSubmitDialogOpen(true)}
                           className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
                         >
-                          Submit wallpaper
+                          提交壁纸
                         </button>
                       </div>
                     </div>
@@ -595,14 +593,14 @@ export function ExportDialog() {
                       className="inline-flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted"
                     >
                       <Star className="h-4 w-4" />
-                      Star the repo
+                      为仓库点赞
                     </a>
                     <Button
                       variant="default"
                       className="text-sm"
                       onClick={() => setExportOpen(false)}
                     >
-                      Done
+                      完成
                     </Button>
                   </div>
                 </div>

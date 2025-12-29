@@ -552,7 +552,7 @@ export function CanvasPreview() {
             variant="secondary"
             onClick={() => isPlaying ? pause() : play()}
           >
-            {isPlaying ? 'Pause' : 'Play'}
+            {isPlaying ? '暂停' : '播放'}
           </Button>
           <Button
             type="button"
@@ -560,7 +560,7 @@ export function CanvasPreview() {
             variant="outline"
             onClick={() => setTime(0)}
           >
-            Restart
+            重新开始
           </Button>
           <div className="text-xs tabular-nums px-2">{`${(currentTime / 1000).toFixed(2)}s`}</div>
         </div>

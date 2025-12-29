@@ -678,11 +678,9 @@ export function EditorProvider({
       const cur = prev.docs[key];
       const parentLayer = findById(cur.layers, cur.selectedId)
       const layer: TextLayer = {
-        ...addBase("Text Layer"),
-        type: "text",
+                      ...addBase("文本图层"),        type: "text",
         position: { x: (parentLayer?.size.w || canvasW) / 2, y: (parentLayer?.size.h || canvasH) / 2 },
-        text: "Text Layer",
-        color: "#111827",
+                    text: "文本图层",        color: "#111827",
         fontSize: 16,
         align: "center",
         fontFamily: "SFProText-Regular",
@@ -700,7 +698,7 @@ export function EditorProvider({
   const addImageLayerFromBlob = useCallback(async (blob: Blob, filename?: string) => {
     const isGif = /image\/gif/i.test((blob as any)?.type || '') || /\.gif$/i.test(filename || '');
     if (isGif) {
-      throw new Error('GIFs must be imported via Video Layer');
+      throw new Error('GIF必须通过视频图层导入');
     }
     const dataURL = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -759,7 +757,7 @@ export function EditorProvider({
 
   const replaceImageForLayer = useCallback(async (layerId: string, file: File) => {
     if (/image\/gif/i.test(file.type || '') || /\.gif$/i.test(file.name || '')) {
-      throw new Error('Cannot replace image with a GIF. Please use Video Layer to import GIFs.');
+      throw new Error('无法用GIF替换图像。请使用视频图层导入GIF。');
     }
     const dataURL = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -801,7 +799,7 @@ export function EditorProvider({
 
   const addEmitterCellImage = useCallback(async (layerId: string, file: File) => {
     if (/image\/gif/i.test(file.type || '') || /\.gif$/i.test(file.name || '')) {
-      throw new Error('Cannot add emitter cell with a GIF. Please use Video Layer to import GIFs.');
+      throw new Error('无法用GIF添加发射器单元。请使用视频图层导入GIF。');
     }
     const dataURL = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -895,8 +893,7 @@ export function EditorProvider({
       const y = (parentLayer?.size.h || canvasH) / 2;
 
       const layer: ImageLayer = {
-        ...addBase("Image Layer"),
-        type: "image",
+                      ...addBase("图像图层"),        type: "image",
         position: { x, y },
         size: { w: 200, h: 120 },
         src: src ?? "https://placehold.co/200x120/png",
@@ -911,7 +908,7 @@ export function EditorProvider({
 
   const addImageLayerFromFile = useCallback(async (file: File) => {
     if (/image\/gif/i.test(file.type || '') || /\.gif$/i.test(file.name || '')) {
-      throw new Error('GIFs must be imported via Video Layer');
+      throw new Error('GIF必须通过视频图层导入');
     }
     const dataURL = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -950,8 +947,7 @@ export function EditorProvider({
       const y = (parentLayer?.size.h || canvasH) / 2;
 
       const layer: ImageLayer = {
-        ...addBase(file.name || "Image Layer"),
-        type: "image",
+                      ...addBase(file.name || "图像图层"),        type: "image",
         position: { x, y },
         size: { w, h },
         src: dataURL,
@@ -986,8 +982,7 @@ export function EditorProvider({
       const x = (parentLayer?.size.w || canvasW) / 2;
       const y = (parentLayer?.size.h || canvasH) / 2;
       const layer: any = {
-        ...addBase("Gradient Layer"),
-        type: "gradient",
+                      ...addBase("渐变图层"),        type: "gradient",
         position: { x, y },
         size: { w: 200, h: 200 },
         gradientType: "axial",
@@ -1029,8 +1024,7 @@ export function EditorProvider({
       const x = (parentLayer?.size.w || canvasW) / 2;
       const y = (parentLayer?.size.h || canvasH) / 2;
       const layer: ShapeLayer = {
-        ...addBase("Basic Layer"),
-        type: "shape",
+                      ...addBase("基础图层"),        type: "shape",
         position: { x, y },
         size: { w: 120, h: 120 },
         shape,
@@ -1065,8 +1059,7 @@ export function EditorProvider({
       const x = (parentLayer?.size.w || canvasW) / 2;
       const y = (parentLayer?.size.h || canvasH) / 2;
       const layer: LiquidGlassLayer = {
-        ...addBase("Liquid Glass Layer"),
-        type: "liquidGlass",
+                      ...addBase("液态玻璃图层"),        type: "liquidGlass",
         position: { x, y },
         size: { w: 200, h: 200 },
         cornerRadius: 40,
@@ -1081,8 +1074,7 @@ export function EditorProvider({
   const addVideoLayerFromFile = useCallback(async (file: File) => {
     const isGif = /image\/gif/i.test(file.type || '') || /\.gif$/i.test(file.name || '');
     const layerId = genId();
-    const rawName = file.name && typeof file.name === 'string' ? file.name : 'Video Layer';
-    const nameSansExt = rawName.replace(/\.[a-z0-9]+$/i, '');
+                  const rawName = file.name && typeof file.name === 'string' ? file.name : '视频图层';    const nameSansExt = rawName.replace(/\.[a-z0-9]+$/i, '');
     const safeName = sanitizeFilename(nameSansExt) || 'Video_Layer';
     const framePrefix = `${safeName}_`;
     let frameExtension = isGif ? '.png' : '.jpg';
@@ -1152,7 +1144,7 @@ export function EditorProvider({
         const x = (parentLayer?.size.w || canvasW) / 2;
         const y = (parentLayer?.size.h || canvasH) / 2;
         const layer: VideoLayer = {
-          ...addBase(file.name || 'Video Layer'),
+          ...addBase(file.name || '视频图层'),
           id: layerId,
           type: 'video',
           position: { x, y },
@@ -1233,8 +1225,7 @@ export function EditorProvider({
       const x = canvasW / 2;
       const y = canvasH / 2;
       const layer: VideoLayer = {
-        ...addBase(file.name || 'Video Layer'),
-        id: layerId,
+                      ...addBase(file.name || '视频图层'),        id: layerId,
         type: 'video',
         position: { x, y },
         size: { w, h },
@@ -1293,8 +1284,7 @@ export function EditorProvider({
       const x = canvasW / 2;
       const y = canvasH / 2;
       const layer: VideoLayer = {
-        ...addBase(name || 'Video Layer'),
-        type: 'video',
+                      ...addBase(name || '视频图层'),        type: 'video',
         position: { x, y },
         size: { w, h },
         frameCount,
@@ -1357,8 +1347,7 @@ export function EditorProvider({
       const canvasW = prev.meta.width || 390;
       const canvasH = prev.meta.height || 844;
       const layer: EmitterLayer = {
-        ...addBase('Emitter Layer'),
-        position: { x: canvasW / 2, y: canvasH / 2 },
+                      ...addBase('发射器图层'),        position: { x: canvasW / 2, y: canvasH / 2 },
         size: { w: canvasW, h: canvasH },
         emitterPosition: { x: 0, y: 0 },
         emitterSize: { w: 0, h: 0 },
@@ -1386,8 +1375,7 @@ export function EditorProvider({
       const x = (parentLayer?.size.w || canvasW) / 2;
       const y = (parentLayer?.size.h || canvasH) / 2;
       const layer: TransformLayer = {
-        ...addBase(getNextLayerName(cur.layers, 'Transform Layer')),
-        position: { x, y },
+                      ...addBase(getNextLayerName(cur.layers, '变换图层')),        position: { x, y },
         size: { w: 200, h: 200 },
         type: 'transform',
       };

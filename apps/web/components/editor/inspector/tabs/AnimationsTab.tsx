@@ -14,14 +14,14 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Checkbox } from "@/components/ui/checkbox";
 
 const supportedAnimations = [
-  "position",
-  "position.x",
-  "position.y",
-  "transform.rotation.x",
-  "transform.rotation.y",
-  "transform.rotation.z",
-  "opacity",
-  "bounds",
+  "位置",
+  "位置.x",
+  "位置.y",
+  "变换.旋转.x",
+  "变换.旋转.y",
+  "变换.旋转.z",
+  "透明度",
+  "边界",
 ]
 
 export function AnimationsTab({
@@ -55,14 +55,21 @@ export function AnimationsTab({
         onValueChange={addAnimation}
       >
         <SelectTrigger className="w-full">
-          <SelectValue placeholder="Add animation" />
+          <SelectValue placeholder="添加动画" />
         </SelectTrigger>
         <SelectContent>
           {supportedAnimations
             .filter((kp) => !selectedBase?.animations?.some((a) => a.keyPath === kp))
             .map((kp) => (
               <SelectItem key={kp} value={kp}>
-                {kp}
+                {kp === 'position' ? '位置' : 
+                 kp === 'position.x' ? '位置X' : 
+                 kp === 'position.y' ? '位置Y' : 
+                 kp === 'transform.rotation.x' ? '变换旋转X' : 
+                 kp === 'transform.rotation.y' ? '变换旋转Y' : 
+                 kp === 'transform.rotation.z' ? '变换旋转Z' : 
+                 kp === 'opacity' ? '不透明度' : 
+                 kp === 'bounds' ? '边界' : kp}
               </SelectItem>
             ))}
         </SelectContent>
@@ -131,27 +138,34 @@ const AnimationItem = ({
         <Checkbox
           checked={enabled}
           onCheckedChange={(checked) => updateAnimation({ enabled: !!checked })}
-          title="Enable animation"
+          title="启用动画"
         />
         <AccordionTrigger className="w-full">
-          {keyPath}
+          {keyPath === 'position' ? '位置' : 
+           keyPath === 'position.x' ? '位置X' : 
+           keyPath === 'position.y' ? '位置Y' : 
+           keyPath === 'transform.rotation.x' ? '变换旋转X' : 
+           keyPath === 'transform.rotation.y' ? '变换旋转Y' : 
+           keyPath === 'transform.rotation.z' ? '变换旋转Z' : 
+           keyPath === 'opacity' ? '不透明度' : 
+           keyPath === 'bounds' ? '边界' : keyPath}
         </AccordionTrigger>
       </div>
       <AccordionContent>
         <div className={`grid grid-cols-2 gap-2 ${enabled ? '' : 'opacity-50'}`}>
           <div className="flex justify-between space-y-1 col-span-2">
-            <Label>Autoreverse</Label>
+            <Label>自动反转</Label>
             <div className="flex items-center gap-2 h-8">
               <Switch
                 checked={(autoreverses ?? 0) === 1}
                 onCheckedChange={(checked) => updateAnimation({ autoreverses: checked ? 1 : 0 })}
                 disabled={!enabled}
               />
-              <span className="text-xs text-muted-foreground">Reverse on repeat</span>
+              <span className="text-xs text-muted-foreground">重复时反向</span>
             </div>
           </div>
           <div className="space-y-1 col-span-1">
-            <Label htmlFor="anim-duration">Duration (s)</Label>
+            <Label htmlFor="anim-duration">持续时间 (秒)</Label>
             <Input
               id="anim-duration"
               type="number"
@@ -171,7 +185,7 @@ const AnimationItem = ({
             />
           </div>
           <div className="space-y-1 col-span-1">
-            <Label htmlFor="anim-speed">Speed</Label>
+            <Label htmlFor="anim-speed">速度</Label>
             <Input
               id="anim-speed"
               type="number"
@@ -191,19 +205,19 @@ const AnimationItem = ({
             />
           </div>
           <div className="space-y-1 col-span-2">
-            <Label>Loop infinitely</Label>
+            <Label>无限循环</Label>
             <div className="flex items-center gap-2 h-8">
               <Switch
                 checked={(infinite ?? 1) === 1}
                 onCheckedChange={(checked) => updateAnimation({ infinite: checked ? 1 : 0 })}
                 disabled={!enabled}
               />
-              <span className="text-xs text-muted-foreground">When off, specify total repeat time.</span>
+              <span className="text-xs text-muted-foreground">关闭时，指定总重复时间。</span>
             </div>
           </div>
           {((infinite ?? 1) !== 1) && (
             <div className="space-y-1 col-span-2 mb-2">
-              <Label htmlFor="anim-repeat">Repeat for (s)</Label>
+              <Label htmlFor="anim-repeat">重复时间 (秒)</Label>
               <Input
                 id="anim-repeat"
                 type="number"
@@ -229,20 +243,20 @@ const AnimationItem = ({
           <div className="grid grid-cols-2 gap-x-2 space-y-1">
             <Label>
               {(() => {
-                if (keyPath.startsWith('transform.rotation')) return 'Values (Degrees)';
-                if (keyPath === 'position') return 'Values (CGPoint)';
-                if (keyPath === 'opacity') return 'Values (Percentage)';
-                if (keyPath === 'bounds') return 'Values (CGRect)';
-                return 'Values (Number)';
+                if (keyPath.startsWith('transform.rotation')) return '数值 (度)';
+                if (keyPath === 'position') return '数值 (CGPoint)';
+                if (keyPath === 'opacity') return '数值 (百分比)';
+                if (keyPath === 'bounds') return '数值 (CGRect)';
+                return '数值 (数字)';
               })()}
             </Label>
             <div className="col-span-2 text-xs text-muted-foreground">
               {(() => {
-                if (keyPath.startsWith('transform.rotation')) return 'Animation values in degrees for rotation.';
-                if (keyPath === 'position') return 'Animation values as x, y coordinates.';
-                if (keyPath === 'opacity') return 'Animation values as opacity percentages.';
-                if (keyPath === 'bounds') return 'Animation values as width, height dimensions.';
-                return 'Animation values as numbers.';
+                if (keyPath.startsWith('transform.rotation')) return '旋转角度的动画数值。';
+                if (keyPath === 'position') return '作为x, y坐标的动画数值。';
+                if (keyPath === 'opacity') return '作为不透明度百分比的动画数值。';
+                if (keyPath === 'bounds') return '作为宽度、高度尺寸的动画数值。';
+                return '作为数字的动画数值。';
               })()}
             </div>
             <Button
@@ -271,7 +285,7 @@ const AnimationItem = ({
               disabled={!enabled}
               className="col-span-1"
             >
-              + Add key value
+              + 添加关键值
             </Button>
             <div className="flex col-span-1">
               <BulkAnimationInput
@@ -292,8 +306,8 @@ const AnimationItem = ({
                   <div className="space-y-1">
                     <Label className="text-xs">
                       {isTwoValue
-                        ? (isPosition ? 'X' : 'Width')
-                        : (keyPath === 'position.x' ? 'X' : keyPath === 'position.y' ? 'Y' : isOpacity ? 'Opacity' : 'Degrees')}
+                        ? (isPosition ? 'X' : '宽度')
+                        : (keyPath === 'position.x' ? 'X' : keyPath === 'position.y' ? 'Y' : isOpacity ? '不透明度' : '度数')}
                     </Label>
                     <div className="flex items-center gap-2">
                       <Input
@@ -333,7 +347,7 @@ const AnimationItem = ({
                   </div>
                   {isTwoValue && (
                     <div className="space-y-1">
-                      <Label className="text-xs">{isPosition ? 'Y' : 'Height'}</Label>
+                      <Label className="text-xs">{isPosition ? 'Y' : '高度'}</Label>
                       <Input
                         type="number"
                         step="1"
@@ -369,14 +383,14 @@ const AnimationItem = ({
                       }}
                       disabled={!enabled}
                     >
-                      Remove
+                      移除
                     </Button>
                   </div>
                 </div>
               );
             })}
             {values.length === 0 && (
-              <div className="text-xs text-muted-foreground">No key values yet. Click "+ Add key value" to add the first keyframe.</div>
+              <div className="text-xs text-muted-foreground">暂无关键值。点击"+ 添加关键值"以添加第一帧。</div>
             )}
           </div>
         </div>
@@ -412,7 +426,7 @@ const AnimationItem = ({
               className="w-full gap-2"
             >
               <Download className="w-4 h-4" />
-              Export Values
+              导出数值
             </Button>
           )}
           <Button
@@ -425,7 +439,7 @@ const AnimationItem = ({
               updateLayer(selectedBase?.id, { animations });
             }}
           >
-            Remove Animation
+            移除动画
           </Button>
         </div>
       </AccordionContent>

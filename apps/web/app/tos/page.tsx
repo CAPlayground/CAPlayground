@@ -10,7 +10,7 @@ export default function TermsPage() {
   const { theme, setTheme } = useTheme()
   
   useEffect(() => {
-    document.title = "CAPlayground - Terms of Service";
+    document.title = "CAPlayground - 服务条款";
   }, []);
 
   return (
@@ -18,10 +18,9 @@ export default function TermsPage() {
       {/* back */}
       <div className="absolute left-4 top-4">
         <Link href="/">
-          <Button variant="ghost" size="sm" className="h-8 px-2">
-            <ArrowLeft className="h-4 w-4 mr-1" /> Back
-          </Button>
-        </Link>
+                      <Button variant="ghost" size="sm" className="h-8 px-2">
+                        <ArrowLeft className="h-4 w-4 mr-1" /> 返回
+                      </Button>        </Link>
       </div>
 
       {/* theme */}
@@ -38,32 +37,32 @@ export default function TermsPage() {
       </div>
       <div className="mx-auto max-w-3xl">
         <div className="mb-6 sm:mb-8">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Terms of Service</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Last Updated: 9th December 2025</p>
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight">服务条款</h1>
+          <p className="mt-2 text-sm text-muted-foreground">最后更新：2025年12月9日</p>
         </div>
         {/* Paper container */}
         <div className="rounded-2xl bg-card text-card-foreground shadow-lg ring-1 ring-black/5 border border-border p-6 sm:p-10 text-base sm:text-lg">
           <p className="mt-0 leading-7">
-            These Terms of Service ("Terms") govern your access to and use of CAPlayground. By using the Service, you agree to
-            these Terms.
+            这些服务条款（"条款"）管辖您对CAPlayground的访问和使用。通过使用服务，您同意
+            这些条款。
           </p>
 
-          <h2 className="mt-10 text-2xl md:text-3xl font-semibold">1. Definitions</h2>
+          <h2 className="mt-10 text-2xl md:text-3xl font-semibold">1. 定义</h2>
           <ul className="mt-4 list-disc pl-6 space-y-2">
-          <li><strong>Service</strong>: The CAPlayground application and website.</li>
-          <li><strong>Local Projects</strong>: Projects created and stored locally in your browser/device.</li>
-          <li><strong>Cloud Projects</strong>: Projects created and stored in your Google account's Google Drive.</li>
-          <li><strong>Account</strong>: A Supabase-backed account enabling authentication and account features.</li>
-          <li><strong>User Content</strong>: Content you create or upload while using the Service.</li>
+          <li><strong>服务</strong>: CAPlayground应用程序和网站。</li>
+          <li><strong>本地项目</strong>: 在您的浏览器/设备中创建和存储的项目。</li>
+          <li><strong>云项目</strong>: 在您的Google账户的Google Drive中创建和存储的项目。</li>
+          <li><strong>账户</strong>: 由Supabase支持的账户，用于身份验证和账户功能。</li>
+          <li><strong>用户内容</strong>: 您在使用服务时创建或上传的内容。</li>
           </ul>
 
-          <h2 className="mt-12 text-3xl md:text-4xl font-semibold">2. Scope & Applicability</h2>
+          <h2 className="mt-12 text-3xl md:text-4xl font-semibold">2. 范围与适用性</h2>
           <p className="mt-6 leading-8">
-          Some sections apply to everyone who uses the Service (General Terms). Other sections apply only to users who create or
-          use an Account (Account Terms).
+          某些条款适用于所有使用服务的用户（一般条款）。其他条款仅适用于创建或
+          使用账户的用户（账户条款）。
           </p>
 
-          <h2 className="mt-12 text-3xl md:text-4xl font-semibold">3. General Terms (apply to all users)</h2>
+          <h2 className="mt-12 text-3xl md:text-4xl font-semibold">3. 一般条款（适用于所有用户）</h2>
           <ul className="mt-6 list-disc pl-6 space-y-3">
           <li>
             <strong>Acceptable Use</strong>: Do not misuse the Service or interfere with others’ use. Do not attempt to access
@@ -87,7 +86,7 @@ export default function TermsPage() {
             <strong>Cloud Projects</strong>: Cloud storage via Google Drive allows you to sync your projects across devices. We provide no guarantees of data availability or reliability for Cloud Projects. You are responsible for maintaining backups of important projects. You must comply with Google's Terms of Service when using Cloud Projects.
           </li>
           <li>
-            <strong>Google Drive Integration</strong>: When you sign in to Google Drive, you authorize CAPlayground to access files created by CAPlayground in your Drive. We use browser cookies to maintain your Drive session. You can revoke this access at any time through your Google account settings or by signing out from Google Drive in the dashboard.
+            <strong>Google云端硬盘集成</strong>：当您登录Google云端硬盘时，您授权CAPlayground访问您云端硬盘中由CAPlayground创建的文件。我们使用浏览器Cookie来维护您的云端硬盘会话。您可以通过Google账户设置随时撤销此访问权限，或在仪表板中从Google云端硬盘登出。
           </li>
           <li>
             <strong>No Warranty</strong>: The Service is provided “as is” and “as available.” We disclaim warranties to the extent
@@ -102,56 +101,56 @@ export default function TermsPage() {
           </li>
           </ul>
 
-          <h2 className="mt-12 text-3xl md:text-4xl font-semibold">4. Account Terms (apply if you sign in)</h2>
+          <h2 className="mt-12 text-3xl md:text-4xl font-semibold">4. 账户条款（适用于登录用户）</h2>
           <ul className="mt-6 list-disc pl-6 space-y-3">
           <li>
-            <strong>Eligibility</strong>: You must be at least 13 years old to use the Service, or the minimum age of digital
-            consent in your country.
+            <strong>资格</strong>: 您必须年满13岁才能使用服务，或达到您国家/地区的数字
+            同意的最低年龄。
           </li>
           <li>
-            <strong>Account Information</strong>: Accounts are provided via Supabase. We may collect and process your email,
-            username (if set), and sign-in activity for security and account operation.
+            <strong>账户信息</strong>: 账户通过Supabase提供。我们可能会为安全和账户操作收集和处理您的邮箱、
+            用户名（如果设置）和登录活动。
           </li>
           <li>
-            <strong>Security</strong>: Keep your credentials secure. You are responsible for activity under your account.
+            <strong>安全性</strong>: 请确保您的凭据安全。您对账户下的活动负责。
           </li>
           <li>
-            <strong>Termination</strong>: You may delete your account at any time. We may suspend or terminate accounts that
-            violate these Terms. Note: Deleting your CAPlayground account does not automatically delete your Cloud Projects from Google Drive. You must manually delete them from Drive or use the "Delete All" feature in the dashboard before deleting your account.
+            <strong>终止</strong>: 您可以随时删除您的账户。我们可能会暂停或终止
+            违反这些条款的账户。注意：删除您的CAPlayground账户不会自动从Google Drive中删除您的云项目。您必须在删除账户之前手动从Drive中删除它们或使用仪表板中的"全部删除"功能。
           </li>
           </ul>
 
-          <h2 className="mt-10 text-2xl md:text-3xl font-semibold">5. Privacy & Data</h2>
+          <h2 className="mt-10 text-2xl md:text-3xl font-semibold">5. 隐私与数据</h2>
           <ul className="mt-4 list-disc pl-6 space-y-2">
           <li>
-            <strong>Local Processing</strong>: Local Projects remain on your device unless you explicitly upload/share them.
+            <strong>本地处理</strong>: 本地项目保留在您的设备上，除非您明确上传/分享它们。
           </li>
           <li>
-            <strong>Account Data</strong>: If you create an Account, we process minimal data needed for authentication and profile
-            features (email, optional username) using Supabase.
+            <strong>账户数据</strong>: 如果您创建账户，我们将使用Supabase处理身份验证和配置文件
+            功能所需的最少数据（邮箱、可选用户名）。
           </li>
           <li>
-            <strong>Operational Logs</strong>: Supabase, as our backend provider, maintains operational logs (e.g., auth events,
-            edge/network, API, and database logs) to operate and secure the platform. See Supabase docs for details.
+            <strong>操作日志</strong>: Supabase作为我们的后端提供商，维护操作日志（例如，身份验证事件，
+            边缘/网络、API和数据库日志）以运营和保护平台。详情请参阅Supabase文档。
           </li>
           <li>
-            <strong>Aggregate-only Analytics</strong>: We record aggregate counts of certain in-product events (e.g., when a project
-            is created) to understand usage. These counters do not include user identifiers and are not used for advertising.
+            <strong>仅聚合分析</strong>: 我们记录某些产品内事件的聚合计数（例如，何时创建项目）
+            以了解使用情况。这些计数器不包括用户标识符，也不用于广告。
           </li>
           <li>
-            <strong>Analytics (PostHog)</strong>: We use a privacy focused analytics tool to measure page views (URL, title,
-            referrer, timestamp, session ID), sessions (duration, start/end times, page count, basic bounce), and performance
-            metrics (page load, DOM content loaded, first paint/first contentful paint, resource timing). Analytics data is proxied through our own domain.
+            <strong>分析（PostHog）</strong>: 我们使用注重隐私的分析工具来衡量页面浏览量（URL、标题、
+            引荐来源、时间戳、会话ID）、会话（持续时间、开始/结束时间、页面计数、基本跳出）和性能
+            指标（页面加载、DOM内容加载、首次绘制/首次内容绘制、资源计时）。分析数据通过我们自己的域进行代理。
           </li>
           <li>
-            <strong>Cloud Projects Data</strong>: When you use Cloud Projects, your project files are stored in YOUR Google Drive account, not on CAPlayground servers. We do not receive, store, or have access to your Cloud Projects. All data is transmitted directly between your browser and Google Drive.
+            <strong>云项目数据</strong>: 当您使用云项目时，您的项目文件存储在您的Google Drive账户中，而不是CAPlayground服务器上。我们不会接收、存储或访问您的云项目。所有数据在您的浏览器和Google Drive之间直接传输。
           </li>
           <li>
-            <strong>Google Drive Cookies</strong>: When you sign in to Google Drive, we store authentication tokens in browser cookies (httpOnly, secure) to maintain your session. These cookies are used solely to authenticate API requests to Google Drive on your behalf.
+            <strong>Google Drive Cookie</strong>: 当您登录Google Drive时，我们在浏览器cookie中存储身份验证令牌（httpOnly、安全）以维护您的会话。这些cookie仅用于代表您向Google Drive进行API请求的身份验证。
           </li>
           </ul>
 
-          <h2 className="mt-10 text-2xl md:text-3xl font-semibold">6. Third-Party Services</h2>
+          <h2 className="mt-10 text-2xl md:text-3xl font-semibold">6. 第三方服务</h2>
           <p className="mt-3 leading-7">
           We use Supabase for authentication and backend infrastructure. Your use of those features may be subject to Supabase’s
           policies.
@@ -160,15 +159,15 @@ export default function TermsPage() {
           If you use Cloud Projects, we integrate with Google Drive to store your project files in YOUR Google Drive account. Your use of Google Drive is subject to Google's Terms of Service and Privacy Policy. CAPlayground accesses only files it creates in a "CAPlayground" folder in your Drive. You are responsible for your Google Drive storage limits and compliance with Google's terms.
           </p>
 
-          <h2 className="mt-10 text-2xl md:text-3xl font-semibold">7. Enforcement & Violations</h2>
+          <h2 className="mt-10 text-2xl md:text-3xl font-semibold">7. 执行与违规</h2>
           <p className="mt-3 leading-7">
-          We reserve the right to investigate violations of these Terms, including misuse of content created with CAPlayground. If we determine that you have violated the Content Sharing & Attribution or Prohibited Conduct provisions, we may: (a) suspend or terminate your account, (b) request removal of infringing content from social media platforms, (c) pursue legal remedies where applicable, or (d) publicly identify accounts engaged in fraudulent or deceptive practices. We may also report scams and fraudulent activity to relevant platforms and authorities.
+          我们保留调查违反这些条款行为的权利，包括滥用使用CAPlayground创建的内容。如果我们确定您违反了内容分享与归属或禁止行为条款，我们可能会：(a) 暂停或终止您的账户，(b) 要求从社交媒体平台删除侵权内容，(c) 在适用的情况下寻求法律补救措施，或 (d) 公开识别从事欺诈或欺骗行为的账户。我们还可能向相关平台和当局报告诈骗和欺诈活动。
           </p>
 
-          <h2 className="mt-10 text-2xl md:text-3xl font-semibold">8. Changes to These Terms</h2>
+          <h2 className="mt-10 text-2xl md:text-3xl font-semibold">8. 这些条款的变更</h2>
           <p className="mt-3 leading-7">
-          We may update these Terms from time to time. We will update the "Last Updated" date above. Material changes will be
-          communicated reasonably.
+          我们可能会不时更新这些条款。我们将更新上面的"最后更新"日期。重大变更将
+          合理地通知。
           </p>
 
           <h2 className="mt-10 text-2xl md:text-3xl font-semibold">9. Contact</h2>

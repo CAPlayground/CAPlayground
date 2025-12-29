@@ -60,8 +60,7 @@ export default function VideoLayerDialog({
   const [resizeVideo, setResizeVideo] = useState<boolean>(true);
   const isGif = /image\/gif/i.test(videoFile?.type || '') || /\.gif$/i.test(videoFile?.name || '');
   const frameExtension = isGif ? '.png' : '.jpg';
-  const rawName = videoFile?.name && typeof videoFile.name === 'string' ? videoFile.name : 'Video Layer';
-  const nameSansExt = rawName.replace(/\.[a-z0-9]+$/i, '');
+        const rawName = videoFile?.name && typeof videoFile.name === 'string' ? videoFile.name : '视频图层';  const nameSansExt = rawName.replace(/\.[a-z0-9]+$/i, '');
   const safeName = sanitizeFilename(nameSansExt) || 'Video_Layer';
   const framePrefix = `${safeName}_`;
 
@@ -302,9 +301,9 @@ export default function VideoLayerDialog({
     <Dialog open={open} onOpenChange={setVideoLayerIsOpen}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Video Layer</DialogTitle>
+          <DialogTitle>视频图层</DialogTitle>
           <DialogDescription>
-            Upload a video or GIF to create a video layer. The video will be converted to individual frames.
+            上传视频或GIF以创建视频图层。视频将被转换为单独的帧。
           </DialogDescription>
         </DialogHeader>
         <div className="flex gap-2">
@@ -369,8 +368,7 @@ export default function VideoLayerDialog({
             Cancel
           </Button>
           <Button onClick={handleCreateVideoLayer} disabled={!videoFile || isLoading}>
-            Create Video Layer
-          </Button>
+                          创建视频图层          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     if (!providerToken) {
       return NextResponse.json({ 
-        error: 'Google Drive not connected. Please sign in to your Google Drive account first.',
+        error: 'Google云端硬盘未连接。请先登录您的Google云端硬盘账户。',
         needsConnection: true
       }, { status: 403 });
     }
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     if (tokenExpiry && Date.now() >= tokenExpiry) {
       if (!refreshToken) {
         return NextResponse.json({ 
-          error: 'Token expired and no refresh token available. Please sign in again to Google Drive.',
+          error: '令牌已过期且没有可用的刷新令牌。请重新登录Google云端硬盘。',
           needsConnection: true
         }, { status: 403 });
       }
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       } catch (refreshError: any) {
         console.error('Token refresh failed:', refreshError);
         return NextResponse.json({ 
-          error: 'Failed to refresh token. Please sign in again to Google Drive.',
+          error: '刷新令牌失败。请重新登录Google云端硬盘。',
           needsConnection: true
         }, { status: 403 });
       }

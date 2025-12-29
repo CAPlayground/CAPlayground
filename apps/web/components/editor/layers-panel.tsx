@@ -184,8 +184,8 @@ export function LayersPanel() {
               <button
                 className={`shrink-0 h-4 w-4 rounded-full border ${isChecked ? 'bg-accent border-accent' : 'border-muted-foreground/50'} mr-1`}
                 onClick={(e) => { e.stopPropagation(); toggleMultiSelect(l.id); }}
-                aria-label={isChecked ? 'Deselect layer' : 'Select layer'}
-                title={isChecked ? 'Deselect' : 'Select'}
+                aria-label={isChecked ? '取消选择图层' : '选择图层'}
+                title={isChecked ? '取消选择' : '选择'}
               />
             ) : (
               hasChildren ? (
@@ -232,27 +232,26 @@ export function LayersPanel() {
                   <AlertTriangle className="h-3.5 w-3.5 ml-1 text-amber-600 dark:text-amber-500 shrink-0" />
                 </TooltipTrigger>
                 <TooltipContent side="right" className="max-w-xs">
-                  <p className="font-semibold mb-1">Not Visible</p>
+                  <p className="font-semibold mb-1">不可见</p>
                   <p className="text-xs">
-                    This layer only works in Chromium-based browsers and will not be visible in your current browser.
+                    此图层仅在基于Chromium的浏览器中工作，在当前浏览器中将不可见。
                   </p>
                 </TooltipContent>
               </Tooltip>
             )}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 text-muted-foreground"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleLayerVisibility(l.id);
-              }}
-              aria-label={isHidden ? 'Show layer' : 'Hide layer'}
-              title={isHidden ? 'Show layer' : 'Hide layer'}
-            >
-              {isHidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </Button>
-
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleLayerVisibility(l.id);
+                              }}
+                              aria-label={isHidden ? '显示图层' : '隐藏图层'}
+                              title={isHidden ? '显示图层' : '隐藏图层'}
+                            >
+                              {isHidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </Button>
             {!isProtected && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -261,18 +260,17 @@ export function LayersPanel() {
                     size="icon"
                     className="h-6 w-6 text-muted-foreground"
                     onClick={(e) => { e.stopPropagation(); }}
-                    aria-label="More actions"
-                    title="More actions"
+                    aria-label="更多操作"
+                    title="更多操作"
                   >
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" sideOffset={4} onClick={(e) => e.stopPropagation()}>
-                  <DropdownMenuItem onClick={() => startRename(l)}>Rename</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => duplicateLayer(l.id)}>Duplicate</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => deleteLayer(l.id)} className="text-destructive focus:text-destructive">Delete</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => { setIsSelectMode(true); setMultiSelectedIds((prev) => prev.includes(l.id) ? prev : [...prev, l.id]); }}>Select</DropdownMenuItem>
-                </DropdownMenuContent>
+                            <DropdownMenuContent align="end" sideOffset={4} onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenuItem onClick={() => startRename(l)}>重命名</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => duplicateLayer(l.id)}>复制</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => deleteLayer(l.id)} className="text-destructive focus:text-destructive">删除</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => { setIsSelectMode(true); setMultiSelectedIds((prev) => prev.includes(l.id) ? prev : [...prev, l.id]); }}>选择</DropdownMenuItem>                </DropdownMenuContent>
               </DropdownMenu>
             )}
           </div>
@@ -299,7 +297,7 @@ export function LayersPanel() {
   return (
     <Card className="p-0 gap-0 h-full min-h-0 flex flex-col" data-tour-id="layers-panel">
       <div className="flex items-center justify-between px-3 py-2 border-b shrink-0">
-        <div className="font-medium">Layers</div>
+        <div className="font-medium">图层</div>
         {uploadStatus && (
           <div className="text-xs text-muted-foreground animate-pulse">
             {uploadStatus}
@@ -308,20 +306,18 @@ export function LayersPanel() {
         {selectedLayer?.type === 'emitter' ? (
           <Tooltip disableHoverableContent={true}>
             <TooltipTrigger asChild>
-              <div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 px-2"
-                  disabled={selectedLayer?.type === 'emitter'}
-                >
-                  <Plus className="h-4 w-4 mr-1" /> Add Layer
-                </Button>
-              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2"
+                disabled={selectedLayer?.type === 'emitter'}
+              >
+                <Plus className="h-4 w-4 mr-1" /> 添加图层
+              </Button>
             </TooltipTrigger>
             {selectedLayer?.type === 'emitter' &&
               <TooltipContent sideOffset={6}>
-                Sublayers are not supported for emitter layers.
+                发射器图层不支持子图层。
               </TooltipContent>
             }
           </Tooltip>
@@ -329,21 +325,21 @@ export function LayersPanel() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" variant="ghost" className="h-7 px-2">
-                <Plus className="h-4 w-4 mr-1" /> Add Layer
+                <Plus className="h-4 w-4 mr-1" /> 添加图层
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => addTextLayer()}>Text Layer</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => addShapeLayer("rect")}>Basic Layer</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => addGradientLayer()}>Gradient Layer</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => fileInputRef.current?.click()}>Image Layer…</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => addTextLayer()}>文本图层</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => addShapeLayer("rect")}>基础图层</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => addGradientLayer()}>渐变图层</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => fileInputRef.current?.click()}>图像图层…</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => {
                 setTimeout(() => setVideoLayerIsOpen(true), 0);
-              }}>Video Layer…</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => addEmitterLayer()}>Emitter Layer</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => addReplicatorLayer()}>Replicator Layer</DropdownMenuItem>
+              }}>视频图层…</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => addEmitterLayer()}>发射器图层</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => addReplicatorLayer()}>复制器图层</DropdownMenuItem>
               {isGyro && (
-                <DropdownMenuItem onSelect={() => addTransformLayer()}>Transform Layer</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => addTransformLayer()}>变换图层</DropdownMenuItem>
               )}
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -352,15 +348,15 @@ export function LayersPanel() {
                     className={!isChromium ? "text-amber-600 dark:text-amber-500" : ""}
                   >
                     {!isChromium && <AlertTriangle className="h-3.5 w-3.5" />}
-                    Liquid Glass Layer
+                    液态玻璃图层
                   </DropdownMenuItem>
                 </TooltipTrigger>
                 {!isChromium && (
                   <TooltipContent side="left" className="max-w-xs">
-                    <p className="font-semibold mb-1">Chromium-Only Feature</p>
+                    <p className="font-semibold mb-1">仅支持Chromium浏览器</p>
                     <p className="text-xs">
-                      Liquid Glass layers only work in Chromium-based browsers (Chrome, Edge, Opera).
-                      The layer will not be visible in your current browser.
+                      液态玻璃图层仅在基于Chromium的浏览器（Chrome、Edge、Opera）中工作。
+                      在当前浏览器中将不可见该图层。
                     </p>
                   </TooltipContent>
                 )}
@@ -379,12 +375,11 @@ export function LayersPanel() {
             if (!files.length) return;
             const hasGif = files.some(f => /image\/gif/i.test(f.type) || /\.gif$/i.test(f.name || ''));
             if (hasGif) {
-              setUploadStatus('GIFs must be imported via Video Layer…');
+              setUploadStatus('GIF必须通过视频图层导入…');
               setTimeout(() => setUploadStatus(null), 2000);
             }
-            const imageFiles = files.filter(f => !(/image\/gif/i.test(f.type) || /\.gif$/i.test(f.name || '')));
-            if (imageFiles.length) setUploadStatus(imageFiles.length > 1 ? `Uploading ${imageFiles.length} images...` : 'Uploading image...');
-            try {
+                        const imageFiles = files.filter(f => !(/image\/gif/i.test(f.type) || /\.gif$/i.test(f.name || '')));
+                        if (imageFiles.length) setUploadStatus(imageFiles.length > 1 ? `正在上传 ${imageFiles.length} 个图像...` : '正在上传图像...');            try {
               for (const file of imageFiles) {
                 try { await addImageLayerFromFile(file); } catch { }
               }
@@ -403,11 +398,11 @@ export function LayersPanel() {
             const file = e.target.files?.[0];
             if (file) {
               const isGif = /image\/gif/i.test(file.type || '') || /\.gif$/i.test(file.name || '');
-              setUploadStatus(isGif ? 'Importing GIF as video...' : 'Uploading video...');
+              setUploadStatus(isGif ? '正在将GIF作为视频导入...' : '正在上传视频...');
               try {
                 await addVideoLayerFromFile(file);
               } catch (err) {
-                console.error('Failed to add video layer:', err);
+                console.error('添加视频图层失败:', err);
               } finally {
                 setUploadStatus(null);
               }
@@ -451,12 +446,12 @@ export function LayersPanel() {
               ) : (
                 <div className="w-4 shrink-0" />
               )}
-              <span>Root Layer</span>
+              <span>根图层</span>
             </div>
             {!rootCollapsed && (
               <>
                 {layers.length === 0 && (
-                  <div className="py-2 text-muted-foreground" style={{ paddingLeft: 24 }}>No layers yet</div>
+                  <div className="py-2 text-muted-foreground" style={{ paddingLeft: 24 }}>暂无图层</div>
                 )}
                 {layers.map((l) => renderItem(l, 1))}
               </>
@@ -468,7 +463,7 @@ export function LayersPanel() {
       {isSelectMode && (
         <div className="border-t p-2 gap-2 flex flex-col">
           <div className="text-xs text-muted-foreground">
-            {multiSelectedIds.length} selected
+            {multiSelectedIds.length} 已选择
           </div>
           <div className="flex gap-2 items-center w-full">
             <Button
@@ -482,7 +477,7 @@ export function LayersPanel() {
                 }
               }}
               className="h-8 w-8"
-              title="Duplicate layers"
+              title="复制图层"
             >
               <Copy className="h-4 w-4" />
             </Button>
@@ -498,7 +493,7 @@ export function LayersPanel() {
                 setMultiSelectedIds([]);
               }}
               className="h-8 w-8"
-              title="Delete layers"
+              title="删除图层"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -508,7 +503,7 @@ export function LayersPanel() {
               className="flex-1 gap-1.5"
             >
               <Check className="h-4 w-4" />
-              Done
+              完成
             </Button>
           </div>
         </div>
