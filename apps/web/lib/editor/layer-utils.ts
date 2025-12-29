@@ -51,14 +51,14 @@ export function cloneLayerDeep(layer: AnyLayer): AnyLayer {
       ...JSON.parse(JSON.stringify({ ...layer, id: newId })),
       id: newId,
       children: layer.children.map(cloneLayerDeep),
-      position: { x: (layer.position?.x ?? 0) + 10, y: (layer.position?.y ?? 0) + 10 },
+      position: { x: (layer.position?.x ?? 0), y: (layer.position?.y ?? 0) },
       name: `${layer.name} copy`,
     } as AnyLayer;
   }
   const base = JSON.parse(JSON.stringify({ ...layer })) as AnyLayer;
   (base as any).id = newId;
   (base as any).name = `${layer.name} copy`;
-  (base as any).position = { x: (layer as any).position?.x + 10, y: (layer as any).position?.y + 10 };
+  (base as any).position = { x: (layer as any).position?.x, y: (layer as any).position?.y };
   return base;
 }
 
@@ -199,6 +199,8 @@ export function interpolateLayers(baseLayers: AnyLayer[], targetLayers: AnyLayer
           h: lerp(baseLayer.size.h, targetLayer.size?.h ?? baseLayer.size.h, prog),
         } : baseLayer.size,
         rotation: lerp(baseLayer.rotation ?? 0, targetLayer.rotation ?? 0, prog),
+        rotationX: lerp(baseLayer.rotationX ?? 0, targetLayer.rotationX ?? 0, prog),
+        rotationY: lerp(baseLayer.rotationY ?? 0, targetLayer.rotationY ?? 0, prog),
         opacity: lerp(baseLayer.opacity ?? 1, targetLayer.opacity ?? 1, prog),
         zPosition: lerp(baseLayer.zPosition ?? 0, targetLayer.zPosition ?? 0, prog),
         children: baseLayer.children && targetLayer.children

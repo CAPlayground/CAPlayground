@@ -83,11 +83,14 @@ export function Inspector() {
       const v = o.value as number | string;
       if (kp === 'position.x' && typeof v === 'number') eff.position.x = v;
       else if (kp === 'position.y' && typeof v === 'number') eff.position.y = v;
+      else if (kp === 'zposition' && typeof v === 'number') eff.zPosition = v;
       else if (kp === 'bounds.size.width' && typeof v === 'number') eff.size.w = v;
       else if (kp === 'bounds.size.height' && typeof v === 'number') eff.size.h = v;
-      else if (kp === 'transform.rotation.z' && typeof v === 'number') (eff as any).rotation = v as number;
-      else if (kp === 'opacity' && typeof v === 'number') (eff as any).opacity = v as number;
-      else if (kp === 'cornerradius' && typeof v === 'number') (eff as any).cornerRadius = v as number;
+      else if (kp === 'transform.rotation.z' && typeof v === 'number') eff.rotation = v as number;
+      else if (kp === 'transform.rotation.x' && typeof v === 'number') eff.rotationX = v as number;
+      else if (kp === 'transform.rotation.y' && typeof v === 'number') eff.rotationY = v as number;
+      else if (kp === 'opacity' && typeof v === 'number') eff.opacity = v as number;
+      else if (kp === 'cornerradius' && typeof v === 'number') eff.cornerRadius = v as number;
     }
     return eff;
   })();

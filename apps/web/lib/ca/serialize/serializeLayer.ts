@@ -452,18 +452,28 @@ export function serializeLayer(
       layerName.setAttribute('value', currentLayer.name);
       nsDict.appendChild(layerName);
 
-      const HomeValue = stateOverridesInput?.Unlock.find((d) => d.keyPath === dict.keyPath && d.targetId === dict.targetId)?.value;
-      const SleepValue = stateOverridesInput?.Sleep.find((d) => d.keyPath === dict.keyPath && d.targetId === dict.targetId)?.value;
+      const isRotation = dict.keyPath === 'transform.rotation.z' || dict.keyPath === 'transform.rotation.x' || dict.keyPath === 'transform.rotation.y';
+      
+      let HomeValue = stateOverridesInput?.Unlock.find((d) => d.keyPath === dict.keyPath && d.targetId === dict.targetId)?.value;
+      let SleepValue = stateOverridesInput?.Sleep.find((d) => d.keyPath === dict.keyPath && d.targetId === dict.targetId)?.value;
+      let LockedValue = dict.value;
+      
+      if (isRotation) {
+        if (typeof HomeValue === 'number') HomeValue = degToRad(HomeValue).toFixed(5);
+        if (typeof SleepValue === 'number') SleepValue = degToRad(SleepValue).toFixed(5);
+        if (typeof LockedValue === 'number') LockedValue = degToRad(LockedValue).toFixed(5);
+      }
+      
       const v_home = doc.createElementNS(CAML_NS, 'v_home');
-      v_home.setAttribute('type', 'integer');
+      v_home.setAttribute('type', 'real');
       v_home.setAttribute('value', String(HomeValue));
       nsDict.appendChild(v_home);
       const v_lock = doc.createElementNS(CAML_NS, 'v_lock');
-      v_lock.setAttribute('type', 'integer');
-      v_lock.setAttribute('value', String(dict.value));
+      v_lock.setAttribute('type', 'real');
+      v_lock.setAttribute('value', String(LockedValue));
       nsDict.appendChild(v_lock);
       const v_sleep = doc.createElementNS(CAML_NS, 'v_sleep');
-      v_sleep.setAttribute('type', 'integer');
+      v_sleep.setAttribute('type', 'real');
       v_sleep.setAttribute('value', String(SleepValue));
       nsDict.appendChild(v_sleep);
       const view = doc.createElementNS(CAML_NS, 'view');
