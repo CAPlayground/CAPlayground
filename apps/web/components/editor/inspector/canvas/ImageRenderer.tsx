@@ -1,21 +1,22 @@
 import { ImageLayer } from "@/lib/ca/types";
+import { useAssetUrl } from "@/hooks/use-asset-url";
 
 interface ImageRendererProps {
   layer: ImageLayer;
-  assets?: Record<string, { dataURL?: string }>;
 }
 
 export default function ImageRenderer({
   layer,
-  assets,
 }: ImageRendererProps) {
-  const assetsMap = assets || {};
-  const imgAsset = assetsMap[layer.id];
-  const previewSrc = imgAsset?.dataURL || layer.src;
-  if (!previewSrc) return null;
+  const { src, loading } = useAssetUrl({
+    cacheKey: layer.id,
+    assetSrc: layer.src,
+  });
+
+  if (loading || !src) return null;
   return (
     <img
-      src={previewSrc}
+      src={src}
       alt={layer.name}
       style={{
         width: "100%",

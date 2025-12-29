@@ -8,15 +8,14 @@ import { type InspectorTabProps } from "../types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useEditor } from "../../editor-context";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import EmitterCellThumbnail from "../../emitter/EmitterCellThumbnail";
 
 interface EmitterTabProps extends InspectorTabProps {
-  assets?: Record<string, { filename: string; dataURL: string }>;
   activeState?: string;
   addEmitterCellImage: (layerId: string, file: File) => Promise<void>;
 }
 
 export function EmitterTab({
-  assets,
   selected,
   updateLayer,
   updateLayerTransient,
@@ -208,12 +207,10 @@ export function EmitterTab({
             <AccordionItem key={cell.id} value={cell.id}>
               <AccordionTrigger>
                 <div className="flex items-center gap-2">
-                  <img
-                    src={assets?.[cell.id]?.dataURL}
-                    alt={`Cell ${i}`}
-                    width={20}
-                    height={20}
-                    className="object-contain"
+                  <EmitterCellThumbnail
+                    cellId={cell.id}
+                    cellSrc={cell.src}
+                    size={20}
                   />
                   Cell {i + 1}
                 </div>

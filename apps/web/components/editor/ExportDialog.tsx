@@ -41,7 +41,7 @@ async function loadLicenseText(license: ExportLicense): Promise<string | null> {
 }
 
 export function ExportDialog() {
-  const { doc, flushPersist } = useEditor();
+  const { doc, flushPersist, cleanupAssets } = useEditor();
   const { toast } = useToast();
   const supabase = getSupabaseBrowserClient();
 
@@ -126,6 +126,7 @@ export function ExportDialog() {
       if (!doc) return false;
       try {
         await flushPersist();
+        await cleanupAssets(); // Remove orphaned asset files before export
       } catch {}
       const proj = await getProject(doc.meta.id);
       const baseName =
@@ -211,6 +212,7 @@ export function ExportDialog() {
       if (!doc) return false;
       try {
         await flushPersist();
+        await cleanupAssets();
       } catch {}
       const proj = await getProject(doc.meta.id);
       const baseName =

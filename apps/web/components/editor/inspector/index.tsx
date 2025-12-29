@@ -386,7 +386,6 @@ export function Inspector() {
               updateLayer={updateLayer}
               replaceImageForLayer={replaceImageForLayer}
               activeState={current?.activeState}
-              assets={current?.assets}
             />
           )}
 
@@ -398,7 +397,6 @@ export function Inspector() {
             <EmitterTab
               {...tabProps}
               addEmitterCellImage={addEmitterCellImage}
-              assets={current?.assets}
             />
           )}
 

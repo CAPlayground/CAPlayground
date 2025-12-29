@@ -9,11 +9,11 @@ import type { ImageLayer } from "@/lib/ca/types";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BlurEditor } from "../../tools/BlurEditor";
+import { useAssetUrl } from "@/hooks/use-asset-url";
 
 interface ImageTabProps extends Omit<InspectorTabProps, 'getBuf' | 'setBuf' | 'clearBuf' | 'round2' | 'fmt2' | 'fmt0' | 'updateLayerTransient' | 'selectedBase'> {
   replaceImageForLayer: (id: string, file: File) => Promise<void>;
   activeState?: string;
-  assets?: Record<string, { filename: string; dataURL: string }>;
 }
 
 export function ImageTab({
@@ -21,18 +21,24 @@ export function ImageTab({
   updateLayer,
   replaceImageForLayer,
   activeState,
-  assets,
 }: ImageTabProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const inState = !!activeState && activeState !== 'Base State';
   const [cropOpen, setCropOpen] = useState(false);
   const [blurOpen, setBlurOpen] = useState(false);
 
-  if (selected.type !== 'image') return null;
+  const imageLayer = selected.type === 'image' ? (selected as ImageLayer) : null;
 
-  const imageLayer = selected as ImageLayer;
-  const asset = assets?.[imageLayer.id];
-  const imageSrc = asset?.dataURL ?? imageLayer.src;
+  const { src: imageSrc } = useAssetUrl({
+    cacheKey: imageLayer?.id ?? "",
+    assetSrc: imageLayer?.src,
+    skip: !imageLayer,
+  });
+
+  const filename = imageLayer?.src?.split("/").pop() ?? imageLayer?.name ?? "image.png";
+
+  if (!imageLayer) return null;
+
   const canCrop = !!imageSrc && !inState;
 
   return (
@@ -123,7 +129,7 @@ export function ImageTab({
               open={cropOpen}
               onOpenChange={setCropOpen}
               src={imageSrc}
-              filename={asset?.filename ?? selected.name ?? "image.png"}
+              filename={filename}
               onApply={async (file, dims, maintainBounds) => {
                 await replaceImageForLayer(selected.id, file);
                 if (!maintainBounds && dims) {
@@ -152,7 +158,7 @@ export function ImageTab({
               open={blurOpen}
               onOpenChange={setBlurOpen}
               src={imageSrc}
-              filename={asset?.filename ?? selected.name ?? "image.png"}
+              filename={filename}
               onApply={async (file) => {
                 await replaceImageForLayer(selected.id, file);
               }}

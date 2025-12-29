@@ -82,7 +82,7 @@ export function MoveableOverlay({
       });
   }, [renderedLayers, selectedLayer]);
 
-  const targetRef = useRef<HTMLElement>(null);
+  const [targetRef, setTargetRef] = useState<HTMLElement | null>(null);
   const [keepRatio, setKeepRatio] = useState(false);
   const [currentRotation, setCurrentRotation] = useState(0);
   const [currentTranslation, setCurrentTranslation] = useState({
@@ -98,7 +98,7 @@ export function MoveableOverlay({
   
   useEffect(() => {
     if (!selectedLayer) return;
-    targetRef.current = document.getElementById(selectedLayer.id);
+    setTargetRef(document.getElementById(selectedLayer.id));
   }, [selectedLayer, path]);
 
   if (!selectedLayer) return null;
@@ -143,7 +143,7 @@ export function MoveableOverlay({
         dist,
         transform,
       }) => {
-        const useYUp = targetRef.current?.getAttribute('data-y-up') === 'true';
+        const useYUp = targetRef?.getAttribute('data-y-up') === 'true';
         setCurrentTranslation({
           x: dist[0],
           y: useYUp ? -dist[1] : dist[1],
@@ -205,7 +205,7 @@ export function MoveableOverlay({
       }) => {
         delta[0] && (target!.style.width = `${width}px`);
         delta[1] && (target!.style.height = `${height}px`);
-        const useYUp = targetRef.current?.getAttribute('data-y-up') === 'true';
+        const useYUp = targetRef?.getAttribute('data-y-up') === 'true';
         setCurrentSize({
           w: width,
           h: height,

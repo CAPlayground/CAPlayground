@@ -5,22 +5,12 @@ import {
 import { EmitterLayer } from '@/lib/ca/types';
 import { useEditor } from '../editor-context';
 import { useTimeline } from '@/context/TimelineContext';
-
-const loadImage = (src: string) =>
-  new Promise((resolve, reject) => {
-    const img = new Image();
-    img.decoding = 'async';
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
-  });
+import { useEmitterCellImages } from '@/hooks/use-asset-url';
 
 export function EmitterCanvas({
   layer: emitterLayer,
-  assets,
 }: {
   layer: EmitterLayer;
-  assets?: Record<string, { dataURL?: string }>;
 }) {
   const { doc } = useEditor();
   const { isPlaying } = useTimeline();
@@ -34,6 +24,11 @@ export function EmitterCanvas({
   const docHeight = doc?.meta.height ?? 0;
   const docWidth = doc?.meta.width ?? 0;
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const { cellImages } = useEmitterCellImages({
+    cells: emitterLayer.emitterCells || [],
+  });
+
   useEffect(() => {
     runningRef.current = !paused;
     const onVis = () => {
@@ -84,8 +79,7 @@ export function EmitterCanvas({
 
     const loadCells = async () => {
       const cellPromises = emitterLayer.emitterCells?.map(async (cell) => {
-        const src = assets?.[cell.id]?.dataURL;
-        const img = src ? await loadImage(src) : null;
+        const img = cellImages.get(cell.id) || null;
         const newCell = new CAEmitterCell();
         newCell.name = cell.id;
         newCell.contents = img;
@@ -154,6 +148,7 @@ export function EmitterCanvas({
     emitterLayer.emitterShape,
     emitterLayer.emitterMode,
     emitterLayer.renderMode,
+    cellImages,
   ]);
 
   return (
