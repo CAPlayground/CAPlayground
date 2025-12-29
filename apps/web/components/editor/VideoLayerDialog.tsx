@@ -28,9 +28,9 @@ const calculateFrameAssetsSize = (assets: Array<{ dataURL: string; filename: str
 };
 
 const formatBytes = (bytes: number): string => {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) return '0 字节';
   const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const sizes = ['字节', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `~${Math.round((bytes / Math.pow(k, i)) * 100) / 100} ${sizes[i]}`;
 };
@@ -137,7 +137,7 @@ export default function VideoLayerDialog({
         }
       } catch (e: any) {
         if (e.name !== 'AbortError') {
-          console.error('Error extracting frames:', e);
+          console.error('提取帧时出错:', e);
         }
         if (!signal.aborted) {
           setFrameAssets([]);
@@ -157,7 +157,7 @@ export default function VideoLayerDialog({
     const newFrameAssets: Array<{ dataURL: string; filename: string }> = [];
 
     if (!window.ImageDecoder) {
-      throw new Error('Importing GIFs as video requires a browser with ImageDecoder (WebCodecs) support.');
+      throw new Error('将GIF作为视频导入需要支持ImageDecoder(WebCodecs)的浏览器。');
     }
     const buf = await file.arrayBuffer();
     const decoder: any = new window.ImageDecoder({ data: new Uint8Array(buf), type: 'image/gif' });
@@ -180,7 +180,7 @@ export default function VideoLayerDialog({
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Failed to get canvas context');
+    if (!ctx) throw new Error('获取画布上下文失败');
     const assumedFps = 15;
     const maxFrames = Math.min(gifFrameCount || 300, Math.floor(maxDuration * assumedFps));
     setFrameCount(maxFrames);
@@ -233,7 +233,7 @@ export default function VideoLayerDialog({
 
     if (videoWidth === 0 || videoHeight === 0) {
       URL.revokeObjectURL(videoURL);
-      throw new Error('Failed to get video dimensions');
+      throw new Error('获取视频尺寸失败');
     }
 
     if (resizeVideo) {
@@ -254,7 +254,7 @@ export default function VideoLayerDialog({
     const ctx = canvas.getContext('2d');
     if (!ctx) {
       URL.revokeObjectURL(videoURL);
-      throw new Error('Failed to get canvas context');
+      throw new Error('获取画布上下文失败');
     }
     setFrameCount(frameCount);
     setCurrentFrame(0);
@@ -321,11 +321,11 @@ export default function VideoLayerDialog({
             className="flex-1"
           >
             <Upload className="h-4 w-4 mr-2" />
-            {videoFile ? videoFile.name : "Choose video or GIF"}
+            {videoFile ? videoFile.name : "选择视频或GIF"}
           </Button>
           <Select value={isGif ? "15" : fps} disabled={isGif} onValueChange={(value) => setFps(value)}>
             <SelectTrigger>
-              <SelectValue placeholder="Select frames per second" />
+              <SelectValue placeholder="选择每秒帧数" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="15">15 fps</SelectItem>
@@ -337,19 +337,19 @@ export default function VideoLayerDialog({
         {videoFile && !isGif &&
           <div className="flex items-center gap-2">
             <Checkbox id="resize-video" checked={resizeVideo} onCheckedChange={(checked: boolean) => setResizeVideo(checked)} />
-            <Label htmlFor="resize-video">Resize to fit canvas</Label>
+            <Label htmlFor="resize-video">调整大小以适应画布</Label>
           </div>
         }
-        <Label>Dimensions: {width}x{height}px</Label>
-        <Label>Duration: {duration.toFixed(2)}s </Label>
+        <Label>尺寸: {width}x{height}px</Label>
+        <Label>时长: {duration.toFixed(2)}s </Label>
         <div className="space-y-2">
           <Label>
-            Layer Size: {isLoading ? `Generating frames... (${currentFrame}/${frameCount})` : frameAssetsSize > 0 ? formatBytes(frameAssetsSize) : '0 Bytes'}
+            图层大小: {isLoading ? `生成帧中... (${currentFrame}/${frameCount})` : frameAssetsSize > 0 ? formatBytes(frameAssetsSize) : '0 字节'}
           </Label>
           {!isLoading && frameAssetsSize > 30 * 1024 * 1024 && (
             <Alert variant="destructive">
               <AlertDescription>
-                Warning: Layer size exceeds 30MB. This may impact performance and memory usage.
+                警告: 图层大小超过30MB。这可能会影响性能和内存使用。
               </AlertDescription>
             </Alert>
           )}
@@ -358,14 +358,14 @@ export default function VideoLayerDialog({
         <Alert>
           <AlertDescription>
             {isGif
-              ? "For GIFs, the frame rate is automatically set to 15 fps for optimal performance."
-              : "Note: 30 fps is recommended for optimal performance. Higher frame rates (60 fps) are better for videos synced with state transitions but will increase file size."
+              ? "对于GIF，帧率会自动设置为15 fps以获得最佳性能。"
+              : "注意: 建议使用30 fps以获得最佳性能。较高的帧率(60 fps)更适合与状态转换同步的视频，但会增加文件大小。"
             }
           </AlertDescription>
         </Alert>
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => setVideoLayerIsOpen(false)}>
-            Cancel
+            取消
           </Button>
           <Button onClick={handleCreateVideoLayer} disabled={!videoFile || isLoading}>
                           创建视频图层          </Button>
