@@ -58,7 +58,7 @@ export function cloneLayerDeep(layer: AnyLayer): AnyLayer {
   const base = JSON.parse(JSON.stringify({ ...layer })) as AnyLayer;
   (base as any).id = newId;
   (base as any).name = `${layer.name} copy`;
-  (base as any).position = { x: (layer as any).position?.x + 10, y: (layer as any).position?.y + 10 };
+  (base as any).position = { x: (layer as any).position?.x, y: (layer as any).position?.y };
   return base;
 }
 
