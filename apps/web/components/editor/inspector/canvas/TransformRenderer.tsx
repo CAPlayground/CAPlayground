@@ -91,7 +91,17 @@ export function useTransform({
     if (positionYDelta !== null) {
       transformedY = positionYDelta;
     }
-    transformString = `translate3d(${translationXDelta}px, ${translationYDelta}px, 0) rotate3d(0, 1, 0, ${(e.rotationY ?? 0) + rotationYDelta}deg) rotateX(${(e.rotationX ?? 0) + rotationXDelta}deg)`;
+    let transforms = [
+      `translateX(${translationXDelta}px)`,
+      `translateY(${translationYDelta}px)`,
+    ]
+    if (rotationYDelta !== 0) {
+      transforms.push(`rotate3d(0, 1, 0, ${(e.rotationY ?? 0) + rotationYDelta}deg)`);
+    }
+    if (rotationXDelta !== 0) {
+      transforms.push(`rotateX(${(e.rotationX ?? 0) + rotationXDelta}deg)`);
+    }
+    transformString = transforms.join(' ');
   }
   return {
     transformString,
