@@ -689,7 +689,7 @@ export function EditorProvider({
       const next = { ...cur, layers: nextLayers, selectedId: layer.id };
       return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
-  }, [addBase]);
+  }, [addBase, doc]);
 
   const replaceImageForLayer = useCallback(async (layerId: string, file: File) => {
     if (/image\/gif/i.test(file.type || '') || /\.gif$/i.test(file.name || '')) {
@@ -723,7 +723,7 @@ export function EditorProvider({
       const next = { ...cur, layers: updateRec(cur.layers) };
       return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
-  }, []);
+  }, [doc]);
 
   const addEmitterCellImage = useCallback(async (layerId: string, file: File) => {
     if (/image\/gif/i.test(file.type || '') || /\.gif$/i.test(file.name || '')) {
@@ -766,7 +766,7 @@ export function EditorProvider({
       return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
 
-  }, []);
+  }, [doc]);
 
   const removeEmitterCell = useCallback((layerId: string, index: number) => {
     setDoc((prev) => {
@@ -887,7 +887,7 @@ export function EditorProvider({
       const next = { ...cur, layers: nextLayers, selectedId: layer.id };
       return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
-  }, [addBase]);
+  }, [addBase, doc]);
 
   const addGradientLayer = useCallback(() => {
     setDoc((prev) => {
@@ -1240,7 +1240,7 @@ export function EditorProvider({
       const next = { ...cur, layers: nextLayers, selectedId: layer.id };
       return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
-  }, [addBase, pushHistory]);
+  }, [addBase, pushHistory, doc]);
 
   const moveLayer = useCallback((sourceId: string, beforeId: string | null, position: 'before' | 'after' | 'into' = 'before') => {
     if (!sourceId || sourceId === beforeId) return;
