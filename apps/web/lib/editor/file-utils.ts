@@ -1,6 +1,8 @@
 import { putBlobFilesBatch, listFiles, deleteFile } from "@/lib/storage";
 import type { AnyLayer, ImageLayer, VideoLayer, EmitterLayer } from "@/lib/ca/types";
 
+export type CAView = 'floating' | 'wallpaper' | 'background';
+
 export function sanitizeFilename(name: string): string {
   const n = (name || '').trim();
   if (!n) return '';
@@ -139,5 +141,38 @@ export async function uploadFrameAssets(
   } catch (err) {
     console.error("Failed to write assets batch:", err);
     return false;
+  }
+}
+
+function getCAFolder(view: CAView): string {
+  return view === 'floating' ? 'Floating.ca' : view === 'wallpaper' ? 'Wallpaper.ca' : 'Background.ca';
+}
+
+export async function copyAssetsBetweenViews(
+  projectId: string,
+  projectName: string,
+  sourceView: CAView,
+  targetView: CAView,
+  assetNames: string[]
+): Promise<void> {
+  try {
+    const folder = `${projectName}.ca`;
+    const sourceCAFolder = getCAFolder(sourceView);
+    const targetCAFolder = getCAFolder(targetView);
+    const assetsPrefix = `${folder}/${sourceCAFolder}/assets/`;
+
+    const allFiles = await listFiles(projectId, assetsPrefix);
+    const filesToCopy = allFiles
+      .filter(file => assetNames.some(asset => normalize(file.path).includes(asset)))
+      .map(file => ({
+        path: file.path.replace(sourceCAFolder, targetCAFolder),
+        data: file.data as ArrayBuffer,
+      }));
+
+    if (filesToCopy.length > 0) {
+      await putBlobFilesBatch(projectId, filesToCopy);
+    }
+  } catch (error) {
+    console.error('Error copying assets between views', error);
   }
 }

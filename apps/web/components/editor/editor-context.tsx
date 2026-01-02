@@ -3,7 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { AnyLayer, CAProject, ImageLayer, LayerBase, ShapeLayer, TextLayer, VideoLayer, GyroParallaxDictionary, EmitterLayer, TransformLayer, ReplicatorLayer, LiquidGlassLayer } from "@/lib/ca/types";
 import { serializeCAML } from "@/lib/ca/serialize/serializeCAML";
-import { deleteFile, getProject, listFiles, putBlobFile, putTextFile } from "@/lib/storage";
+import { getProject, listFiles, putBlobFile, putTextFile } from "@/lib/storage";
 import {
   genId,
   findById,
@@ -16,7 +16,7 @@ import {
   insertIntoSelected,
   getNextLayerName,
 } from "@/lib/editor/layer-utils";
-import { sanitizeFilename, dataURLToBlob, normalize, uploadFrameAssets, cleanupOrphanedAssets } from "@/lib/editor/file-utils";
+import { sanitizeFilename, dataURLToBlob, normalize, uploadFrameAssets, cleanupOrphanedAssets, collectReferencedAssets, copyAssetsBetweenViews, type CAView } from "@/lib/editor/file-utils";
 import { CAEmitterCell } from "./emitter/emitter";
 import { assetCache } from "@/hooks/use-asset-url";
 
@@ -116,7 +116,8 @@ export function EditorProvider({
   const clipboardRef = useRef<{
     type: 'layers';
     data: AnyLayer[];
-    assets?: Record<string, { filename: string; dataURL: string }>;
+    view: CAView;
+    assets?: string[];
   } | null>(null);
   const lastAddRef = useRef<{ key: string; ts: number } | null>(null);
 
@@ -1465,21 +1466,38 @@ export function EditorProvider({
       const cur = prev.docs[prev.activeCA];
       const sel = findById(cur.layers, cur.selectedId ?? null);
       if (!sel) return prev;
-      clipboardRef.current = { type: 'layers', data: [JSON.parse(JSON.stringify(sel)) as AnyLayer] };
+      const assets = collectReferencedAssets(cur.layers);
+      clipboardRef.current = {
+        type: 'layers',
+        data: [JSON.parse(JSON.stringify(sel)) as AnyLayer],
+        view: prev.activeCA,
+        assets: Array.from(assets),
+      };
       try {
-        navigator.clipboard?.writeText?.(JSON.stringify({ __caplay__: true, type: 'layers', data: clipboardRef.current.data }));
+        navigator.clipboard?.writeText?.(JSON.stringify({ __caplay__: true, ...clipboardRef.current }));
       } catch { }
       return prev;
     });
   }, []);
 
-  const pasteFromClipboard = useCallback((payload?: any) => {
+  const pasteFromClipboard = useCallback(async (payload?: any) => {
+    if (!doc) return;
+    const key = doc.activeCA;
+    const projectName = doc.meta.name;
+    const cur = doc.docs[key];
+    const src = payload && payload.__caplay__ ? payload : clipboardRef.current;
+    if (!src || src.type !== 'layers') return;
+    if (src.view !== key) {
+      await copyAssetsBetweenViews(
+        projectId,
+        projectName,
+        src.view,
+        key,
+        src.assets
+      );
+    }
     setDoc((prev) => {
       if (!prev) return prev;
-      const key = prev.activeCA;
-      const cur = prev.docs[key];
-      const src = payload && payload.__caplay__ ? payload : clipboardRef.current;
-      if (!src || src.type !== 'layers') return prev;
       const cloned: AnyLayer[] = (src.data || []).map(cloneLayerDeep);
       const idMap = new Map<string, string>();
       const collectMap = (orig: AnyLayer[], copies: AnyLayer[]) => {
@@ -1499,7 +1517,7 @@ export function EditorProvider({
       const next = { ...cur, layers: [...cur.layers, ...cloned], selectedId: cloned[cloned.length - 1]?.id ?? cur.selectedId };
       return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
-  }, [pushHistory]);
+  }, [pushHistory, doc]);
 
   const duplicateLayer = useCallback((id?: string) => {
     setDoc((prev) => {
