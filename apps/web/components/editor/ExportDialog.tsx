@@ -323,7 +323,7 @@ export function ExportDialog() {
 
       const licenseText = await loadLicenseText(exportLicense);
       if (licenseText) {
-        outputZip.file("LICENSE.txt", licenseText);
+        outputZip.file("descriptors/LICENSE.txt", licenseText);
       }
 
       const finalZipBlob = await outputZip.generateAsync({ type: "blob" });

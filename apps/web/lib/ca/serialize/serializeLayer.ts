@@ -2,6 +2,7 @@ import { degToRad, hexToForegroundColor } from "@/lib/utils";
 import { Animations, AnyLayer, CAProject, EmitterLayer, GyroParallaxDictionary, KeyPath, ReplicatorLayer, TextLayer, VideoLayer } from "../types";
 import { CAML_NS } from "./serializeCAML";
 import { findById } from "@/lib/editor/layer-utils";
+import { findPathTo } from "@/components/editor/canvas-preview/utils/layerTree";
 
 function setAttr(el: Element, name: string, value: string | number | undefined) {
   if (value === undefined || value === null || value === '') return;
@@ -438,6 +439,8 @@ export function serializeLayer(
 
     for (const dict of stateOverridesInput?.Locked ?? []) {
       const currentLayer = findById(layer.children || [], dict.targetId);
+      const path = findPathTo(layer.children || [], dict.targetId);
+      const view = path?.some((l) => l.name === 'BACKGROUND') ? 'Background' : 'Floating';
       if (!currentLayer) continue;
       const nsDict = doc.createElementNS(CAML_NS, 'NSDictionary');
       const image = doc.createElementNS(CAML_NS, 'image');
@@ -476,10 +479,10 @@ export function serializeLayer(
       v_sleep.setAttribute('type', 'real');
       v_sleep.setAttribute('value', String(SleepValue));
       nsDict.appendChild(v_sleep);
-      const view = doc.createElementNS(CAML_NS, 'view');
-      view.setAttribute('type', 'string');
-      view.setAttribute('value', 'Floating');
-      nsDict.appendChild(view);
+      const viewEl = doc.createElementNS(CAML_NS, 'view');
+      viewEl.setAttribute('type', 'string');
+      viewEl.setAttribute('value', view);
+      nsDict.appendChild(viewEl);
       wallpaperPropertyGroups.appendChild(nsDict);
     }
     style.appendChild(wallpaperPropertyGroups);

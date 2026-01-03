@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import VideoLayerDialog from "./VideoLayerDialog";
 
 type MobileBottomBarProps = {
   mobileView: 'canvas' | 'panels';
@@ -39,8 +40,8 @@ export function MobileBottomBar({ mobileView, setMobileView }: MobileBottomBarPr
   const [showBackground, setShowBackground] = useLocalStorage<boolean>("caplay_preview_show_background", true);
   const [statesOpen, setStatesOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const videoInputRef = useRef<HTMLInputElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [videoLayerIsOpen, setVideoLayerIsOpen] = useState(false);
   
   const key = doc?.activeCA ?? 'floating';
   const current = doc?.docs?.[key];
@@ -195,7 +196,9 @@ export function MobileBottomBar({ mobileView, setMobileView }: MobileBottomBarPr
             <DropdownMenuItem onSelect={() => addShapeLayer("rect")}>Basic Layer</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => addGradientLayer()}>Gradient Layer</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => fileInputRef.current?.click()}>Image Layer…</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => videoInputRef.current?.click()}>Video Layer…</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => {
+                setTimeout(() => setVideoLayerIsOpen(true), 0);
+              }}>Video Layer…</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => addEmitterLayer()}>Emitter Layer</DropdownMenuItem>
             {isGyro && (
               <DropdownMenuItem onSelect={() => addTransformLayer()}>Transform Layer</DropdownMenuItem>
@@ -283,19 +286,7 @@ export function MobileBottomBar({ mobileView, setMobileView }: MobileBottomBarPr
           e.target.value = '';
         }}
       />
-      <input
-        ref={videoInputRef}
-        type="file"
-        accept="video/mp4,video/quicktime,video/x-m4v,image/gif"
-        className="hidden"
-        onChange={async (e) => {
-          const file = e.target.files?.[0];
-          if (file) {
-            try { await addVideoLayerFromFile(file); } catch {}
-          }
-          e.target.value = '';
-        }}
-      />
+      <VideoLayerDialog open={videoLayerIsOpen} setVideoLayerIsOpen={setVideoLayerIsOpen} />
     </div>
   );
 }

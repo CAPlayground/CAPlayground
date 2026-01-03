@@ -19,7 +19,6 @@ export function LayersPanel() {
     addImageLayerFromFile,
     addShapeLayer,
     addGradientLayer,
-    addVideoLayerFromFile,
     deleteLayer,
     duplicateLayer,
     moveLayer,
@@ -32,7 +31,6 @@ export function LayersPanel() {
     toggleLayerVisibility,
   } = useEditor();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const videoInputRef = useRef<HTMLInputElement | null>(null);
   const key = doc?.activeCA ?? 'floating';
   const current = doc?.docs?.[key];
   const layers = current?.layers ?? [];
@@ -392,27 +390,6 @@ export function LayersPanel() {
               setUploadStatus(null);
               if (fileInputRef.current) fileInputRef.current.value = "";
             }
-          }}
-        />
-        <input
-          ref={videoInputRef}
-          type="file"
-          accept="video/*,image/gif"
-          className="hidden"
-          onChange={async (e) => {
-            const file = e.target.files?.[0];
-            if (file) {
-              const isGif = /image\/gif/i.test(file.type || '') || /\.gif$/i.test(file.name || '');
-              setUploadStatus(isGif ? 'Importing GIF as video...' : 'Uploading video...');
-              try {
-                await addVideoLayerFromFile(file);
-              } catch (err) {
-                console.error('Failed to add video layer:', err);
-              } finally {
-                setUploadStatus(null);
-              }
-            }
-            if (videoInputRef.current) videoInputRef.current.value = "";
           }}
         />
       </div>
