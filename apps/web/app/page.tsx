@@ -34,6 +34,7 @@ function isVideo(src: string) {
 
 export default async function HomePage() {
   let stars: number | null = null
+  let commitCount: number | null = null
   let mostDownloaded: { wallpaper: WallpaperItem; baseUrl: string; downloads: number } | null = null
   try {
     const res = await fetch(
@@ -43,6 +44,20 @@ export default async function HomePage() {
     if (res.ok) {
       const data = await res.json()
       stars = typeof data?.stargazers_count === "number" ? data.stargazers_count : null
+    }
+
+    const commitsRes = await fetch(
+      "https://api.github.com/repos/CAPlayground/CAPlayground/commits?per_page=1",
+      { next: { revalidate: 3600 }, headers: { Accept: "application/vnd.github+json" } }
+    )
+    if (commitsRes.ok) {
+      const link = commitsRes.headers.get("link")
+      if (link) {
+        const match = link.match(/page=(\d+)>; rel="last"/)
+        if (match) {
+          commitCount = parseInt(match[1])
+        }
+      }
     }
     try {
       const wallpapersRes = await fetch(
@@ -171,6 +186,51 @@ export default async function HomePage() {
         {/* Bento Grid Section */}
         <section className="bg-background relative">
           <BentoGridSection />
+        </section>
+        {/* Growing Section */}
+        <section className="py-24 md:py-32 bg-background overflow-hidden">
+          <div className="container mx-auto px-4 md:px-6">
+            <div className="text-center mb-20">
+              <h2 className="font-heading text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
+                CAPlayground is growing!
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-16 md:gap-8 max-w-7xl mx-auto">
+              <div className="flex flex-col items-center text-center group">
+                <div className="relative">
+                  <span className="text-7xl sm:text-8xl md:text-6xl lg:text-8xl font-black text-accent tracking-tighter transition-transform duration-500 group-hover:scale-105 block">
+                    100k+
+                  </span>
+                </div>
+                <p className="mt-4 text-xl md:text-2xl text-muted-foreground font-medium max-w-[250px]">
+                  users in the first 4 months
+                </p>
+              </div>
+
+              <div className="flex flex-col items-center text-center group">
+                <div className="relative">
+                  <span className="text-7xl sm:text-8xl md:text-6xl lg:text-8xl font-black text-accent tracking-tighter transition-transform duration-500 group-hover:scale-105 block">
+                    1.5k+
+                  </span>
+                </div>
+                <p className="mt-4 text-xl md:text-2xl text-muted-foreground font-medium max-w-[250px]">
+                  Discord server members
+                </p>
+              </div>
+
+              <div className="flex flex-col items-center text-center group">
+                <div className="relative">
+                  <span className="text-7xl sm:text-8xl md:text-6xl lg:text-8xl font-black text-accent tracking-tighter transition-transform duration-500 group-hover:scale-105 block">
+                    {commitCount !== null ? `${commitCount}` : "500+"}
+                  </span>
+                </div>
+                <p className="mt-4 text-xl md:text-2xl text-muted-foreground font-medium max-w-[250px]">
+                  GitHub Commits
+                </p>
+              </div>
+            </div>
+          </div>
         </section>
 
 
