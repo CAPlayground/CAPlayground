@@ -213,17 +213,25 @@ export default function VideoLayerDialog({
     const newFrameAssets: Array<{ dataURL: string; filename: string }> = [];
 
     const video = document.createElement('video');
-    video.preload = 'metadata';
+    video.preload = 'auto';
+    video.muted = true;
+    video.playsInline = true;
     const videoURL = URL.createObjectURL(file);
     video.src = videoURL;
 
     await new Promise<void>((resolve, reject) => {
-      video.onloadedmetadata = () => {
-        // Wait a bit to ensure dimensions are available
-        setTimeout(() => resolve(), 50);
-      };
       video.onerror = reject;
+      video.onloadedmetadata = () => {
+        video.oncanplay = () => { resolve() };
+      };
+      video.load();
     });
+
+    try {
+      await video.play();
+      video.pause();
+    } catch {}
+
     const newDuration = Math.min(video.duration, maxDuration);
     setDuration(newDuration);
 
@@ -268,11 +276,13 @@ export default function VideoLayerDialog({
 
       await new Promise<void>((resolve) => {
         video.onseeked = () => {
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const dataURL = canvas.toDataURL('image/jpeg', 0.7);
-          const filename = `${framePrefix}${i}${frameExtension}`;
-          newFrameAssets.push({ dataURL, filename });
-          resolve();
+          requestAnimationFrame(() => {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataURL = canvas.toDataURL('image/jpeg', 0.7);
+            const filename = `${framePrefix}${i}${frameExtension}`;
+            newFrameAssets.push({ dataURL, filename });
+            resolve();
+          });
         };
       });
       setCurrentFrame(i + 1);
@@ -307,7 +317,7 @@ export default function VideoLayerDialog({
             Upload a video or GIF to create a video layer. The video will be converted to individual frames.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-[1fr_auto] gap-2">
           <Input
             type="file"
             accept="video/*,image/gif"
@@ -319,13 +329,13 @@ export default function VideoLayerDialog({
             type="button"
             variant="outline"
             onClick={() => videoInputRef.current?.click()}
-            className="flex-1"
+            className="min-w-0"
           >
-            <Upload className="h-4 w-4 mr-2" />
-            {videoFile ? videoFile.name : "Choose video or GIF"}
+            <Upload className="h-4 w-4 mr-2 shrink-0" />
+            <span className="truncate">{videoFile ? videoFile.name : "Choose video or GIF"}</span>
           </Button>
           <Select value={isGif ? "15" : fps} disabled={isGif} onValueChange={(value) => setFps(value)}>
-            <SelectTrigger>
+            <SelectTrigger className="w-24">
               <SelectValue placeholder="Select frames per second" />
             </SelectTrigger>
             <SelectContent>
