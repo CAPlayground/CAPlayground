@@ -6,6 +6,9 @@ import { AspectRatio } from "@/components/ui/aspect-ratio"
 import Link from "next/link"
 import { Send, Filter as NotificationIcon, Github, Star, Download } from "lucide-react"
 import Image from "next/image"
+import { BentoGridSection } from "@/components/home/bento-grid-section"
+
+
 
 export const runtime = 'nodejs'
 
@@ -101,19 +104,19 @@ export default async function HomePage() {
           {/* Background Images - Centered */}
           <div className="absolute inset-0 flex items-center justify-center p-4 md:p-10 pointer-events-none select-none opacity-50 md:opacity-100 -translate-y-48 md:-translate-y-32 lg:-translate-y-16 xl:-translate-y-4">
             <div className="relative w-full max-w-6xl aspect-[16/10]">
-              <Image 
-                src="/app-light.png" 
-                alt="App Light" 
-                fill 
-                className="object-contain dark:hidden" 
-                priority 
+              <Image
+                src="/app-light.png"
+                alt="App Light"
+                fill
+                className="object-contain dark:hidden"
+                priority
               />
-              <Image 
-                src="/app-dark.png" 
-                alt="App Dark" 
-                fill 
-                className="object-contain hidden dark:block" 
-                priority 
+              <Image
+                src="/app-dark.png"
+                alt="App Dark"
+                fill
+                className="object-contain hidden dark:block"
+                priority
               />
             </div>
           </div>
@@ -136,7 +139,7 @@ export default async function HomePage() {
                     The Open Source <br />
                     <span className="text-accent">CA Wallpaper Editor.</span>
                   </h1>
-                  
+
                   <p className="text-xl md:text-2xl text-muted-foreground max-w-xl font-medium drop-shadow-md">
                     Create beautiful animated wallpapers for iOS and iPadOS on any desktop computer with CAPlayground.
                   </p>
@@ -165,33 +168,12 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Video Section */}
-        <section className="min-h-screen flex items-center justify-center py-16 md:py-24 bg-background relative">
-          <div className="w-full max-w-[1400px] mx-auto px-4 md:px-6 text-center">
-            <div className="max-w-3xl mx-auto mb-12 space-y-4">
-              <h2 className="font-heading text-4xl md:text-6xl font-bold">Animate Every Part.</h2>
-              <p className="text-xl text-muted-foreground">
-                Add all these animations and stuff to bring your creations to life.
-              </p>
-            </div>
-
-            <div className="max-w-3xl md:max-w-4xl mx-auto rounded-2xl border-8 border-zinc-200/50 dark:border-white/10 shadow-2xl overflow-hidden bg-black">
-              <Link href="/wallpapers?id=0000001" className="block relative group cursor-pointer">
-                <video 
-                  src="/featured.mp4" 
-                  className="w-full h-auto max-h-[750px]"
-                  autoPlay 
-                  muted 
-                  loop 
-                  playsInline 
-                />
-                <span className="absolute bottom-4 left-4 text-xs text-white/90 bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-                  Wallpaper by M4xi
-                </span>
-              </Link>
-            </div>
-          </div>
+        {/* Bento Grid Section */}
+        <section className="bg-background relative">
+          <BentoGridSection />
         </section>
+
+
 
         {/* Existing Most Downloaded Section */}
         {mostDownloaded && (
