@@ -131,9 +131,9 @@ export function ImageTab({
               src={imageSrc}
               filename={(() => {
                 const parts = filename.split('.');
-                const ext = parts.length > 1 ? parts.pop() : '';
-                const name = parts.join('.');
-                return `${name}-cropped-${Date.now()}.${ext || 'png'}`.replace(/-cropped-\d+-cropped-\d+/, `-cropped-${Date.now()}`);
+                const ext = parts.length > 1 ? parts.pop() || 'png' : 'png';
+                const name = parts.join('.').replace(/-cropped-\d+$/, '');
+                return `${name}-cropped-${Date.now()}.${ext}`;
               })()}
               onApply={async (file, dims, maintainBounds) => {
                 await replaceImageForLayer(selected.id, file);
@@ -165,9 +165,9 @@ export function ImageTab({
               src={imageSrc}
               filename={(() => {
                 const parts = filename.split('.');
-                const ext = parts.length > 1 ? parts.pop() : '';
-                const name = parts.join('.');
-                return `${name}-blur-${Date.now()}.${ext || 'png'}`.replace(/-blur-\d+-blur-\d+/, `-blur-${Date.now()}`);
+                const ext = parts.length > 1 ? parts.pop() || 'png' : 'png';
+                const name = parts.join('.').replace(/-blur-\d+$/, '');
+                return `${name}-blur-${Date.now()}.${ext}`;
               })()}
               onApply={async (file) => {
                 await replaceImageForLayer(selected.id, file);
