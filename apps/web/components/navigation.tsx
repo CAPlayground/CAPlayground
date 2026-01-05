@@ -86,11 +86,15 @@ export function Navigation() {
 
 
   return (
-    <nav className="sticky top-4 z-50 w-full">
-      <div className="w-full max-w-[1385px] mx-auto px-4 min-[1045px]:px-6">
+    <nav className={`fixed z-50 w-full transition-all duration-300 ease-in-out ${scrolled ? "top-4" : "top-0"}`}>
+      <div className={`w-full mx-auto transition-all duration-300 ease-in-out ${
+        scrolled ? "max-w-[1385px] px-4 min-[1045px]:px-6" : "max-w-full px-0"
+      }`}>
         <div
-          className={`w-full rounded-2xl bg-background/80 backdrop-blur-md transition-all ${
-            scrolled ? "border border-border shadow-md" : "border border-transparent shadow-none"
+          className={`w-full bg-background/80 backdrop-blur-md transition-all duration-300 ease-in-out ${
+            scrolled 
+              ? "rounded-2xl border border-border shadow-md" 
+              : "rounded-none border-b border-transparent shadow-none"
           }`}
         >
           <div className="grid [grid-template-columns:auto_1fr_auto] h-14 items-center px-4 min-[1045px]:px-6">

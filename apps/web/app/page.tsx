@@ -6,6 +6,9 @@ import { AspectRatio } from "@/components/ui/aspect-ratio"
 import Link from "next/link"
 import { Send, Filter as NotificationIcon, Github, Star, Download } from "lucide-react"
 import Image from "next/image"
+import { BentoGridSection } from "@/components/home/bento-grid-section"
+
+
 
 export const runtime = 'nodejs'
 
@@ -31,6 +34,7 @@ function isVideo(src: string) {
 
 export default async function HomePage() {
   let stars: number | null = null
+  let commitCount: number | null = null
   let mostDownloaded: { wallpaper: WallpaperItem; baseUrl: string; downloads: number } | null = null
   try {
     const res = await fetch(
@@ -40,6 +44,20 @@ export default async function HomePage() {
     if (res.ok) {
       const data = await res.json()
       stars = typeof data?.stargazers_count === "number" ? data.stargazers_count : null
+    }
+
+    const commitsRes = await fetch(
+      "https://api.github.com/repos/CAPlayground/CAPlayground/commits?per_page=1",
+      { next: { revalidate: 3600 }, headers: { Accept: "application/vnd.github+json" } }
+    )
+    if (commitsRes.ok) {
+      const link = commitsRes.headers.get("link")
+      if (link) {
+        const match = link.match(/page=(\d+)>; rel="last"/)
+        if (match) {
+          commitCount = parseInt(match[1])
+        }
+      }
     }
     try {
       const wallpapersRes = await fetch(
@@ -90,200 +108,73 @@ export default async function HomePage() {
     stars = null
   }
   return (
-    <div className="min-h-screen flex flex-col">
-      <div className="relative">
+    <div className="min-h-screen flex flex-col bg-background">
+      <div className="fixed top-4 left-0 right-0 z-50">
         <Navigation />
+      </div>
 
-        {/* Hero */}
-        <main className="">
-          <section className="relative overflow-hidden min-h-[calc(100vh-4rem)] flex items-start">
-            <div className="relative container mx-auto px-3 min-[600px]:px-4 lg:px-6 pt-16 pb-24 min-[600px]:pt-20 min-[600px]:pb-32">
-              <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-10 lg:gap-16 items-center animate-in fade-in-0 slide-in-from-bottom-6 duration-2000 ease-out fill-mode-forwards">
-                {/* Left: content */}
-                <div className="space-y-8 text-center lg:text-left">
-                  {/* notification */}
-                  <Link href="/projects">
-                    <div className="inline-flex items-center justify-center lg:justify-start px-6 py-2.5 rounded-full bg-accent/10 backdrop-blur-sm border border-accent/20 transition-all duration-200 hover:bg-accent/20 hover:border-accent/30 hover:shadow-sm cursor-pointer w-auto">
-                      <NotificationIcon className="h-4 w-4 text-accent mr-2" aria-hidden="true" />
-                      <span className="text-accent font-sans font-medium text-sm">Blending Modes and Filters are out!</span>
+      <main className="flex-grow">
+        {/* Hero Section */}
+        <section className="relative h-screen w-full overflow-hidden flex items-center justify-center">
+          {/* Background Images - Centered */}
+          <div className="absolute inset-0 flex items-center justify-center p-4 md:p-10 pointer-events-none select-none opacity-50 md:opacity-100 -translate-y-48 md:-translate-y-32 lg:-translate-y-16 xl:-translate-y-4">
+            <div className="relative w-full max-w-6xl aspect-[16/10]">
+              <Image
+                src="/app-light.png"
+                alt="App Light"
+                fill
+                className="object-contain dark:hidden"
+                priority
+              />
+              <Image
+                src="/app-dark.png"
+                alt="App Dark"
+                fill
+                className="object-contain hidden dark:block"
+                priority
+              />
+            </div>
+          </div>
+
+          {/* Overlay Content */}
+          <div className="absolute inset-0 z-10 flex flex-col justify-end pb-10 md:pb-16 pointer-events-none">
+            <div className="w-full max-w-[1400px] mx-auto px-4 md:px-6 h-full flex flex-col justify-end">
+              <div className="flex flex-col md:flex-row items-end justify-between gap-8 pointer-events-auto">
+                {/* Bottom Left */}
+                <div className="w-full md:max-w-4xl space-y-6 text-left">
+                  {/* Notification */}
+                  <Link href="/projects" className="inline-block">
+                    <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-accent/10 backdrop-blur-md border border-accent/20 text-accent text-sm font-medium hover:bg-accent/20 transition-colors shadow-sm">
+                      <NotificationIcon className="h-4 w-4 mr-2" />
+                      <span>Blending Modes and Filters are out!</span>
                     </div>
                   </Link>
 
-                  {/* title */}
-                  <h1 className="font-heading text-4xl min-[600px]:text-6xl lg:text-6xl font-bold text-foreground leading-tight mt-6 min-[600px]:mt-8">
-                    <span className="block">The Open Source</span>
-                    <span className="block text-accent mt-1">CA Wallpaper Editor.</span>
+                  <h1 className="font-heading text-5xl sm:text-6xl md:text-7xl font-bold leading-tight tracking-tight drop-shadow-2xl">
+                    The Open Source <br />
+                    <span className="text-accent">CA Wallpaper Editor.</span>
                   </h1>
 
-                  {/* description */}
-                  <p className="text-xl min-[600px]:text-2xl text-muted-foreground max-w-3xl leading-relaxed mx-auto lg:mx-0">
+                  <p className="text-xl md:text-2xl text-muted-foreground max-w-xl font-medium drop-shadow-md">
                     Create beautiful animated wallpapers for iOS and iPadOS on any desktop computer with CAPlayground.
                   </p>
 
-                  <div className="pt-4 flex flex-wrap items-center justify-center lg:justify-start gap-3 max-[600px]:hidden">
-                    <div className="relative flex flex-col items-center lg:items-start">
-                      <Link href="/projects">
-                        <Button
-                          size="lg"
-                          className="px-6 bg-accent hover:bg-accent/90 text-white font-semibold"
-                        >
-                          <span className="inline-flex items-center gap-2">
-                            Get Started
-                            <Send className="h-5 w-5" aria-hidden="true" />
-                          </span>
-                        </Button>
-                      </Link>
-                      <span className="absolute left-0 top-full mt-1 text-[11px] leading-none text-muted-foreground opacity-70 select-none pointer-events-none">
-                        No sign in required!
-                      </span>
-                    </div>
-
-                    <Link href="https://github.com/CAPlayground/CAPlayground" target="_blank" rel="noopener noreferrer">
-                      <Button size="lg" variant="outline" className="px-6">
-                        <span className="inline-flex items-center gap-2">
-                          <Github className="h-5 w-5" aria-hidden="true" />
-                          <span>View GitHub{stars !== null ? ` ${new Intl.NumberFormat().format(stars)}` : ""}</span>
-                          {stars !== null && <Star className="h-4 w-4 fill-current" aria-hidden="true" />}
-                        </span>
+                  <div className="pt-2">
+                    <Link href="/projects" className="block w-full md:w-auto">
+                      <Button size="lg" className="w-full md:w-auto h-14 px-8 text-lg min-w-[200px] bg-accent hover:bg-accent/90 text-white font-semibold shadow-lg shadow-accent/20">
+                        Get Started <Send className="ml-2 h-5 w-5" />
                       </Button>
                     </Link>
                   </div>
                 </div>
 
-                {/* hero video */}
-                <div className="pt-10 lg:pt-0 hidden lg:block">
-                  <Link href="/wallpapers?id=0000001" className="block">
-                    <div className="relative w-full max-w-5xl min-[600px]:max-w-none rounded-xl border-8 border-zinc-200/80 dark:border-white/30 shadow-lg overflow-hidden cursor-pointer transition-transform hover:scale-[1.02]">
-                      <video
-                        src="/featured.mp4"
-                        className="w-full h-auto select-none pointer-events-none"
-                        autoPlay
-                        muted
-                        loop
-                        playsInline
-                        aria-label="CAPlayground featured wallpaper"
-                      />
-                      <span className="absolute bottom-2 left-2 text-xs text-white/90 dark:text-white/80 bg-black/40 dark:bg-black/60 backdrop-blur-sm px-2 py-1 rounded select-none pointer-events-none">
-                        Wallpaper by M4xi
-                      </span>
-                    </div>
-                  </Link>
-                </div>
-              </div>
-
-              {/* app screenshots */}
-              <div className="pt-6 min-[600px]:pt-8">
-                <div className="max-w-7xl mx-auto rounded-xl border-8 border-zinc-200/80 dark:border-white/30 shadow-lg overflow-hidden">
-                  <Image
-                    src="/app-light.png"
-                    alt="CAPlayground app preview (light)"
-                    width={1920}
-                    height={1080}
-                    priority
-                    className="w-full h-auto select-none pointer-events-none block dark:hidden"
-                  />
-                  <Image
-                    src="/app-dark.png"
-                    alt="CAPlayground app preview (dark)"
-                    width={1920}
-                    height={1080}
-                    priority
-                    className="w-full h-auto select-none pointer-events-none hidden dark:block"
-                  />
-                </div>
-                {/* mobile buttons */}
-                <div className="mt-4 hidden max-[600px]:flex flex-col items-stretch gap-3">
-                  <Link href="/projects" className="w-full">
-                    <Button size="lg" className="w-full h-12 text-base px-6 bg-accent hover:bg-accent/90 text-white font-semibold">
-                      <span className="inline-flex items-center justify-center gap-2">
-                        Get Started
-                        <Send className="h-5 w-5" aria-hidden="true" />
-                      </span>
-                    </Button>
-                  </Link>
-                  <Link href="https://github.com/CAPlayground/CAPlayground" target="_blank" rel="noopener noreferrer" className="w-full">
-                    <Button size="lg" variant="outline" className="w-full h-12 text-base px-6">
-                      <span className="inline-flex items-center justify-center gap-2">
-                        <Github className="h-5 w-5" aria-hidden="true" />
-                        <span>View GitHub{stars !== null ? ` ${new Intl.NumberFormat().format(stars)}` : ""}</span>
-                        {stars !== null && <Star className="h-4 w-4 fill-current" aria-hidden="true" />}
-                      </span>
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </section>
-        </main>
-      </div>
-
-      {mostDownloaded && (
-        <section className="py-16 md:py-24 bg-background">
-          <div className="container mx-auto px-3 min-[600px]:px-4 lg:px-6">
-            <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-              <div>
-                <Card className="overflow-hidden border-8 border-zinc-200/80 dark:border-white/30 shadow-lg">
-                  <CardContent className="p-4">
-                    <div className="mb-3 overflow-hidden rounded-md border bg-background">
-                      <AspectRatio ratio={1} className="flex items-center justify-center">
-                        {(() => {
-                          const previewUrl = `${mostDownloaded.baseUrl}${mostDownloaded.wallpaper.preview}`
-                          return isVideo(previewUrl) ? (
-                            <video
-                              src={previewUrl}
-                              className="w-full h-full object-contain"
-                              autoPlay
-                              muted
-                              loop
-                              playsInline
-                              aria-label={`${mostDownloaded.wallpaper.name} preview`}
-                            />
-                          ) : (
-                            <img
-                              src={previewUrl}
-                              alt={`${mostDownloaded.wallpaper.name} preview`}
-                              className="w-full h-full object-contain"
-                            />
-                          )
-                        })()}
-                      </AspectRatio>
-                    </div>
-                    <h3 className="font-semibold text-lg mb-1 line-clamp-1">
-                      {mostDownloaded.wallpaper.name}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
-                      by {mostDownloaded.wallpaper.creator} (submitted on {mostDownloaded.wallpaper.from})
-                    </p>
-                    {mostDownloaded.downloads > 0 && (
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
-                        <Download className="h-3.5 w-3.5" />
-                        <span>{mostDownloaded.downloads}</span>
-                        <span>{mostDownloaded.downloads === 1 ? "Download" : "Downloads"}</span>
-                      </div>
-                    )}
-                    <p className="text-sm text-muted-foreground line-clamp-3">
-                      {mostDownloaded.wallpaper.description}
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-              <div className="space-y-4 text-center lg:text-left">
-                <h2 className="font-heading text-3xl md:text-4xl font-bold">
-                  Explore the most downloaded wallpaper
-                </h2>
-                <p className="text-muted-foreground text-lg max-w-xl mx-auto lg:mx-0">
-                  See what the community loves most, then dive into the full gallery to discover more animated
-                  wallpapers for your devices.
-                </p>
-                <div className="flex flex-wrap justify-center lg:justify-start gap-3 pt-2">
-                  <Link href={`/wallpapers?id=${mostDownloaded.wallpaper.id}`}>
-                    <Button size="lg" className="px-6 bg-accent hover:bg-accent/90 text-white font-semibold">
-                      View this wallpaper
-                    </Button>
-                  </Link>
-                  <Link href="/wallpapers">
-                    <Button size="lg" variant="outline" className="px-6">
-                      View wallpaper gallery
+                {/* Bottom Right */}
+                <div className="w-full md:w-auto flex md:justify-end">
+                  <Link href="https://github.com/CAPlayground/CAPlayground" target="_blank" rel="noopener noreferrer" className="block w-full md:w-auto">
+                    <Button size="lg" variant="outline" className="w-full md:w-auto h-14 md:h-12 px-8 text-base min-w-[200px] backdrop-blur-md bg-background/50 hover:bg-background/80 border-zinc-200 dark:border-zinc-700 shadow-lg">
+                      <Github className="mr-2 h-5 w-5" />
+                      <span>View GitHub{stars !== null ? ` ${new Intl.NumberFormat().format(stars)}` : ""}</span>
+                      {stars !== null && <Star className="ml-1 h-4 w-4 fill-current opacity-50" />}
                     </Button>
                   </Link>
                 </div>
@@ -291,7 +182,136 @@ export default async function HomePage() {
             </div>
           </div>
         </section>
-      )}
+
+        {/* Bento Grid Section */}
+        <section className="bg-background relative">
+          <BentoGridSection />
+        </section>
+        {/* Growing Section */}
+        <section className="py-24 md:py-32 bg-background overflow-hidden">
+          <div className="container mx-auto px-4 md:px-6">
+            <div className="text-center mb-20">
+              <h2 className="font-heading text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
+                CAPlayground is growing!
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-16 md:gap-8 max-w-7xl mx-auto">
+              <div className="flex flex-col items-center text-center group">
+                <div className="relative">
+                  <span className="text-7xl sm:text-8xl md:text-6xl lg:text-8xl font-black text-accent tracking-tighter transition-transform duration-500 group-hover:scale-105 block">
+                    100k+
+                  </span>
+                </div>
+                <p className="mt-4 text-xl md:text-2xl text-muted-foreground font-medium max-w-[250px]">
+                  users in the first 4 months
+                </p>
+              </div>
+
+              <div className="flex flex-col items-center text-center group">
+                <div className="relative">
+                  <span className="text-7xl sm:text-8xl md:text-6xl lg:text-8xl font-black text-accent tracking-tighter transition-transform duration-500 group-hover:scale-105 block">
+                    1.5k+
+                  </span>
+                </div>
+                <p className="mt-4 text-xl md:text-2xl text-muted-foreground font-medium max-w-[250px]">
+                  Discord server members
+                </p>
+              </div>
+
+              <div className="flex flex-col items-center text-center group">
+                <div className="relative">
+                  <span className="text-7xl sm:text-8xl md:text-6xl lg:text-8xl font-black text-accent tracking-tighter transition-transform duration-500 group-hover:scale-105 block">
+                    {commitCount !== null ? `${commitCount}` : "500+"}
+                  </span>
+                </div>
+                <p className="mt-4 text-xl md:text-2xl text-muted-foreground font-medium max-w-[250px]">
+                  GitHub Commits
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+
+
+        {/* Existing Most Downloaded Section */}
+        {mostDownloaded && (
+          <section className="py-16 md:py-24 bg-muted/30">
+            <div className="container mx-auto px-3 min-[600px]:px-4 lg:px-6">
+              <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+                <div>
+                  <Card className="overflow-hidden border-8 border-zinc-200/80 dark:border-white/30 shadow-lg">
+                    <CardContent className="p-4">
+                      <div className="mb-3 overflow-hidden rounded-md border bg-background">
+                        <AspectRatio ratio={1} className="flex items-center justify-center">
+                          {(() => {
+                            const previewUrl = `${mostDownloaded.baseUrl}${mostDownloaded.wallpaper.preview}`
+                            return isVideo(previewUrl) ? (
+                              <video
+                                src={previewUrl}
+                                className="w-full h-full object-contain"
+                                autoPlay
+                                muted
+                                loop
+                                playsInline
+                                aria-label={`${mostDownloaded.wallpaper.name} preview`}
+                              />
+                            ) : (
+                              <img
+                                src={previewUrl}
+                                alt={`${mostDownloaded.wallpaper.name} preview`}
+                                className="w-full h-full object-contain"
+                              />
+                            )
+                          })()}
+                        </AspectRatio>
+                      </div>
+                      <h3 className="font-semibold text-lg mb-1 line-clamp-1">
+                        {mostDownloaded.wallpaper.name}
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                        by {mostDownloaded.wallpaper.creator} (submitted on {mostDownloaded.wallpaper.from})
+                      </p>
+                      {mostDownloaded.downloads > 0 && (
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
+                          <Download className="h-3.5 w-3.5" />
+                          <span>{mostDownloaded.downloads}</span>
+                          <span>{mostDownloaded.downloads === 1 ? "Download" : "Downloads"}</span>
+                        </div>
+                      )}
+                      <p className="text-sm text-muted-foreground line-clamp-3">
+                        {mostDownloaded.wallpaper.description}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+                <div className="space-y-4 text-center lg:text-left">
+                  <h2 className="font-heading text-3xl md:text-4xl font-bold">
+                    Explore the most downloaded wallpaper
+                  </h2>
+                  <p className="text-muted-foreground text-lg max-w-xl mx-auto lg:mx-0">
+                    See what the community loves most, then dive into the full gallery to discover more animated
+                    wallpapers for your devices.
+                  </p>
+                  <div className="flex flex-wrap justify-center lg:justify-start gap-3 pt-2">
+                    <Link href={`/wallpapers?id=${mostDownloaded.wallpaper.id}`}>
+                      <Button size="lg" className="px-6 bg-accent hover:bg-accent/90 text-white font-semibold">
+                        View this wallpaper
+                      </Button>
+                    </Link>
+                    <Link href="/wallpapers">
+                      <Button size="lg" variant="outline" className="px-6">
+                        View wallpaper gallery
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+      </main>
 
       <Footer />
     </div>
