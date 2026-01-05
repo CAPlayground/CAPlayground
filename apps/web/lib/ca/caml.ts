@@ -140,7 +140,7 @@ export function parseStateOverrides(xml: string): CAStateOverrides {
         let homeValue = directChildByTagNS(dict, 'v_home')?.getAttribute('value') || '';
         let sleepValue = directChildByTagNS(dict, 'v_sleep')?.getAttribute('value') || '';
         const isRotation = keyPath === 'transform.rotation.z' || keyPath === 'transform.rotation.x' || keyPath === 'transform.rotation.y';
-        
+
         if (isRotation) {
           homeValue = radToDeg(Number(homeValue)).toFixed(5);
           sleepValue = radToDeg(Number(sleepValue)).toFixed(5);

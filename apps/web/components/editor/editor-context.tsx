@@ -632,7 +632,7 @@ export function EditorProvider({
       throw new Error('GIFs must be imported via Video Layer');
     }
     const safe = sanitizeFilename(filename || `pasted-${Date.now()}.png`);
-    
+
     try {
       const caFolder = (currentKey === 'floating') ? 'Floating.ca' : (currentKey === 'wallpaper') ? 'Wallpaper.ca' : 'Background.ca';
       const projName = doc?.meta.name || initialMeta.name;
@@ -730,12 +730,46 @@ export function EditorProvider({
     if (/image\/gif/i.test(file.type || '') || /\.gif$/i.test(file.name || '')) {
       throw new Error('Cannot add emitter cell with a GIF. Please use Video Layer to import GIFs.');
     }
-    const safe = sanitizeFilename(file.name) || `image-${Date.now()}.png`;
+
+    let fileToUpload = file;
+    let filename = file.name;
+
+    if (file.type === 'image/svg+xml' || /\.svg$/i.test(file.name)) {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const img = new Image();
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = reject;
+        img.src = dataUrl;
+      });
+
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0);
+        const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+        if (blob) {
+          const newName = filename.replace(/\.svg$/i, '') + '.png';
+          fileToUpload = new File([blob], newName, { type: 'image/png' });
+          filename = newName;
+        }
+      }
+    }
+
+    const safe = sanitizeFilename(filename) || `image-${Date.now()}.png`;
     try {
       const caFolder = (currentKey === 'floating') ? 'Floating.ca' : (currentKey === 'wallpaper') ? 'Wallpaper.ca' : 'Background.ca';
       const projName = doc?.meta.name || initialMeta.name;
       const folder = `${projName}.ca`;
-      await putBlobFile(projectId, `${folder}/${caFolder}/assets/${safe}`, file);
+      await putBlobFile(projectId, `${folder}/${caFolder}/assets/${safe}`, fileToUpload);
     } catch { }
 
     setDoc((prev) => {
@@ -844,14 +878,14 @@ export function EditorProvider({
     });
     // Eagerly write asset to storage
     const safe = sanitizeFilename(file.name) || `image-${Date.now()}.png`;
-    
+
     try {
       const caFolder = (currentKey === 'floating') ? 'Floating.ca' : (currentKey === 'wallpaper') ? 'Wallpaper.ca' : 'Background.ca';
       const projName = doc?.meta.name || initialMeta.name;
       const folder = `${projName}.ca`;
       await putBlobFile(projectId, `${folder}/${caFolder}/assets/${safe}`, file);
     } catch { }
-    
+
     setDoc((prev) => {
       if (!prev) return prev;
       pushHistory(prev);
