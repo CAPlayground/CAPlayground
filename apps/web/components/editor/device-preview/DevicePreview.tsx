@@ -382,7 +382,7 @@ export default function DevicePreview({
     if (!isDragging || dragStartYRef.current == null || !phoneScreenRef.current) return;
 
     const screenHeight = phoneScreenRef.current.clientHeight;
-    const delta = clientY - dragStartYRef.current;
+    const delta = (clientY - dragStartYRef.current) / scale;
 
     if (!dragDirectionRef.current) {
       if (Math.abs(delta) > 5) {
