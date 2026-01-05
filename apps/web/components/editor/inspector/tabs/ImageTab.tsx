@@ -129,7 +129,12 @@ export function ImageTab({
               open={cropOpen}
               onOpenChange={setCropOpen}
               src={imageSrc}
-              filename={filename}
+              filename={(() => {
+                const parts = filename.split('.');
+                const ext = parts.length > 1 ? parts.pop() || 'png' : 'png';
+                const name = parts.join('.').replace(/-cropped-\d+$/, '');
+                return `${name}-cropped-${Date.now()}.${ext}`;
+              })()}
               onApply={async (file, dims, maintainBounds) => {
                 await replaceImageForLayer(selected.id, file);
                 if (!maintainBounds && dims) {
@@ -158,7 +163,12 @@ export function ImageTab({
               open={blurOpen}
               onOpenChange={setBlurOpen}
               src={imageSrc}
-              filename={filename}
+              filename={(() => {
+                const parts = filename.split('.');
+                const ext = parts.length > 1 ? parts.pop() || 'png' : 'png';
+                const name = parts.join('.').replace(/-blur-\d+$/, '');
+                return `${name}-blur-${Date.now()}.${ext}`;
+              })()}
               onApply={async (file) => {
                 await replaceImageForLayer(selected.id, file);
               }}
