@@ -456,17 +456,17 @@ export function serializeLayer(
       nsDict.appendChild(layerName);
 
       const isRotation = dict.keyPath === 'transform.rotation.z' || dict.keyPath === 'transform.rotation.x' || dict.keyPath === 'transform.rotation.y';
-      
+
       let HomeValue = stateOverridesInput?.Unlock.find((d) => d.keyPath === dict.keyPath && d.targetId === dict.targetId)?.value;
       let SleepValue = stateOverridesInput?.Sleep.find((d) => d.keyPath === dict.keyPath && d.targetId === dict.targetId)?.value;
       let LockedValue = dict.value;
-      
+
       if (isRotation) {
         if (typeof HomeValue === 'number') HomeValue = degToRad(HomeValue).toFixed(5);
         if (typeof SleepValue === 'number') SleepValue = degToRad(SleepValue).toFixed(5);
         if (typeof LockedValue === 'number') LockedValue = degToRad(LockedValue).toFixed(5);
       }
-      
+
       const v_home = doc.createElementNS(CAML_NS, 'v_home');
       v_home.setAttribute('type', 'real');
       v_home.setAttribute('value', String(HomeValue));

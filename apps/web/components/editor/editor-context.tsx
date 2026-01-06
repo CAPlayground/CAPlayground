@@ -16,7 +16,7 @@ import {
   insertIntoSelected,
   getNextLayerName,
 } from "@/lib/editor/layer-utils";
-import { sanitizeFilename, dataURLToBlob, normalize, uploadFrameAssets, cleanupOrphanedAssets, collectReferencedAssets, copyAssetsBetweenViews, type CAView } from "@/lib/editor/file-utils";
+import { sanitizeFilename, dataURLToBlob, normalize, uploadFrameAssets, cleanupOrphanedAssets, collectReferencedAssets, copyAssetsBetweenViews, type CAView, convertSvgToPngIfNeeded } from "@/lib/editor/file-utils";
 import { CAEmitterCell } from "./emitter/emitter";
 import { assetCache } from "@/hooks/use-asset-url";
 
@@ -631,19 +631,31 @@ export function EditorProvider({
     if (isGif) {
       throw new Error('GIFs must be imported via Video Layer');
     }
-    const safe = sanitizeFilename(filename || `pasted-${Date.now()}.png`);
-    
+
+    let safeFilename = sanitizeFilename(filename || `pasted-${Date.now()}.png`);
+
+    // Ensure we have a File object for the converter
+    let candidateFile: File;
+    if (blob instanceof File) {
+      candidateFile = blob;
+    } else {
+      candidateFile = new File([blob], safeFilename, { type: blob.type });
+    }
+
+    const { file: fileToUpload, filename: convertedName } = await convertSvgToPngIfNeeded(candidateFile);
+    const safe = sanitizeFilename(convertedName);
+
     try {
       const caFolder = (currentKey === 'floating') ? 'Floating.ca' : (currentKey === 'wallpaper') ? 'Wallpaper.ca' : 'Background.ca';
       const projName = doc?.meta.name || initialMeta.name;
       const folder = `${projName}.ca`;
-      await putBlobFile(projectId, `${folder}/${caFolder}/assets/${safe}`, blob);
+      await putBlobFile(projectId, `${folder}/${caFolder}/assets/${safe}`, fileToUpload);
     } catch { }
     const dataURL = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result));
       reader.onerror = reject;
-      reader.readAsDataURL(blob);
+      reader.readAsDataURL(fileToUpload);
     });
 
     const { width: imgW, height: imgH } = await new Promise<{ width: number; height: number }>((resolve, reject) => {
@@ -697,12 +709,13 @@ export function EditorProvider({
       throw new Error('Cannot replace image with a GIF. Please use Video Layer to import GIFs.');
     }
     // Eagerly write asset to storage
-    const safe = sanitizeFilename(file.name) || `image-${Date.now()}.png`;
+    const { file: fileToUpload, filename } = await convertSvgToPngIfNeeded(file);
+    const safe = sanitizeFilename(filename) || `image-${Date.now()}.png`;
     try {
       const caFolder = (currentKey === 'floating') ? 'Floating.ca' : (currentKey === 'wallpaper') ? 'Wallpaper.ca' : 'Background.ca';
       const projName = doc?.meta.name || initialMeta.name;
       const folder = `${projName}.ca`;
-      await putBlobFile(projectId, `${folder}/${caFolder}/assets/${safe}`, file);
+      await putBlobFile(projectId, `${folder}/${caFolder}/assets/${safe}`, fileToUpload);
     } catch { }
     assetCache.set(layerId, '');
 
@@ -730,12 +743,15 @@ export function EditorProvider({
     if (/image\/gif/i.test(file.type || '') || /\.gif$/i.test(file.name || '')) {
       throw new Error('Cannot add emitter cell with a GIF. Please use Video Layer to import GIFs.');
     }
-    const safe = sanitizeFilename(file.name) || `image-${Date.now()}.png`;
+
+    const { file: fileToUpload, filename } = await convertSvgToPngIfNeeded(file);
+    const safe = sanitizeFilename(filename) || `image-${Date.now()}.png`;
+
     try {
       const caFolder = (currentKey === 'floating') ? 'Floating.ca' : (currentKey === 'wallpaper') ? 'Wallpaper.ca' : 'Background.ca';
       const projName = doc?.meta.name || initialMeta.name;
       const folder = `${projName}.ca`;
-      await putBlobFile(projectId, `${folder}/${caFolder}/assets/${safe}`, file);
+      await putBlobFile(projectId, `${folder}/${caFolder}/assets/${safe}`, fileToUpload);
     } catch { }
 
     setDoc((prev) => {
@@ -829,11 +845,14 @@ export function EditorProvider({
     if (/image\/gif/i.test(file.type || '') || /\.gif$/i.test(file.name || '')) {
       throw new Error('GIFs must be imported via Video Layer');
     }
+
+    const { file: fileToUpload, filename } = await convertSvgToPngIfNeeded(file);
+
     const dataURL = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result));
       reader.onerror = reject;
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(fileToUpload);
     });
 
     const { width: imgW, height: imgH } = await new Promise<{ width: number; height: number }>((resolve, reject) => {
@@ -843,15 +862,15 @@ export function EditorProvider({
       img.src = dataURL;
     });
     // Eagerly write asset to storage
-    const safe = sanitizeFilename(file.name) || `image-${Date.now()}.png`;
-    
+    const safe = sanitizeFilename(filename) || `image-${Date.now()}.png`;
+
     try {
       const caFolder = (currentKey === 'floating') ? 'Floating.ca' : (currentKey === 'wallpaper') ? 'Wallpaper.ca' : 'Background.ca';
       const projName = doc?.meta.name || initialMeta.name;
       const folder = `${projName}.ca`;
-      await putBlobFile(projectId, `${folder}/${caFolder}/assets/${safe}`, file);
+      await putBlobFile(projectId, `${folder}/${caFolder}/assets/${safe}`, fileToUpload);
     } catch { }
-    
+
     setDoc((prev) => {
       if (!prev) return prev;
       pushHistory(prev);

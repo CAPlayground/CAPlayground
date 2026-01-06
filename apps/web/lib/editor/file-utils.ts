@@ -32,7 +32,7 @@ export async function dataURLToBlob(dataURL: string): Promise<Blob> {
 }
 
 export const normalize = (s: string) => {
-  try { s = decodeURIComponent(s); } catch {}
+  try { s = decodeURIComponent(s); } catch { }
   return (s || '').trim().toLowerCase();
 };
 
@@ -175,4 +175,41 @@ export async function copyAssetsBetweenViews(
   } catch (error) {
     console.error('Error copying assets between views', error);
   }
+}
+
+export async function convertSvgToPngIfNeeded(file: File): Promise<{ file: File; filename: string }> {
+  let fileToUpload = file;
+  let filename = file.name;
+
+  if (file.type === 'image/svg+xml' || /\.svg$/i.test(file.name)) {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    const img = new Image();
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(img, 0, 0);
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+      if (blob) {
+        const newName = filename.replace(/\.svg$/i, '') + '.png';
+        fileToUpload = new File([blob], newName, { type: 'image/png' });
+        filename = newName;
+      }
+    }
+  }
+
+  return { file: fileToUpload, filename };
 }
