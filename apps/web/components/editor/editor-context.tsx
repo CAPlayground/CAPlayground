@@ -632,7 +632,6 @@ export function EditorProvider({
       throw new Error('GIFs must be imported via Video Layer');
     }
 
-    let fileToUpload: Blob = blob;
     let safeFilename = sanitizeFilename(filename || `pasted-${Date.now()}.png`);
 
     // Ensure we have a File object for the converter
@@ -640,14 +639,11 @@ export function EditorProvider({
     if (blob instanceof File) {
       candidateFile = blob;
     } else {
-      candidateFile = new File([blob], filename || "image.png", { type: blob.type });
+      candidateFile = new File([blob], safeFilename, { type: blob.type });
     }
 
-    const { file: convertedFile, filename: convertedName } = await convertSvgToPngIfNeeded(candidateFile);
-    fileToUpload = convertedFile;
-    safeFilename = sanitizeFilename(convertedName);
-
-    const safe = safeFilename;
+    const { file: fileToUpload, filename: convertedName } = await convertSvgToPngIfNeeded(candidateFile);
+    const safe = sanitizeFilename(convertedName);
 
     try {
       const caFolder = (currentKey === 'floating') ? 'Floating.ca' : (currentKey === 'wallpaper') ? 'Wallpaper.ca' : 'Background.ca';
