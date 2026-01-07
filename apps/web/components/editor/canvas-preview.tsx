@@ -288,6 +288,7 @@ export function CanvasPreview() {
                   useGyroControls={useGyroControls}
                   hiddenLayerIds={hiddenLayerIds}
                   moveableRef={moveableRef}
+                  disableHitTesting
                 />
               )}
             </div>
