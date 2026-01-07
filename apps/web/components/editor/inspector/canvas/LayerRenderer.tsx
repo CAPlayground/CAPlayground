@@ -26,7 +26,7 @@ interface LayerRendererProps {
   gyroX: number;
   gyroY: number;
   useGyroControls: boolean;
-  moveableRef?: React.RefObject<Moveable | null>;
+  moveableRef: React.RefObject<Moveable | null>;
   delayMs?: number;
 }
 
@@ -257,6 +257,7 @@ export function LayerRenderer({
             useGyroControls={useGyroControls}
             transformOriginY={transformOriginY}
             anchor={anchor}
+            moveableRef={moveableRef}
           />
         )}
       </div>
