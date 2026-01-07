@@ -396,7 +396,7 @@ export function CanvasPreview() {
         />
       )}
       {/* Preview toggles (bottom-right) */}
-      <div className="absolute flex flex-col bottom-2 right-2 z-10 gap-2 bg-white/80 dark:bg-gray-900/70 border border-gray-200 dark:border-gray-700 rounded-md px-1 py-1 shadow-sm">
+      <div className="absolute flex flex-col left-2 top-2 z-10 gap-2 bg-white/80 dark:bg-gray-900/70 border border-gray-200 dark:border-gray-700 rounded-md px-1 py-1 shadow-sm">
         {currentKey === 'wallpaper' && (
           <Tooltip>
             <TooltipTrigger asChild>
