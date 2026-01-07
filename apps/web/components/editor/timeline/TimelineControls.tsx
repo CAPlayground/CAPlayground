@@ -1,5 +1,5 @@
 import { useState } from "react";
-import TimelineRuler from "./TimelineRuler";
+import Timeline from "./Timeline";
 import { useTimeline } from "@/context/TimelineContext";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -12,7 +12,7 @@ export default function TimelineControls() {
   return (
     <>
       {showTimeline && (
-        <TimelineRuler />
+        <Timeline />
       )}
       <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-white/80 dark:bg-gray-900/70 border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 shadow-sm">
         <Button
