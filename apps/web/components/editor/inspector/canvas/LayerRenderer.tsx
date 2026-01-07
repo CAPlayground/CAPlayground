@@ -93,11 +93,13 @@ export function LayerRenderer({
   const height = animationOverrides['bounds.size.height'] ?? layer.size.h;
   const opacity = animationOverrides['opacity'] ?? layer.opacity;
 
+  const isSelected = layer.id === current?.selectedId;
   useEffect(() => {
-    if (layer.id === current?.selectedId) {
+    if (!isSelected) return;
+    requestAnimationFrame(() => {
       moveableRef?.current?.updateRect();
-    }
-  }, [layer]);
+    });
+  }, [isSelected, x, y, z, rotation, rotationX, rotationY, width, height]);
 
   const anchor = getAnchor(layer);
   const transformOriginY = useYUp ? (1 - anchor.y) * 100 : anchor.y * 100;
