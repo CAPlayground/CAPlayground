@@ -205,6 +205,7 @@ export function EditorProvider({
                 layers = rootLayer?.name === 'Root Layer' && Array.isArray(rootLayer.children) ? rootLayer.children : [rootLayer];
                 states = parseStates(main.data);
                 stateOverrides = parseStateOverrides(main.data) as any;
+                meta.geometryFlipped = rootLayer?.geometryFlipped ?? 0;
 
                 if (caType === 'wallpaper') {
                   wallpaperParallaxGroups = parseWallpaperParallaxGroups(main.data);

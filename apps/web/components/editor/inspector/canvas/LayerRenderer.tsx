@@ -103,7 +103,6 @@ export function LayerRenderer({
 
   const anchor = getAnchor(layer);
   const transformOriginY = useYUp ? (1 - anchor.y) * 100 : anchor.y * 100;
-  const isWrappedContent = (layer as any).__wrappedContent === true || disableHitTesting === true;
 
   const renderChildren = (layer: AnyLayer, nextUseYUp: boolean) => {
     return layer.children?.map((c) => {
@@ -119,6 +118,7 @@ export function LayerRenderer({
           useGyroControls={useGyroControls}
           moveableRef={moveableRef}
           delayMs={delayMs}
+          disableHitTesting={disableHitTesting}
         />
       );
     });
@@ -153,7 +153,7 @@ export function LayerRenderer({
     display: (layer.visible === false || hiddenLayerIds.has(layer.id)) ? "none" : undefined,
     opacity: typeof opacity === 'number' ? Math.max(0, Math.min(1, opacity)) : undefined,
     cursor: "move",
-    pointerEvents: isWrappedContent ? 'none' : undefined,
+    pointerEvents: disableHitTesting ? 'none' : undefined,
     ...borderStyle,
     ...(typeof layer.cornerRadius === 'number' ? { borderRadius: layer.cornerRadius } : {}),
     overflow: layer.masksToBounds ? 'hidden' : 'visible',
@@ -187,8 +187,8 @@ export function LayerRenderer({
     common.filter = filterString.trim();
   }
 
-  const nextUseYUp = (typeof layer.geometryFlipped === 'number')
-    ? ((layer.geometryFlipped as 0 | 1) === 0)
+  const nextUseYUp = (typeof layer.geometryFlipped === 'number' && layer.geometryFlipped === 1)
+    ? !useYUp
     : useYUp;
 
   let style: React.CSSProperties = {
@@ -219,7 +219,7 @@ export function LayerRenderer({
   return (
     <LayerContextMenu layer={layer} siblings={siblings}>
       <div
-        id={layer.id}
+        id={`${layer.id}${disableHitTesting ? '-disabled' : ''}`}
         style={style}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -260,6 +260,7 @@ export function LayerRenderer({
             transformOriginY={transformOriginY}
             anchor={anchor}
             moveableRef={moveableRef}
+            disableHitTesting={disableHitTesting}
           />
         )}
       </div>

@@ -13,6 +13,7 @@ export default function ReplicatorRenderer({
   hiddenLayerIds,
   anchor,
   moveableRef,
+  disableHitTesting,
 }: {
   layer: ReplicatorLayer;
   gyroX: number;
@@ -23,6 +24,7 @@ export default function ReplicatorRenderer({
   hiddenLayerIds: Set<string>;
   anchor: { x: number; y: number };
   moveableRef: React.RefObject<Moveable | null>;
+  disableHitTesting: boolean;
 }) {
   const { currentTime } = useTimeline();
   const replicator = layer as ReplicatorLayer;
@@ -62,7 +64,7 @@ export default function ReplicatorRenderer({
                 layer={{ ...c, id: `${c.id}${i > 0 ? `-${i}` : ''}` }}
                 useYUp={nextUseYUp}
                 siblings={layer.children || []}
-                disableHitTesting={i > 0}
+                disableHitTesting={i > 0 || disableHitTesting}
                 hiddenLayerIds={hiddenLayerIds}
                 gyroX={gyroX}
                 gyroY={gyroY}

@@ -271,7 +271,7 @@ function parseLayerBase(el: Element): LayerBase {
     position: { x: position[0] ?? 0, y: position[1] ?? 0 },
     size: { w: bounds[2] ?? 0, h: bounds[3] ?? 0 },
     zPosition,
-    opacity: parseNumericAttr(el, 'opacity') || 1,
+    opacity: parseNumericAttr(el, 'opacity') ?? 1,
     cornerRadius,
     rotation: radToDeg(rotationZ || 0),
     rotationX: radToDeg(rotationX || 0),
@@ -323,7 +323,7 @@ function parseLayerBase(el: Element): LayerBase {
       }
       if (filterType === "CISepiaTone") {
         const inputIntensity = caFilter.getElementsByTagNameNS(CAML_NS, 'inputIntensity')[0];
-        value = parseNumericAttr(inputIntensity, 'value') || 1;
+        value = parseNumericAttr(inputIntensity, 'value') ?? 1;
       }
       parsedFilters.push({
         name: filterName || 'Filter',
