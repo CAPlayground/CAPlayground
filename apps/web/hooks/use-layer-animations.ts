@@ -12,8 +12,10 @@ function interpolateKeyframe(
   durationMs: number,
   speed: number,
   delayMs: number,
-  currentTime: number
-): KeyframeValue {
+  currentTime: number,
+  infinite: boolean,
+  repeatDurationMs: number | undefined
+): KeyframeValue | null {
   if (!keyframes || keyframes.length < 2) {
     return keyframes[0] ?? 0;
   }
@@ -35,7 +37,21 @@ function interpolateKeyframe(
   const totalMs = segDur.reduce((a, b) => a + b, 0);
   const effectiveSpeed = Number.isFinite(speed) && speed > 0 ? speed : 1;
   const tGlobal = (currentTime - delayMs) * effectiveSpeed;
-  const adjustedTime = tGlobal % totalMs;
+  
+  let adjustedTime: number;
+  if (infinite) {
+    adjustedTime = tGlobal % totalMs;
+  } else if (repeatDurationMs !== undefined && repeatDurationMs > 0) {
+    if (tGlobal >= repeatDurationMs) {
+      return null;
+    }
+    adjustedTime = tGlobal % totalMs;
+  } else {
+    if (tGlobal >= totalMs) {
+      return null;
+    }
+    adjustedTime = tGlobal;
+  }
 
   let t = adjustedTime;
   let segIndex = 0;
@@ -92,8 +108,14 @@ export default function useLayerAnimations(
         (anim.durationSeconds ?? 0) * 1000,
         anim.speed ?? 1,
         delayMs,
-        currentTime
+        currentTime,
+        anim.infinite === 1,
+        anim.repeatDurationSeconds !== undefined ? anim.repeatDurationSeconds * 1000 : undefined
       );
+
+      if (animation === null) {
+        return;
+      }
 
       if (anim.keyPath === 'position') {
         overrides['position.x'] = (animation as Vec2).x;
