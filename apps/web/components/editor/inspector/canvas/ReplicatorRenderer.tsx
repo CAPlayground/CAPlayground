@@ -1,6 +1,7 @@
 import { ReplicatorLayer } from "@/lib/ca/types";
 import { LayerRenderer } from "./LayerRenderer";
 import { useTimeline } from "@/context/TimelineContext";
+import Moveable from "react-moveable";
 
 export default function ReplicatorRenderer({
   layer,
@@ -11,6 +12,7 @@ export default function ReplicatorRenderer({
   nextUseYUp,
   hiddenLayerIds,
   anchor,
+  moveableRef,
 }: {
   layer: ReplicatorLayer;
   gyroX: number;
@@ -20,6 +22,7 @@ export default function ReplicatorRenderer({
   nextUseYUp: boolean;
   hiddenLayerIds: Set<string>;
   anchor: { x: number; y: number };
+  moveableRef: React.RefObject<Moveable | null>;
 }) {
   const { currentTime } = useTimeline();
   const replicator = layer as ReplicatorLayer;
@@ -56,7 +59,7 @@ export default function ReplicatorRenderer({
             return (
               <LayerRenderer
                 key={c.id + `instance-${i}`}
-                layer={c}
+                layer={{ ...c, id: `${c.id}${i > 0 ? `-${i}` : ''}` }}
                 useYUp={nextUseYUp}
                 siblings={layer.children || []}
                 disableHitTesting={i > 0}
@@ -65,6 +68,7 @@ export default function ReplicatorRenderer({
                 gyroY={gyroY}
                 useGyroControls={useGyroControls}
                 delayMs={instanceDelay * 1000 * i}
+                moveableRef={moveableRef}
               />
             );
           })}
