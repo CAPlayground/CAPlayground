@@ -72,8 +72,8 @@ export default function Timeline() {
 
   const { tickEvery, labelEvery } = getTickIntervals(viewSeconds);
 
-  const zoomIn = () => setViewSeconds((s) => clamp(s * 2, 1, duration));
-  const zoomOut = () => setViewSeconds((s) => clamp(s / 2, 1, duration));
+  const zoomIn = () => setViewSeconds((s) => clamp(s / 2, 1, duration));
+  const zoomOut = () => setViewSeconds((s) => clamp(s * 2, 1, duration));
 
   const onTimeChange = (t: number) => {
     setTime(t * 1000);
@@ -160,7 +160,7 @@ export default function Timeline() {
             variant="outline"
             size="icon"
             aria-label="Zoom out"
-            disabled={viewSeconds === 1}
+            disabled={viewSeconds === 600}
           >
             <Minus className="h-4 w-4" />
           </Button>
@@ -171,7 +171,7 @@ export default function Timeline() {
             variant="outline"
             size="icon"
             aria-label="Zoom in"
-            disabled={viewSeconds === 600}
+            disabled={viewSeconds === 1}
           >
             <Plus className="h-4 w-4" />
           </Button>

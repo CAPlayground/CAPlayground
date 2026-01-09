@@ -31,18 +31,18 @@ export function TimelineLayerRow({
   trackWidth,
 }: TimelineLayerRowProps) {
   const { updateLayer } = useEditor();
-  const animations = (layer.animations ?? []).filter((a) => a.enabled !== false);
+  const animations = layer.animations ?? [];
   const children = layer.children ?? [];
 
-  const hasAnimations = animations.length > 0;
+  const hasEnabledAnimations = animations.some((a) => a.enabled !== false);
   const hasChildrenWithAnimations = children.some((child) => hasLayerAnimations(child));
 
-  if (!hasAnimations && !hasChildrenWithAnimations) return null;
+  if (!hasEnabledAnimations && !hasChildrenWithAnimations) return null;
 
   const indentPx = depth * 8;
   const isSelected = layer.id === selectedId;
   const isCollapsed = collapsedIds.has(layer.id);
-  const isCollapsible = hasAnimations || hasChildrenWithAnimations;
+  const isCollapsible = hasEnabledAnimations || hasChildrenWithAnimations;
 
   return (
     <>
@@ -53,8 +53,8 @@ export function TimelineLayerRow({
         >
           <div
             className={`h-full flex items-center gap-0.5 border-r border-b border-gray-200 dark:border-gray-700 cursor-pointer transition-colors ${isSelected
-                ? 'bg-accent/20 dark:bg-accent/30 border-l-2 border-l-accent'
-                : 'hover:bg-gray-200 dark:hover:bg-gray-700'
+              ? 'bg-accent/20 dark:bg-accent/30 border-l-2 border-l-accent'
+              : 'hover:bg-gray-200 dark:hover:bg-gray-700'
               }`}
             style={{ paddingLeft: `${2 + indentPx}px` }}
             onClick={() => !isSelected && onSelect(layer.id)}
@@ -89,21 +89,24 @@ export function TimelineLayerRow({
       </div>
 
       {!isCollapsed &&
-        animations.map((animation, idx) => (
-          <AnimationRow
-            key={`${layer.id}-${animation.keyPath}-${idx}`}
-            layer={layer}
-            animation={animation}
-            animationIndex={idx}
-            depth={depth}
-            isSelected={isSelected}
-            labelWidth={labelWidth}
-            trackWidth={trackWidth}
-            pxPerSecond={pxPerSecond}
-            timelineDuration={timelineDuration}
-            updateLayer={updateLayer}
-          />
-        ))}
+        animations.map(
+          (animation, idx) =>
+            animation.enabled !== false && (
+              <AnimationRow
+                key={`${layer.id}-${animation.keyPath}-${idx}`}
+                layer={layer}
+                animation={animation}
+                animationIndex={idx}
+                depth={depth}
+                isSelected={isSelected}
+                labelWidth={labelWidth}
+                trackWidth={trackWidth}
+                pxPerSecond={pxPerSecond}
+                timelineDuration={timelineDuration}
+                updateLayer={updateLayer}
+              />
+            )
+        )}
 
       {!isCollapsed &&
         children.map((child) => (
