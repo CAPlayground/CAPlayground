@@ -177,6 +177,42 @@ button{
   display: none;
 }
 
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(156 163 175 / 0.5) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgb(156 163 175 / 0.5);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgb(156 163 175 / 0.8);
+}
+
+.dark .scrollbar-thin {
+  scrollbar-color: rgb(75 85 99 / 0.6) transparent;
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgb(75 85 99 / 0.6);
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgb(75 85 99 / 0.9);
+}
+
 .wordmark-group path {
   transition: stroke 90ms ease-out, filter 90ms ease-out;
 }

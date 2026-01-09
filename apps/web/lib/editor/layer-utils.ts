@@ -211,3 +211,9 @@ export function interpolateLayers(baseLayers: AnyLayer[], targetLayers: AnyLayer
   };
   return interpolate(baseLayers, targetLayers, progress);
 }
+
+export const hasLayerAnimations = (layer: AnyLayer): boolean => {
+  const animations = (layer.animations ?? []).filter((a) => a.enabled !== false);
+  if (animations.length > 0) return true;
+  return (layer.children ?? []).some((child) => hasLayerAnimations(child));
+};

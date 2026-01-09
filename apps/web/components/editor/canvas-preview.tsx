@@ -3,7 +3,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Minus, Plus, Crosshair, Square, Crop, Rotate3D, TabletSmartphone } from "lucide-react";
+import { Minus, Plus, Crosshair, Square, Crop, Rotate3D, TabletSmartphone, ChevronDown, ChevronUp } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useCanvasSize } from "@/hooks/use-canvas-size";
@@ -23,6 +23,7 @@ import { MoveableOverlay } from "./inspector/canvas/MoveableOverlay";
 import Moveable from "react-moveable";
 import { useTimeline } from "@/context/TimelineContext";
 import DevicePreview from "./device-preview/DevicePreview";
+import TimelineControls from "./timeline/TimelineControls";
 
 export function CanvasPreview() {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -55,12 +56,10 @@ export function CanvasPreview() {
 
   useClipboard();
   const {
-    currentTime,
     isPlaying,
     play,
     pause,
     stop,
-    setTime,
   } = useTimeline();
 
   useEffect(() => {
@@ -398,7 +397,7 @@ export function CanvasPreview() {
         />
       )}
       {/* Preview toggles (bottom-right) */}
-      <div className="absolute flex flex-col bottom-2 right-2 z-10 gap-2 bg-white/80 dark:bg-gray-900/70 border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 shadow-sm">
+      <div className="absolute flex flex-col left-2 top-2 z-10 gap-2 bg-white/80 dark:bg-gray-900/70 border border-gray-200 dark:border-gray-700 rounded-md px-1 py-1 shadow-sm">
         {currentKey === 'wallpaper' && (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -541,25 +540,7 @@ export function CanvasPreview() {
 
       {/* Playback controls - visible only if any animation is enabled */}
       {hasAnyEnabledAnimation && !showPreview && (
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-white/80 dark:bg-gray-900/70 border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 shadow-sm">
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={() => isPlaying ? pause() : play()}
-          >
-            {isPlaying ? 'Pause' : 'Play'}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => setTime(0)}
-          >
-            Restart
-          </Button>
-          <div className="text-xs tabular-nums px-2">{`${(currentTime / 1000).toFixed(2)}s`}</div>
-        </div>
+        <TimelineControls />
       )}
     </Card>
   );

@@ -43,7 +43,8 @@ export function AnimationsTab({
             enabled: true,
             values: [],
             durationSeconds: 1,
-            speed: 1,            
+            speed: 1,
+            infinite: 1,
           }]
       });
   };
