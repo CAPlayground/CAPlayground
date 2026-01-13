@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useEditor } from "./editor-context";
 import { Progress } from "@/components/ui/progress";
+import { Slider } from "@/components/ui/slider";
 import { VideoLayer } from "@/lib/ca/types";
 
 interface VideoLayerDialogProps {
@@ -58,8 +59,9 @@ export default function VideoLayerDialog({
   const [height, setHeight] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
   const [resizeVideo, setResizeVideo] = useState<boolean>(true);
+  const [quality, setQuality] = useState<number>(0.85);
   const isGif = /image\/gif/i.test(videoFile?.type || '') || /\.gif$/i.test(videoFile?.name || '');
-  const frameExtension = isGif ? '.png' : '.jpg';
+  const frameExtension = '.webp';
   const rawName = videoFile?.name && typeof videoFile.name === 'string' ? videoFile.name : 'Video Layer';
   const nameSansExt = rawName.replace(/\.[a-z0-9]+$/i, '');
   const safeName = sanitizeFilename(nameSansExt) || 'Video_Layer';
@@ -83,6 +85,7 @@ export default function VideoLayerDialog({
     setHeight(0);
     setDuration(0);
     setResizeVideo(true);
+    setQuality(0.85);
     if (videoInputRef.current) {
       videoInputRef.current.value = '';
     }
@@ -107,8 +110,10 @@ export default function VideoLayerDialog({
   useEffect(() => {
     if (isGif) {
       setFps("15");
+      setQuality(1);
     } else {
       setFps("30");
+      setQuality(0.85);
     }
   }, [isGif])
 
@@ -152,7 +157,7 @@ export default function VideoLayerDialog({
     };
 
     extractFrames();
-  }, [videoFile, fps, resizeVideo]);
+  }, [videoFile, fps, resizeVideo, quality]);
 
   const getGifFramesAssets = async (file: File, signal: AbortSignal): Promise<Array<{ dataURL: string; filename: string }>> => {
     const newFrameAssets: Array<{ dataURL: string; filename: string }> = [];
@@ -195,7 +200,7 @@ export default function VideoLayerDialog({
         const img: any = res.image;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const dataURL = canvas.toDataURL('image/png');
+        const dataURL = canvas.toDataURL('image/webp', quality);
         const filename = `${framePrefix}${i}${frameExtension}`;
         newFrameAssets.push({ dataURL, filename });
         try { img.close?.(); } catch { }
@@ -277,8 +282,9 @@ export default function VideoLayerDialog({
       await new Promise<void>((resolve) => {
         video.onseeked = () => {
           requestAnimationFrame(() => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const dataURL = canvas.toDataURL('image/jpeg', 0.7);
+            const dataURL = canvas.toDataURL('image/webp', quality);
             const filename = `${framePrefix}${i}${frameExtension}`;
             newFrameAssets.push({ dataURL, filename });
             resolve();
@@ -351,6 +357,22 @@ export default function VideoLayerDialog({
             <Label htmlFor="resize-video">Resize to fit canvas</Label>
           </div>
         }
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label>Frame Quality</Label>
+            <span className="text-sm text-muted-foreground">{Math.round(quality * 100)}%</span>
+          </div>
+          <Slider
+            value={[quality * 100]}
+            min={10}
+            max={100}
+            step={5}
+            onValueChange={([val]) => setQuality(val / 100)}
+          />
+          <p className="text-xs text-muted-foreground">
+            Lower quality = smaller file size.
+          </p>
+        </div>
         <Label>Dimensions: {width}x{height}px</Label>
         <Label>Duration: {duration.toFixed(2)}s </Label>
         <div className="space-y-2">
