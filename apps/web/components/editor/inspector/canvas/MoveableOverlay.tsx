@@ -106,6 +106,7 @@ export function MoveableOverlay({
   const isDisabled = selectedLayer.animations?.some(a => a.enabled) && isPlaying;
   return (
     <Moveable
+      className="!z-10"
       ables={[DimensionViewable]}
       ref={moveableRef}
       target={targetRef}

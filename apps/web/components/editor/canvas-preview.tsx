@@ -191,6 +191,10 @@ export function CanvasPreview() {
   const selectedLayer = !showPreview ? findById(renderedLayers, current?.selectedId) : null;
   const moveableRef = useRef<Moveable>(null);
 
+  useEffect(() => {
+    moveableRef.current?.updateRect();
+  }, [scale, offsetX, offsetY]);
+
   return (
     <Card
       ref={ref}
@@ -248,6 +252,18 @@ export function CanvasPreview() {
       }}
       onKeyDown={() => { }}
     >
+      <MoveableOverlay
+        moveableRef={moveableRef}
+        selectedLayer={selectedLayer}
+        renderedLayers={renderedLayers}
+        showAnchorPoint={showAnchorPoint}
+        snapThreshold={SNAP_THRESHOLD}
+        snapEdgesEnabled={snapEdgesEnabled}
+        snapRotationEnabled={snapRotationEnabled}
+        snapLayersEnabled={snapLayersEnabled}
+        snapResizeEnabled={snapResizeEnabled}
+        activeState={current?.activeState}
+      />
       <div
         className="absolute inset-0 dark:hidden cursor-[inherit]"
         style={{ background: "repeating-conic-gradient(#f8fafc 0% 25%, #e5e7eb 0% 50%) 50% / 20px 20px" }}
@@ -372,18 +388,6 @@ export function CanvasPreview() {
               }}
             />
           )}
-          <MoveableOverlay
-            moveableRef={moveableRef}
-            selectedLayer={selectedLayer}
-            renderedLayers={renderedLayers}
-            showAnchorPoint={showAnchorPoint}
-            snapThreshold={SNAP_THRESHOLD}
-            snapEdgesEnabled={snapEdgesEnabled}
-            snapRotationEnabled={snapRotationEnabled}
-            snapLayersEnabled={snapLayersEnabled}
-            snapResizeEnabled={snapResizeEnabled}
-            activeState={current?.activeState}
-          />
         </div>
       </DevicePreview>
 

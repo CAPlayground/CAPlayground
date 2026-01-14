@@ -11,6 +11,7 @@ import { Fragment, useState } from "react";
 import type { InspectorTabProps } from "../types";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AlignHorizontalJustifyStart, AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd, AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, Plus, Minus } from "lucide-react";
+import { RotationKnob } from "@/components/ui/rotation-knob";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useEditor } from "../../editor-context";
 import { getParentAbsContextFor } from "../../canvas-preview/utils/coordinates";
@@ -404,79 +405,28 @@ export function GeometryTab({
         </div>
         <div className="space-y-1 col-span-2">
           <Label>Rotation (deg)</Label>
-          <div className="grid grid-cols-3 gap-2">
-            <div className="space-y-1">
-              <Label htmlFor="rotation-x" className="text-xs">X</Label>
-              <Input
-                id="rotation-x"
-                type="number"
-                step="1"
-                value={getBuf('rotationX', fmt0((selected as any).rotationX))}
-                disabled={disableRotX}
-                onChange={(e) => {
-                  setBuf('rotationX', e.target.value);
-                  const v = e.target.value.trim();
-                  if (v === "") return;
-                  const num = Math.round(Number(v));
-                  if (Number.isFinite(num)) updateLayerTransient(selected.id, { rotationX: num as any } as any);
-                }}
-                onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
-                onBlur={(e) => {
-                  const v = e.target.value.trim();
-                  const num = v === "" ? 0 : Math.round(Number(v));
-                  updateLayer(selected.id, { rotationX: num as any } as any);
-                  clearBuf('rotationX');
-                }}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="rotation-y" className="text-xs">Y</Label>
-              <Input
-                id="rotation-y"
-                type="number"
-                step="1"
-                value={getBuf('rotationY', fmt0((selected as any).rotationY))}
-                disabled={disableRotY}
-                onChange={(e) => {
-                  setBuf('rotationY', e.target.value);
-                  const v = e.target.value.trim();
-                  if (v === "") return;
-                  const num = Math.round(Number(v));
-                  if (Number.isFinite(num)) updateLayerTransient(selected.id, { rotationY: num as any } as any);
-                }}
-                onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
-                onBlur={(e) => {
-                  const v = e.target.value.trim();
-                  const num = v === "" ? 0 : Math.round(Number(v));
-                  updateLayer(selected.id, { rotationY: num as any } as any);
-                  clearBuf('rotationY');
-                }}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="rotation-z" className="text-xs">Z</Label>
-              <Input
-                id="rotation-z"
-                type="number"
-                step="1"
-                value={getBuf('rotation', fmt0(selected.rotation))}
-                disabled={disableRotZ}
-                onChange={(e) => {
-                  setBuf('rotation', e.target.value);
-                  const v = e.target.value.trim();
-                  if (v === "") return;
-                  const num = Math.round(Number(v));
-                  if (Number.isFinite(num)) updateLayerTransient(selected.id, { rotation: num as any });
-                }}
-                onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
-                onBlur={(e) => {
-                  const v = e.target.value.trim();
-                  const num = v === "" ? 0 : Math.round(Number(v));
-                  updateLayer(selected.id, { rotation: num as any });
-                  clearBuf('rotation');
-                }}
-              />
-            </div>
+          <div className="flex justify-around items-center py-2">
+            <RotationKnob
+              label="X"
+              value={Number(fmt0((selected as any).rotationX)) || 0}
+              disabled={disableRotX}
+              onChange={(v) => updateLayerTransient(selected.id, { rotationX: v as any } as any)}
+              onChangeEnd={(v) => updateLayer(selected.id, { rotationX: v as any } as any)}
+            />
+            <RotationKnob
+              label="Y"
+              value={Number(fmt0((selected as any).rotationY)) || 0}
+              disabled={disableRotY}
+              onChange={(v) => updateLayerTransient(selected.id, { rotationY: v as any } as any)}
+              onChangeEnd={(v) => updateLayer(selected.id, { rotationY: v as any } as any)}
+            />
+            <RotationKnob
+              label="Z"
+              value={Number(fmt0(selected.rotation)) || 0}
+              disabled={disableRotZ}
+              onChange={(v) => updateLayerTransient(selected.id, { rotation: v as any })}
+              onChangeEnd={(v) => updateLayer(selected.id, { rotation: v as any })}
+            />
           </div>
         </div>
         {selected.type !== 'emitter' && (
