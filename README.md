@@ -66,9 +66,9 @@ Read [CONTRIBUTING.md](.github/CONTRIBUTING.md)
 
 ## License
 
-[MIT License](LICENSE)
+[Creative Commons License](LICENSE)
 
-**Note:** The MIT License applies to the source code. Use of the hosted service at caplayground.vercel.app is subject to our [Terms of Service](https://caplayground.vercel.app/tos), which includes attribution requirements for shared content.
+**Note:** The Creative Commons License applies to the source code. Use of the hosted service at caplayground.vercel.app is subject to our [Terms of Service](https://caplayground.vercel.app/tos), which includes attribution requirements for shared content.
 
 ## Star History
 
