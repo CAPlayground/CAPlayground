@@ -61,4 +61,4 @@ Thanks for your interest in contributing! This guide helps you get set up and su
 
 ## License
 
-By contributing, you agree your contributions are licensed under the repository’s MIT License.
+By contributing, you agree your contributions are licensed under the repository’s Creative Commons License.
