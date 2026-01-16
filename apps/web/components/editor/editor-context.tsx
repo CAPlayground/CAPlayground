@@ -584,19 +584,22 @@ export function EditorProvider({
     });
   }, []);
 
-  const addBase = useCallback((name: string): LayerBase => ({
-    id: genId(),
-    name,
-    position: { x: 50, y: 50 },
-    zPosition: 0,
-    size: { w: 120, h: 40 },
-    rotation: 0,
-    rotationX: 0,
-    rotationY: 0,
-    cornerRadius: 0,
-    opacity: 1,
-    visible: true,
-  }), []);
+  const addBase = useCallback((name: string): LayerBase => {
+    const existingLayers = doc?.docs[doc.activeCA]?.layers ?? [];
+    return {
+      id: genId(),
+      name: getNextLayerName(existingLayers, name),
+      position: { x: 50, y: 50 },
+      zPosition: 0,
+      size: { w: 120, h: 40 },
+      rotation: 0,
+      rotationX: 0,
+      rotationY: 0,
+      cornerRadius: 0,
+      opacity: 1,
+      visible: true,
+    };
+  }, [doc]);
 
   const addTextLayer = useCallback(() => {
     setDoc((prev) => {
@@ -1330,7 +1333,7 @@ export function EditorProvider({
       const x = (parentLayer?.size.w || canvasW) / 2;
       const y = (parentLayer?.size.h || canvasH) / 2;
       const layer: TransformLayer = {
-        ...addBase(getNextLayerName(cur.layers, 'Transform Layer')),
+        ...addBase('Transform Layer'),
         position: { x, y },
         size: { w: 200, h: 200 },
         type: 'transform',
@@ -1354,7 +1357,7 @@ export function EditorProvider({
       const x = (parentLayer?.size.w || canvasW) / 2;
       const y = (parentLayer?.size.h || canvasH) / 2;
       const layer: ReplicatorLayer = {
-        ...addBase(getNextLayerName(cur.layers, 'Replicator')),
+        ...addBase('Replicator'),
         position: { x, y },
         size: { w: canvasW, h: canvasH },
         type: 'replicator',
@@ -1518,7 +1521,7 @@ export function EditorProvider({
     }
     setDoc((prev) => {
       if (!prev) return prev;
-      const cloned: AnyLayer[] = (src.data || []).map(cloneLayerDeep);
+      const cloned: AnyLayer[] = (src.data || []).map((layer: AnyLayer) => cloneLayerDeep(layer, cur.layers));
       const idMap = new Map<string, string>();
       const collectMap = (orig: AnyLayer[], copies: AnyLayer[]) => {
         for (let i = 0; i < orig.length; i++) {
@@ -1548,7 +1551,7 @@ export function EditorProvider({
       if (!targetId) return prev;
       const sel = findById(cur.layers, targetId);
       if (!sel) return prev;
-      const cloned = cloneLayerDeep(sel);
+      const cloned = cloneLayerDeep(sel, cur.layers);
       const idMap = new Map<string, string>();
       const buildMap = (o: AnyLayer, c: AnyLayer) => {
         idMap.set((o as any).id, (c as any).id);

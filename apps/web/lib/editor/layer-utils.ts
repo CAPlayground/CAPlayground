@@ -44,22 +44,38 @@ const insertLayerInTree = (layers: AnyLayer[], selId: string | null, node: AnyLa
   });
 }
 
-export function cloneLayerDeep(layer: AnyLayer): AnyLayer {
-  const newId = genId();
-  if (layer.children?.length) {
-    return {
-      ...JSON.parse(JSON.stringify({ ...layer, id: newId })),
-      id: newId,
-      children: layer.children.map(cloneLayerDeep),
-      position: { x: (layer.position?.x ?? 0), y: (layer.position?.y ?? 0) },
-      name: `${layer.name} copy`,
-    } as AnyLayer;
-  }
-  const base = JSON.parse(JSON.stringify({ ...layer })) as AnyLayer;
-  (base as any).id = newId;
-  (base as any).name = `${layer.name} copy`;
-  (base as any).position = { x: (layer as any).position?.x, y: (layer as any).position?.y };
-  return base;
+export function cloneLayerDeep(layer: AnyLayer, existingLayers?: AnyLayer[]): AnyLayer {
+  const createdLayers: AnyLayer[] = [];
+  
+  const cloneRecursive = (node: AnyLayer): AnyLayer => {
+    const newId = genId();
+    
+    const allExisting = existingLayers ? [...existingLayers, ...createdLayers] : [];
+    const newName = existingLayers 
+      ? getNextLayerName(allExisting, node.name)
+      : `${node.name} copy`;
+    
+    if (node.children?.length) {
+      const cloned = {
+        ...JSON.parse(JSON.stringify({ ...node, id: newId })),
+        id: newId,
+        children: node.children.map(cloneRecursive),
+        position: { x: (node.position?.x ?? 0), y: (node.position?.y ?? 0) },
+        name: newName,
+      } as AnyLayer;
+      createdLayers.push(cloned);
+      return cloned;
+    }
+    
+    const base = JSON.parse(JSON.stringify({ ...node })) as AnyLayer;
+    base.id = newId;
+    base.name = newName;
+    base.position = { x: node.position?.x, y: node.position?.y };
+    createdLayers.push(base);
+    return base;
+  };
+  
+  return cloneRecursive(layer);
 }
 
 export function updateInTree(layers: AnyLayer[], id: string, patch: Partial<AnyLayer>): AnyLayer[] {
@@ -160,7 +176,7 @@ export function containsId(layers: AnyLayer[], id: string): boolean {
   return false;
 }
 
-export function getNextLayerName(layers: AnyLayer[], base: string = 'Transform Layer') {
+export function getNextLayerName(layers: AnyLayer[], base: string = 'Layer') {
   function collectNames(list: AnyLayer[], acc: string[] = []) {
     for (const layer of list) {
       if (layer.name) acc.push(layer.name);
