@@ -1,8 +1,5 @@
 "use client";
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
-
 import { useEffect, useRef, useState } from "react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useParams, useRouter } from "next/navigation";
@@ -17,10 +14,13 @@ import EditorOnboarding from "@/components/editor/onboarding";
 import { BrowserWarning } from "@/components/editor/browser-warning";
 import { getProject } from "@/lib/storage";
 import { TimelineProvider } from "@/context/TimelineContext";
+import { useIsElectron } from "@/hooks/use-electron";
 
 export default function EditorPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const isElectron = useIsElectron();
+  const backPath = isElectron ? "/desktop" : "/projects";
   const projectId = params?.id;
   const [meta, setMeta] = useState<{ id: string; name: string; width: number; height: number; background?: string } | null>(null);
   const [leftWidth, setLeftWidth] = useLocalStorage<number>("caplay_panel_left_width", 320);
@@ -119,12 +119,12 @@ export default function EditorPage() {
       try {
         const p = await getProject(projectId);
         if (!p) {
-          router.replace("/projects");
+          router.replace(backPath);
           return;
         }
         setMeta({ id: p.id, name: p.name, width: p.width ?? 390, height: p.height ?? 844 });
       } catch {
-        router.replace("/projects");
+        router.replace(backPath);
       }
     })();
   }, [projectId]);

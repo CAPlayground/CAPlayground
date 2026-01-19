@@ -22,7 +22,10 @@ import type { AnyLayer, CAAsset, CAProjectBundle } from "@/lib/ca/types"
 import { ensureUniqueProjectName, createProject, listProjects, putBlobFile, putTextFile } from "@/lib/storage"
 import { useToast } from "@/hooks/use-toast"
 
-interface WallpaperItem {
+export const WALLPAPERS_JSON_URL =
+  "https://raw.githubusercontent.com/CAPlayground/wallpapers/refs/heads/main/wallpapers.json"
+
+export interface WallpaperItem {
   id: string | number
   name: string
   creator: string
@@ -33,7 +36,7 @@ interface WallpaperItem {
   from: string
 }
 
-interface WallpapersResponse {
+export interface WallpapersResponse {
   base_url: string
   wallpapers: WallpaperItem[]
 }

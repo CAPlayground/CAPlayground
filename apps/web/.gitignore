@@ -1,1 +1,13 @@
 .env
+
+# Electron build outputs
+dist/
+dist-electron/
+out/
+
+# Electron cache
+*.dmg
+*.AppImage
+*.deb
+*.exe
+*.snap

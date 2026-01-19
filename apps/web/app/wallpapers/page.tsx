@@ -2,10 +2,7 @@ import { Suspense } from "react"
 import type { Metadata } from "next"
 import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
-import { WallpapersGrid } from "./WallpapersGrid"
-
-const WALLPAPERS_JSON_URL =
-  "https://raw.githubusercontent.com/CAPlayground/wallpapers/refs/heads/main/wallpapers.json"
+import { WALLPAPERS_JSON_URL, WallpapersGrid } from "./WallpapersGrid"
 
 // 30 min
 export const revalidate = 1800

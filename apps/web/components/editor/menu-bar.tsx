@@ -25,7 +25,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { getProject, updateProject, deleteProject, isUsingOPFS } from "@/lib/storage";
 import { SettingsPanel } from "./settings-panel";
 import { ExportDialog } from "./ExportDialog";
- 
+import { useIsElectron } from "@/hooks/use-electron";
 
 interface ProjectMeta { id: string; name: string; width?: number; height?: number; createdAt?: string }
 
@@ -45,6 +45,9 @@ type MenuBarProps = {
 
 export function MenuBar({ projectId, showLeft = true, showRight = true, toggleLeft, toggleRight, leftWidth, rightWidth, statesHeight, setLeftWidth, setRightWidth, setStatesHeight }: MenuBarProps) {
   const router = useRouter();
+  const isElectron = useIsElectron();
+  const backPath = isElectron ? "/desktop" : "/projects";
+  const isMacElectron = isElectron && typeof window !== "undefined" && window.electronAPI?.platform === "darwin";
   const { doc, undo, redo, setDoc, activeCA, setActiveCA, savingStatus, lastSavedAt, flushPersist } = useEditor();
   const { toast } = useToast();
 
@@ -146,12 +149,12 @@ export function MenuBar({ projectId, showLeft = true, showRight = true, toggleLe
 
   const performDelete = async () => {
     await deleteProject(projectId);
-    router.push("/projects");
+    router.push(backPath);
   };
 
   return (
-    <div className="w-full h-12 flex items-center justify-between px-3 border-b bg-background/60 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex items-center gap-2">
+    <div className={`w-full h-12 flex items-center justify-between px-3 border-b bg-background/60 backdrop-blur supports-[backdrop-filter]:bg-background/60 ${isMacElectron ? "pl-20" : ""}`} style={isMacElectron ? { WebkitAppRegion: "drag" } as React.CSSProperties : undefined}>
+      <div className="flex items-center gap-2" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
         <div className="border rounded-md p-0.5">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -163,9 +166,9 @@ export function MenuBar({ projectId, showLeft = true, showRight = true, toggleLe
           <DropdownMenuContent align="start" className="w-52">
             <DropdownMenuItem
               className="cursor-pointer"
-              onClick={async () => { await flushPersist(); router.push('/projects'); }}
+              onClick={async () => { await flushPersist(); router.push(backPath); }}
             >
-              <ArrowLeft className="h-4 w-4 mr-2" /> Back to projects
+              <ArrowLeft className="h-4 w-4 mr-2" /> {isElectron ? "Back to home" : "Back to projects"}
             </DropdownMenuItem>
             <DropdownMenuItem className="cursor-pointer" onClick={() => setRenameOpen(true)}>
               <Pencil className="h-4 w-4 mr-2" /> Rename
@@ -242,7 +245,7 @@ export function MenuBar({ projectId, showLeft = true, showRight = true, toggleLe
           )}
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
         {/* switch between ca files */}
         <div className="hidden md:flex flex-1 items-center justify-center">
           <div className="border rounded-md p-0.5">

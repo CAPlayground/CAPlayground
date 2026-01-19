@@ -2,11 +2,25 @@
   "name": "CAPlayground",
   "version": "1.0.0",
   "private": true,
+  "main": "dist-electron/main.js",
+  "author": "CAPlayground",
+  "description": "Create beautiful animated wallpapers for desktop",
+  "type": "module",
   "scripts": {
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start",
+    "electron:dev": "concurrently -k \"next dev\" \"wait-on http://localhost:3000 && bun run electron:compile && electron .\"",
+    "electron:compile": "tsc -p electron/tsconfig.json && tsc -p electron/tsconfig.preload.json && mv dist-electron/preload.js dist-electron/preload.cjs",
+    "electron:prebuild": "ELECTRON_BUILD=true next build && bun run electron:copy-assets && bun run electron:compile",
+    "electron:copy-assets": "cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
+    "electron:build": "bun run electron:prebuild && electron-builder",
+    "electron:build:mac": "bun run electron:prebuild && electron-builder --mac",
+    "electron:build:win": "set ELECTRON_BUILD=true && next build && bun run electron:copy-assets && bun run electron:compile && electron-builder --win",
+    "electron:build:linux": "bun run electron:prebuild && electron-builder --linux",
+    "electron:start": "bun run electron:prebuild && NODE_ENV=production electron .",
+    "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -75,10 +89,14 @@
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.1.0",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
     "postcss": "^8.5",
     "tailwindcss": "^4.1.9",
     "tw-animate-css": "1.3.3",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wait-on": "^8.0.1"
   },
   "optionalDependencies": {
     "lightningcss-darwin-arm64": "^1.29.2",
@@ -88,5 +106,86 @@
     "lightningcss-linux-x64-gnu": "^1.29.2",
     "lightningcss-linux-x64-musl": "^1.29.2",
     "lightningcss-win32-x64-msvc": "^1.29.2"
+  },
+  "build": {
+    "appId": "com.caplayground.desktop",
+    "productName": "CAPlayground Desktop",
+    "copyright": "Copyright © 2024 CAPlayground",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "extraMetadata": {
+      "main": "dist-electron/main.js"
+    },
+    "files": [
+      "dist-electron/**/*",
+      "!node_modules",
+      "!.next",
+      "!app",
+      "!components",
+      "!hooks",
+      "!lib",
+      "!context",
+      "!styles",
+      "!electron"
+    ],
+    "extraResources": [
+      {
+        "from": ".next/standalone",
+        "to": "standalone",
+        "filter": ["**/*", ".*", ".*/**/*"]
+      }
+    ],
+    "asar": false,
+    "mac": {
+      "category": "public.app-category.graphics-design",
+      "icon": "public/icon-dark.png",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["arm64", "x64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["arm64", "x64"]
+        }
+      ],
+      "darkModeSupport": true,
+      "hardenedRuntime": true
+    },
+    "win": {
+      "icon": "public/icon-dark.png",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "linux": {
+      "icon": "public/icon-dark.png",
+      "category": "Graphics",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        },
+        {
+          "target": "deb",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "public/icon-dark.png",
+      "uninstallerIcon": "public/icon-dark.png"
+    }
   }
 }
