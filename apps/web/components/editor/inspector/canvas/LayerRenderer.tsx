@@ -211,6 +211,12 @@ export function LayerRenderer({
       transformStyle: 'preserve-3d',
     };
   }
+  if (layer.type === "replicator") {
+    style = {
+      ...style,
+      transformStyle: 'preserve-3d',
+    };
+  }
   const { onPointerDown, onPointerMove, onPointerUp } = useMoveablePointerDrag({
     layerId: layer.id,
     moveableRef,

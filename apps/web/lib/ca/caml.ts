@@ -621,6 +621,7 @@ function parseCATransformLayer(el: Element): AnyLayer {
 function parseCAReplicatorLayer(el: Element): AnyLayer {
   const base = parseLayerBase(el);
   const children = parseSublayers(el);
+  const parsedAnimations = parseCALayerAnimations(el);
 
   const instanceCount = parseNumericAttr(el, 'instanceCount') || 1;
   const instanceDelay = parseNumericAttr(el, 'instanceDelay') || 0;
@@ -656,6 +657,7 @@ function parseCAReplicatorLayer(el: Element): AnyLayer {
     instanceRotation,
     instanceDelay,
     children,
+    ...(parsedAnimations ? { animations: parsedAnimations } : {} as any),
   } as AnyLayer;
 }
 

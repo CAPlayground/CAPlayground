@@ -55,6 +55,7 @@ export default function ReplicatorRenderer({
             transformOrigin: `${anchor.x * 100}% ${transformOriginY}%`,
             pointerEvents: i === 0 ? undefined : 'none',
             display: shouldShow ? undefined : 'none',
+            transformStyle: 'preserve-3d',
           }}
         >
           {layer.children?.map((c) => {
