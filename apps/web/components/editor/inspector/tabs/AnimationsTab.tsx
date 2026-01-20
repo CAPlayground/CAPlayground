@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Download } from "lucide-react";
 import type { InspectorTabProps } from "../types";
-import type { Animation, AnyLayer, KeyPath, Size, Vec2 } from "@/lib/ca/types";
+import type { Animation, AnyLayer, KeyPath, Size, Vec2, CalculationMode, TimingFunction } from "@/lib/ca/types";
 import { BulkAnimationInput } from "./BulkAnimationInput";
 import { useEditor } from "../../editor-context";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -116,6 +116,9 @@ const AnimationItem = ({
     repeatDurationSeconds,
     infinite,
     values = [],
+    keyTimes = [],
+    calculationMode = 'linear',
+    timingFunction = 'linear',
   } = animation;
   const { updateLayer } = useEditor();
 
@@ -191,6 +194,40 @@ const AnimationItem = ({
               disabled={!enabled}
             />
           </div>
+          <div className="space-y-1 col-span-1">
+            <Label>Calculation Mode</Label>
+            <Select
+              value={calculationMode}
+              onValueChange={(value: CalculationMode) => updateAnimation({ calculationMode: value })}
+              disabled={!enabled}
+            >
+              <SelectTrigger className="h-8 w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="linear">Linear</SelectItem>
+                <SelectItem value="discrete">Discrete</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1 col-span-1">
+            <Label>Timing Function</Label>
+            <Select
+              value={timingFunction}
+              onValueChange={(value: TimingFunction) => updateAnimation({ timingFunction: value })}
+              disabled={!enabled}
+            >
+              <SelectTrigger className="h-8 w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="linear">Linear</SelectItem>
+                <SelectItem value="easeIn">Ease In</SelectItem>
+                <SelectItem value="easeOut">Ease Out</SelectItem>
+                <SelectItem value="easeInEaseOut">Ease In-Out</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="space-y-1 col-span-2">
             <Label>Loop infinitely</Label>
             <div className="flex items-center gap-2 h-8">
@@ -251,23 +288,26 @@ const AnimationItem = ({
               size="sm"
               variant="secondary"
               onClick={() => {
-                const values = [...(animation.values || [])];
+                const newValues = [...(animation.values || [])];
+                const newKeyTimes = [...(animation.keyTimes || [])];
                 if (keyPath === 'position') {
-                  values.push({ x: selectedBase.position?.x ?? 0, y: selectedBase.position?.y ?? 0 });
+                  newValues.push({ x: selectedBase.position?.x ?? 0, y: selectedBase.position?.y ?? 0 });
                 } else if (keyPath === 'position.x') {
-                  values.push(selectedBase.position?.x ?? 0);
+                  newValues.push(selectedBase.position?.x ?? 0);
                 } else if (keyPath === 'position.y') {
-                  values.push(selectedBase.position?.y ?? 0);
+                  newValues.push(selectedBase.position?.y ?? 0);
                 } else if (keyPath === 'transform.rotation.z') {
-                  values.push(Number(selectedBase?.rotation ?? 0));
+                  newValues.push(Number(selectedBase?.rotation ?? 0));
                 } else if (keyPath === 'transform.rotation.x' || keyPath === 'transform.rotation.y') {
-                  values.push(0);
+                  newValues.push(0);
                 } else if (keyPath === 'opacity') {
-                  values.push(Number(selectedBase?.opacity ?? 1));
+                  newValues.push(Number(selectedBase?.opacity ?? 1));
                 } else if (keyPath === 'bounds') {
-                  values.push({ w: selectedBase.size?.w ?? 0, h: selectedBase.size?.h ?? 0 });
+                  newValues.push({ w: selectedBase.size?.w ?? 0, h: selectedBase.size?.h ?? 0 });
                 }
-                updateAnimation({ values });
+                const defaultKeyTime = newValues.length <= 1 ? 0 : 1;
+                newKeyTimes.push(defaultKeyTime);
+                updateAnimation({ values: newValues, keyTimes: newKeyTimes });
               }}
               disabled={!enabled}
               className="col-span-1"
@@ -288,90 +328,122 @@ const AnimationItem = ({
               const isTwoValue = keyPath === 'position' || keyPath === 'bounds';
               const isPosition = keyPath === 'position';
               const isOpacity = keyPath === 'opacity';
+              const currentKeyTime = keyTimes[idx] ?? (values.length > 1 ? idx / (values.length - 1) : 0);
               return (
-                <div key={idx} className={`grid ${isTwoValue ? 'grid-cols-3' : 'grid-cols-2'} gap-2 items-end`}>
-                  <div className="space-y-1">
-                    <Label className="text-xs">
-                      {isTwoValue
-                        ? (isPosition ? 'X' : 'Width')
-                        : (keyPath === 'position.x' ? 'X' : keyPath === 'position.y' ? 'Y' : isOpacity ? 'Opacity' : 'Degrees')}
-                    </Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        step="1"
-                        className="h-8"
-                        value={
-                          isTwoValue
-                            ? (isPosition
-                              ? (Number.isFinite((val as Vec2)?.x) ? String(Math.round((val as Vec2).x)) : '')
-                              : (Number.isFinite((val as Size)?.w) ? String(Math.round((val as Size).w)) : ''))
-                            : (isOpacity
-                              ? String(Math.round((typeof val === 'number' ? val : 1) * 100))
-                              : (Number.isFinite(Number(val)) ? String(Math.round(Number(val))) : ''))
-                        }
-                        onChange={(e) => {
-                          const arr = [...values];
-                          const n = Number(e.target.value);
-                          if (isTwoValue) {
-                            if (isPosition) {
-                              arr[idx] = { x: Number.isFinite(n) ? n : 0, y: (arr[idx] as Vec2)?.y ?? 0 };
-                            } else {
-                              arr[idx] = { w: Number.isFinite(n) ? n : 0, h: (arr[idx] as Size)?.h ?? 0 };
-                            }
-                          } else if (isOpacity) {
-                            const p = Math.max(0, Math.min(100, Math.round(n)));
-                            arr[idx] = Math.round(p) / 100;
-                          } else {
-                            arr[idx] = Number.isFinite(n) ? n : 0;
-                          }
-                          updateAnimation({ values: arr });
-                        }}
-                        disabled={!enabled}
-                      />
-                      {!isTwoValue && isOpacity && <span className="text-xs text-muted-foreground">%</span>}
-                    </div>
-                  </div>
-                  {isTwoValue && (
-                    <div className="space-y-1">
-                      <Label className="text-xs">{isPosition ? 'Y' : 'Height'}</Label>
-                      <Input
-                        type="number"
-                        step="1"
-                        className="h-8"
-                        value={
-                          isPosition
-                            ? (Number.isFinite((val as Vec2)?.y) ? String(Math.round((val as Vec2).y)) : '')
-                            : (Number.isFinite((val as Size)?.h) ? String(Math.round((val as Size).h)) : '')
-                        }
-                        onChange={(e) => {
-                          const arr = [...values];
-                          const n = Number(e.target.value);
-                          if (isPosition) {
-                            arr[idx] = { x: (arr[idx] as Vec2)?.x ?? 0, y: Number.isFinite(n) ? n : 0 };
-                          } else {
-                            arr[idx] = { w: (arr[idx] as Size)?.w ?? 0, h: Number.isFinite(n) ? n : 0 };
-                          }
-                          updateAnimation({ values: arr });
-                        }}
-                        disabled={!enabled}
-                      />
-                    </div>
-                  )}
-                  <div className="flex items-center justify-end pb-0.5">
+                <div key={idx} className="space-y-1 border border-border/40 rounded-lg p-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium text-muted-foreground">Keyframe {idx + 1}</span>
                     <Button
                       type="button"
                       size="sm"
                       variant="ghost"
+                      className="h-6 px-2 text-xs"
                       onClick={() => {
-                        const arr = [...values];
-                        arr.splice(idx, 1);
-                        updateAnimation({ values: arr });
+                        const newValues = [...values];
+                        const newKeyTimes = [...keyTimes];
+                        newValues.splice(idx, 1);
+                        newKeyTimes.splice(idx, 1);
+                        updateAnimation({ values: newValues, keyTimes: newKeyTimes });
                       }}
                       disabled={!enabled}
                     >
                       Remove
                     </Button>
+                  </div>
+                  <div className={`grid ${isTwoValue ? 'grid-cols-3' : 'grid-cols-2'} gap-2 items-end`}>
+                    <div className="space-y-1">
+                      <Label className="text-xs">
+                        {isTwoValue
+                          ? (isPosition ? 'X' : 'Width')
+                          : (keyPath === 'position.x' ? 'X' : keyPath === 'position.y' ? 'Y' : isOpacity ? 'Opacity' : 'Degrees')}
+                      </Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          step="1"
+                          className="h-8"
+                          value={
+                            isTwoValue
+                              ? (isPosition
+                                ? (Number.isFinite((val as Vec2)?.x) ? String(Math.round((val as Vec2).x)) : '')
+                                : (Number.isFinite((val as Size)?.w) ? String(Math.round((val as Size).w)) : ''))
+                              : (isOpacity
+                                ? String(Math.round((typeof val === 'number' ? val : 1) * 100))
+                                : (Number.isFinite(Number(val)) ? String(Math.round(Number(val))) : ''))
+                          }
+                          onChange={(e) => {
+                            const arr = [...values];
+                            const n = Number(e.target.value);
+                            if (isTwoValue) {
+                              if (isPosition) {
+                                arr[idx] = { x: Number.isFinite(n) ? n : 0, y: (arr[idx] as Vec2)?.y ?? 0 };
+                              } else {
+                                arr[idx] = { w: Number.isFinite(n) ? n : 0, h: (arr[idx] as Size)?.h ?? 0 };
+                              }
+                            } else if (isOpacity) {
+                              const p = Math.max(0, Math.min(100, Math.round(n)));
+                              arr[idx] = Math.round(p) / 100;
+                            } else {
+                              arr[idx] = Number.isFinite(n) ? n : 0;
+                            }
+                            updateAnimation({ values: arr });
+                          }}
+                          disabled={!enabled}
+                        />
+                        {!isTwoValue && isOpacity && <span className="text-xs text-muted-foreground">%</span>}
+                      </div>
+                    </div>
+                    {isTwoValue && (
+                      <div className="space-y-1">
+                        <Label className="text-xs">{isPosition ? 'Y' : 'Height'}</Label>
+                        <Input
+                          type="number"
+                          step="1"
+                          className="h-8"
+                          value={
+                            isPosition
+                              ? (Number.isFinite((val as Vec2)?.y) ? String(Math.round((val as Vec2).y)) : '')
+                              : (Number.isFinite((val as Size)?.h) ? String(Math.round((val as Size).h)) : '')
+                          }
+                          onChange={(e) => {
+                            const arr = [...values];
+                            const n = Number(e.target.value);
+                            if (isPosition) {
+                              arr[idx] = { x: (arr[idx] as Vec2)?.x ?? 0, y: Number.isFinite(n) ? n : 0 };
+                            } else {
+                              arr[idx] = { w: (arr[idx] as Size)?.w ?? 0, h: Number.isFinite(n) ? n : 0 };
+                            }
+                            updateAnimation({ values: arr });
+                          }}
+                          disabled={!enabled}
+                        />
+                      </div>
+                    )}
+                    <div className="space-y-1">
+                      <Label className="text-xs">Time %</Label>
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="number"
+                          step="1"
+                          min="0"
+                          max="100"
+                          className="h-8"
+                          value={Math.round(currentKeyTime * 100)}
+                          onChange={(e) => {
+                            const newKeyTimes = [...keyTimes];
+                            while (newKeyTimes.length < values.length) {
+                              const i = newKeyTimes.length;
+                              newKeyTimes.push(values.length > 1 ? i / (values.length - 1) : 0);
+                            }
+                            const n = Number(e.target.value);
+                            newKeyTimes[idx] = Number.isFinite(n) ? Math.max(0, Math.min(100, n)) / 100 : 0;
+                            updateAnimation({ keyTimes: newKeyTimes });
+                          }}
+                          disabled={!enabled}
+                        />
+                        <span className="text-xs text-muted-foreground">%</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               );

@@ -1,5 +1,5 @@
 import { CAEmitterCell } from '@/components/editor/emitter/emitter';
-import { AnyLayer, TextLayer, VideoLayer, CAStateOverrides, CAStateTransitions, GyroParallaxDictionary, KeyPath, Animations, EmitterLayer, LayerBase, ReplicatorLayer, LiquidGlassLayer } from './types';
+import { AnyLayer, TextLayer, VideoLayer, CAStateOverrides, CAStateTransitions, GyroParallaxDictionary, KeyPath, Animations, EmitterLayer, LayerBase, ReplicatorLayer, LiquidGlassLayer, TimingFunction, CalculationMode } from './types';
 import { blendModes } from '../blending';
 import { Filter, SupportedFilterTypes } from '../filters';
 import { CAML_NS } from './serialize/serializeCAML';
@@ -796,6 +796,13 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
           }
         }
       }
+      const keyTimesNode = animNode.getElementsByTagNameNS(CAML_NS, 'keyTimes')[0];
+      let keyTimes = keyTimesNode
+        ? Array.from(keyTimesNode.children).map((k) => Number(k.getAttribute('value') || ''))
+        : Array.from({ length: vals.length }, (_, i) => i / (vals.length - 1));
+      if (keyTimes.length > vals.length) {
+        keyTimes = keyTimes.slice(0, vals.length);
+      }
       const enabled = vals.length > 0;
       const autorevAttr = animNode.getAttribute('autoreverses');
       const autoreverses: 0 | 1 = (Number(autorevAttr) || 0) ? 1 : 0;
@@ -806,6 +813,16 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
       const repDurAttr = animNode.getAttribute('repeatDuration');
       const infinite: 0 | 1 = (repCount === 'inf' || repDurAttr === 'inf') ? 1 : 0;
       const repeatDurationSeconds = !infinite && Number.isFinite(Number(repDurAttr || '')) ? Number(repDurAttr) : undefined;
+      const calcModeAttr = animNode.getAttribute('calculationMode');
+      const timingAttr = animNode.getAttribute('timingFunction');
+      const validCalculationModes: CalculationMode[] = ['linear', 'discrete'];
+      const validTimingFunctions: TimingFunction[] = ['linear', 'easeIn', 'easeOut', 'easeInEaseOut'];
+      const calculationMode: CalculationMode = validCalculationModes.includes(calcModeAttr as CalculationMode) 
+        ? (calcModeAttr as CalculationMode) 
+        : 'linear';
+      const timingFunction: TimingFunction = validTimingFunctions.includes(timingAttr as TimingFunction)
+        ? (timingAttr as TimingFunction)
+        : 'linear';
       parsedAnimations.push({
         enabled,
         keyPath: kp,
@@ -815,6 +832,9 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
         infinite,
         repeatDurationSeconds: repeatDurationSeconds,
         speed: Number.isFinite(Number(speed)) ? Number(speed) : undefined,
+        calculationMode,
+        timingFunction,
+        keyTimes,
       });
     }
   } catch { }

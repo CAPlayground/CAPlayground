@@ -535,7 +535,22 @@ export function serializeLayer(
         } else {
           a.setAttribute('repeatDuration', String(repeatDuration));
         }
-        a.setAttribute('calculationMode', 'linear');
+        a.setAttribute('calculationMode', anim.calculationMode ?? 'linear');
+        a.setAttribute('timingFunction', anim.timingFunction ?? 'linear');
+        if (anim.keyTimes && anim.keyTimes.length > 0) {
+          const keyTimesEl = doc.createElementNS(CAML_NS, 'keyTimes');
+          for (const kt of anim.keyTimes) {
+            const realEl = doc.createElementNS(CAML_NS, 'real');
+            realEl.setAttribute('value', String(kt));
+            keyTimesEl.appendChild(realEl);
+          }
+          if (anim.calculationMode === 'discrete' && anim.keyTimes.length === anim.values.length) {
+            const finalDiscreteEl = doc.createElementNS(CAML_NS, 'real');
+            finalDiscreteEl.setAttribute('value', '1');
+            keyTimesEl.appendChild(finalDiscreteEl);
+          }
+          a.appendChild(keyTimesEl);
+        }
         const valuesEl = doc.createElementNS(CAML_NS, 'values');
         if (keyPath === 'position') {
           for (const ptRaw of anim.values as Array<any>) {
