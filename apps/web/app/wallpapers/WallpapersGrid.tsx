@@ -66,7 +66,7 @@ export function WallpapersGrid({ data }: { data: WallpapersResponse }) {
     fetch('/api/wallpapers/download', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: wallpaperId, name: wallpaperName }),
+      body: JSON.stringify({ wallpaperId, name: wallpaperName }),
     })
       .then(res => {
         console.log('Download tracking response:', res.status, res.statusText)
