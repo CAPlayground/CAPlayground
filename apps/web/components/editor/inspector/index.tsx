@@ -156,6 +156,7 @@ export function Inspector() {
         { id: 'geometry' as TabId, icon: Box, label: 'Geometry' },
         { id: 'compositing' as TabId, icon: Layers, label: 'Compositing' },
         { id: 'replicator' as TabId, icon: Cog, label: 'Replicator' },
+        { id: 'animations' as TabId, icon: Play, label: 'Animations' },
       ]
     }
     baseTabs.push({ id: 'filters' as TabId, icon: Filter, label: 'Filters' });
@@ -175,7 +176,7 @@ export function Inspector() {
       setActiveTab('geometry');
     } else if (selected?.type === 'emitter' && (['animations', 'text', 'gradient', 'image', 'video', 'content', 'replicator', 'gyro'].includes(activeTab))) {
       setActiveTab('emitter');
-    } else if (selected?.type === 'replicator' && (['animations', 'text', 'gradient', 'image', 'video', 'content', 'emitter', 'gyro'].includes(activeTab))) {
+    } else if (selected?.type === 'replicator' && (['text', 'gradient', 'image', 'video', 'content', 'emitter', 'gyro'].includes(activeTab))) {
       setActiveTab('replicator');
     } else if (selected?.type === 'transform' && (['text', 'gradient', 'image', 'video', 'emitter', 'replicator'].includes(activeTab))) {
       setActiveTab('gyro');

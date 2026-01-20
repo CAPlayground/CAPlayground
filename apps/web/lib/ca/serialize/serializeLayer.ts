@@ -372,6 +372,7 @@ export function serializeLayer(
     if (parts.length > 0) {
       setAttr(el, 'instanceTransform', parts.join(' '));
     }
+    setAttr(el, 'preservesDepth', '1');
   }
   if (wallpaperParallaxGroupsInput) {
     const style = doc.createElementNS(CAML_NS, 'style');
@@ -410,12 +411,14 @@ export function serializeLayer(
       nsDict.appendChild(layerName);
 
       const mapMaxTo = doc.createElementNS(CAML_NS, 'mapMaxTo');
-      mapMaxTo.setAttribute('type', 'integer');
+      const maxIsInt = Number.isInteger(dict.mapMaxTo);
+      mapMaxTo.setAttribute('type', maxIsInt ? 'integer' : 'real');
       mapMaxTo.setAttribute('value', String(dict.mapMaxTo));
       nsDict.appendChild(mapMaxTo);
 
       const mapMinTo = doc.createElementNS(CAML_NS, 'mapMinTo');
-      mapMinTo.setAttribute('type', 'integer');
+      const minIsInt = Number.isInteger(dict.mapMinTo);
+      mapMinTo.setAttribute('type', minIsInt ? 'integer' : 'real');
       mapMinTo.setAttribute('value', String(dict.mapMinTo));
       nsDict.appendChild(mapMinTo);
 
