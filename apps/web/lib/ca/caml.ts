@@ -799,7 +799,7 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
       const keyTimesNode = animNode.getElementsByTagNameNS(CAML_NS, 'keyTimes')[0];
       let keyTimes = keyTimesNode
         ? Array.from(keyTimesNode.children).map((k) => Number(k.getAttribute('value') || ''))
-        : Array.from({ length: vals.length }, (_, i) => i / (vals.length - 1));
+        : [];
       if (keyTimes.length > vals.length) {
         keyTimes = keyTimes.slice(0, vals.length);
       }

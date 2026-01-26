@@ -539,9 +539,9 @@ export function serializeLayer(
         a.setAttribute('timingFunction', anim.timingFunction ?? 'linear');
         if (anim.keyTimes && anim.keyTimes.length > 0) {
           const keyTimesEl = doc.createElementNS(CAML_NS, 'keyTimes');
-          for (const kt of anim.keyTimes) {
+          for (const [i, kt] of anim.keyTimes.entries()) {
             const realEl = doc.createElementNS(CAML_NS, 'real');
-            realEl.setAttribute('value', String(kt));
+            realEl.setAttribute('value', String(i === 0 ? 0 : kt));
             keyTimesEl.appendChild(realEl);
           }
           if (anim.calculationMode === 'discrete' && anim.keyTimes.length === anim.values.length) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -121,6 +122,7 @@ const AnimationItem = ({
     timingFunction = 'linear',
   } = animation;
   const { updateLayer } = useEditor();
+  const [useCustomKeyTimes, setUseCustomKeyTimes] = useState(() => keyTimes.length > 0);
 
   const updateAnimation = (updates: Partial<Animation>) => {
     const current = selectedBase?.animations || [];
@@ -263,6 +265,29 @@ const AnimationItem = ({
           )}
         </div>
 
+        <div className="space-y-1 col-span-2">
+          <Label>Custom Key Times</Label>
+          <div className="flex items-center gap-2 h-8">
+            <Switch
+              checked={useCustomKeyTimes}
+              onCheckedChange={(checked) => {
+                setUseCustomKeyTimes(checked);
+                if (checked) {
+                  const numValues = values.length;
+                  const newKeyTimes = values.map((_, idx) => 
+                    numValues > 1 ? idx / (numValues - 1) : 0
+                  );
+                  updateAnimation({ keyTimes: newKeyTimes });
+                } else {
+                  updateAnimation({ keyTimes: undefined });
+                }
+              }}
+              disabled={!enabled}
+            />
+            <span className="text-xs text-muted-foreground">Specify custom timing for each keyframe</span>
+          </div>
+        </div>
+
         <div className="space-y-2 mb-2">
           <div className="grid grid-cols-2 gap-x-2 space-y-1">
             <Label>
@@ -289,7 +314,6 @@ const AnimationItem = ({
               variant="secondary"
               onClick={() => {
                 const newValues = [...(animation.values || [])];
-                const newKeyTimes = [...(animation.keyTimes || [])];
                 if (keyPath === 'position') {
                   newValues.push({ x: selectedBase.position?.x ?? 0, y: selectedBase.position?.y ?? 0 });
                 } else if (keyPath === 'position.x') {
@@ -305,9 +329,14 @@ const AnimationItem = ({
                 } else if (keyPath === 'bounds') {
                   newValues.push({ w: selectedBase.size?.w ?? 0, h: selectedBase.size?.h ?? 0 });
                 }
-                const defaultKeyTime = newValues.length <= 1 ? 0 : 1;
-                newKeyTimes.push(defaultKeyTime);
-                updateAnimation({ values: newValues, keyTimes: newKeyTimes });
+                if (useCustomKeyTimes) {
+                  const newKeyTimes = [...(animation.keyTimes || [])];
+                  const defaultKeyTime = newValues.length <= 1 ? 0 : 1;
+                  newKeyTimes.push(defaultKeyTime);
+                  updateAnimation({ values: newValues, keyTimes: newKeyTimes });
+                } else {
+                  updateAnimation({ values: newValues });
+                }
               }}
               disabled={!enabled}
               className="col-span-1"
@@ -329,6 +358,7 @@ const AnimationItem = ({
               const isPosition = keyPath === 'position';
               const isOpacity = keyPath === 'opacity';
               const currentKeyTime = keyTimes[idx] ?? (values.length > 1 ? idx / (values.length - 1) : 0);
+              const gridCols = useCustomKeyTimes ? (isTwoValue ? 'grid-cols-3' : 'grid-cols-2') : (isTwoValue ? 'grid-cols-2' : 'grid-cols-1');
               return (
                 <div key={idx} className="space-y-1 border border-border/40 rounded-lg p-2">
                   <div className="flex items-center justify-between mb-1">
@@ -340,17 +370,21 @@ const AnimationItem = ({
                       className="h-6 px-2 text-xs"
                       onClick={() => {
                         const newValues = [...values];
-                        const newKeyTimes = [...keyTimes];
                         newValues.splice(idx, 1);
-                        newKeyTimes.splice(idx, 1);
-                        updateAnimation({ values: newValues, keyTimes: newKeyTimes });
+                        if (useCustomKeyTimes) {
+                          const newKeyTimes = [...keyTimes];
+                          newKeyTimes.splice(idx, 1);
+                          updateAnimation({ values: newValues, keyTimes: newKeyTimes });
+                        } else {
+                          updateAnimation({ values: newValues });
+                        }
                       }}
                       disabled={!enabled}
                     >
                       Remove
                     </Button>
                   </div>
-                  <div className={`grid ${isTwoValue ? 'grid-cols-3' : 'grid-cols-2'} gap-2 items-end`}>
+                  <div className={`grid ${gridCols} gap-2 items-end`}>
                     <div className="space-y-1">
                       <Label className="text-xs">
                         {isTwoValue
@@ -419,31 +453,36 @@ const AnimationItem = ({
                         />
                       </div>
                     )}
-                    <div className="space-y-1">
-                      <Label className="text-xs">Time %</Label>
-                      <div className="flex items-center gap-1">
-                        <Input
-                          type="number"
-                          step="1"
-                          min="0"
-                          max="100"
-                          className="h-8"
-                          value={Math.round(currentKeyTime * 100)}
-                          onChange={(e) => {
-                            const newKeyTimes = [...keyTimes];
-                            while (newKeyTimes.length < values.length) {
-                              const i = newKeyTimes.length;
-                              newKeyTimes.push(values.length > 1 ? i / (values.length - 1) : 0);
-                            }
-                            const n = Number(e.target.value);
-                            newKeyTimes[idx] = Number.isFinite(n) ? Math.max(0, Math.min(100, n)) / 100 : 0;
-                            updateAnimation({ keyTimes: newKeyTimes });
-                          }}
-                          disabled={!enabled}
-                        />
-                        <span className="text-xs text-muted-foreground">%</span>
+                    {useCustomKeyTimes && (
+                      <div className="space-y-1">
+                        <Label className="text-xs">Time %</Label>
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            step="1"
+                            min={idx === 0 ? 0 : Math.round((keyTimes[idx - 1] ?? 0) * 100) + 1}
+                            max={idx === values.length - 1 ? 100 : Math.round((keyTimes[idx + 1] ?? 1) * 100) - 1}
+                            className="h-8"
+                            value={idx === 0 ? 0 : Math.round(currentKeyTime * 100)}
+                            onChange={(e) => {
+                              const newKeyTimes = [...keyTimes];
+                              while (newKeyTimes.length < values.length) {
+                                const i = newKeyTimes.length;
+                                newKeyTimes.push(values.length > 1 ? i / (values.length - 1) : 0);
+                              }
+                              const n = Number(e.target.value);
+                              const minVal = idx === 0 ? 0 : (newKeyTimes[idx - 1] ?? 0) * 100 + 1;
+                              const maxVal = idx === values.length - 1 ? 100 : (newKeyTimes[idx + 1] ?? 1) * 100 - 1;
+                              const clamped = Math.max(minVal, Math.min(maxVal, n));
+                              newKeyTimes[idx] = Number.isFinite(clamped) ? clamped / 100 : 0;
+                              updateAnimation({ keyTimes: newKeyTimes });
+                            }}
+                            disabled={!enabled || idx === 0}
+                          />
+                          <span className="text-xs text-muted-foreground">%</span>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               );
