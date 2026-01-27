@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ChevronDown, ChevronRight, Download, X } from "lucide-react";
 import type { InspectorTabProps } from "../types";
 import type { Animation, AnyLayer, KeyPath, Size, Vec2, CalculationMode, TimingFunction } from "@/lib/ca/types";
 import { BulkAnimationInput } from "./BulkAnimationInput";
@@ -123,6 +125,7 @@ const AnimationItem = ({
   } = animation;
   const { updateLayer } = useEditor();
   const [useCustomKeyTimes, setUseCustomKeyTimes] = useState(() => keyTimes.length > 0);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const updateAnimation = (updates: Partial<Animation>) => {
     const current = selectedBase?.animations || [];
@@ -144,206 +147,206 @@ const AnimationItem = ({
         </AccordionTrigger>
       </div>
       <AccordionContent>
-        <div className={`grid grid-cols-2 gap-2 ${enabled ? '' : 'opacity-50'}`}>
-          <div className="flex justify-between space-y-1 col-span-2">
-            <Label>Autoreverse</Label>
-            <div className="flex items-center gap-2 h-8">
-              <Switch
-                checked={(autoreverses ?? 0) === 1}
-                onCheckedChange={(checked) => updateAnimation({ autoreverses: checked ? 1 : 0 })}
-                disabled={!enabled}
-              />
-              <span className="text-xs text-muted-foreground">Reverse on repeat</span>
-            </div>
-          </div>
-          <div className="space-y-1 col-span-1">
-            <Label htmlFor="anim-duration">Duration (s)</Label>
-            <Input
-              id="anim-duration"
-              type="number"
-              step="0.01"
-              min="0"
-              className="h-8"
-              value={getBuf('anim-duration', (() => { const d = Number(durationSeconds); return Number.isFinite(d) && d > 0 ? String(d) : ''; })())}
-              onChange={(e) => setBuf('anim-duration', e.target.value)}
-              onBlur={(e) => {
-                const v = e.target.value.trim();
-                const n = v === '' ? 1 : Number(v);
-                const durationSeconds = Number.isFinite(n) && n > 0 ? n : 1;
-                updateAnimation({ durationSeconds });
-                clearBuf('anim-duration');
-              }}
-              disabled={!enabled}
-            />
-          </div>
-          <div className="space-y-1 col-span-1">
-            <Label htmlFor="anim-speed">Speed</Label>
-            <Input
-              id="anim-speed"
-              type="number"
-              step="0.01"
-              min="0"
-              className="h-8"
-              value={getBuf('anim-speed', (() => { const d = Number(speed); return Number.isFinite(d) && d > 0 ? String(d) : ''; })())}
-              onChange={(e) => setBuf('anim-speed', e.target.value)}
-              onBlur={(e) => {
-                const v = e.target.value.trim();
-                const n = v === '' ? 1 : Number(v);
-                const speed = Number.isFinite(n) && n > 0 ? n : 1;
-                updateAnimation({ speed });
-                clearBuf('anim-speed');
-              }}
-              disabled={!enabled}
-            />
-          </div>
-          <div className="space-y-1 col-span-1">
-            <Label>Calculation Mode</Label>
-            <Select
-              value={calculationMode}
-              onValueChange={(value: CalculationMode) => updateAnimation({ calculationMode: value })}
-              disabled={!enabled}
-            >
-              <SelectTrigger className="h-8 w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="linear">Linear</SelectItem>
-                <SelectItem value="discrete">Discrete</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1 col-span-1">
-            <Label>Timing Function</Label>
-            <Select
-              value={timingFunction}
-              onValueChange={(value: TimingFunction) => updateAnimation({ timingFunction: value })}
-              disabled={!enabled}
-            >
-              <SelectTrigger className="h-8 w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="linear">Linear</SelectItem>
-                <SelectItem value="easeIn">Ease In</SelectItem>
-                <SelectItem value="easeOut">Ease Out</SelectItem>
-                <SelectItem value="easeInEaseOut">Ease In-Out</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1 col-span-2">
-            <Label>Loop infinitely</Label>
-            <div className="flex items-center gap-2 h-8">
-              <Switch
-                checked={(infinite ?? 1) === 1}
-                onCheckedChange={(checked) => updateAnimation({ infinite: checked ? 1 : 0 })}
-                disabled={!enabled}
-              />
-              <span className="text-xs text-muted-foreground">When off, specify total repeat time.</span>
-            </div>
-          </div>
-          {((infinite ?? 1) !== 1) && (
-            <div className="space-y-1 col-span-2 mb-2">
-              <Label htmlFor="anim-repeat">Repeat for (s)</Label>
+        <div className={`space-y-3 ${enabled ? '' : 'opacity-50'}`}>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1 col-span-1">
+              <Label htmlFor="anim-duration">Duration (s)</Label>
               <Input
-                id="anim-repeat"
+                id="anim-duration"
                 type="number"
                 step="0.01"
                 min="0"
                 className="h-8"
-                value={getBuf('anim-repeat', (() => { const d = Number(repeatDurationSeconds); return Number.isFinite(d) && d > 0 ? String(d) : ''; })())}
-                onChange={(e) => setBuf('anim-repeat', e.target.value)}
+                value={getBuf('anim-duration', (() => { const d = Number(durationSeconds); return Number.isFinite(d) && d > 0 ? String(d) : ''; })())}
+                onChange={(e) => setBuf('anim-duration', e.target.value)}
                 onBlur={(e) => {
                   const v = e.target.value.trim();
-                  const n = v === '' ? Number(durationSeconds) || 1 : Number(v);
-                  const total = Number.isFinite(n) && n > 0 ? n : (Number(durationSeconds) || 1);
-                  updateAnimation({ repeatDurationSeconds: total });
-                  clearBuf('anim-repeat');
+                  const n = v === '' ? 1 : Number(v);
+                  const durationSeconds = Number.isFinite(n) && n > 0 ? n : 1;
+                  updateAnimation({ durationSeconds });
+                  clearBuf('anim-duration');
                 }}
                 disabled={!enabled}
               />
             </div>
-          )}
-        </div>
+            <div className="space-y-1 col-span-1">
+              <Label>Loop</Label>
+              <div className="flex items-center gap-2 h-8">
+                <Switch
+                  checked={(infinite ?? 1) === 1}
+                  onCheckedChange={(checked) => updateAnimation({ infinite: checked ? 1 : 0 })}
+                  disabled={!enabled}
+                />
+                <span className="text-xs text-muted-foreground">Infinite</span>
+              </div>
+            </div>
+            {((infinite ?? 1) !== 1) && (
+              <div className="space-y-1 col-span-2">
+                <Label htmlFor="anim-repeat">Repeat for (s)</Label>
+                <Input
+                  id="anim-repeat"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  className="h-8"
+                  value={getBuf('anim-repeat', (() => { const d = Number(repeatDurationSeconds); return Number.isFinite(d) && d > 0 ? String(d) : ''; })())}
+                  onChange={(e) => setBuf('anim-repeat', e.target.value)}
+                  onBlur={(e) => {
+                    const v = e.target.value.trim();
+                    const n = v === '' ? Number(durationSeconds) || 1 : Number(v);
+                    const total = Number.isFinite(n) && n > 0 ? n : (Number(durationSeconds) || 1);
+                    updateAnimation({ repeatDurationSeconds: total });
+                    clearBuf('anim-repeat');
+                  }}
+                  disabled={!enabled}
+                />
+              </div>
+            )}
+          </div>
 
-        <div className="space-y-1 col-span-2">
-          <Label>Custom Key Times</Label>
-          <div className="flex items-center gap-2 h-8">
-            <Switch
-              checked={useCustomKeyTimes}
-              onCheckedChange={(checked) => {
-                setUseCustomKeyTimes(checked);
-                if (checked) {
-                  const numValues = values.length;
-                  const newKeyTimes = values.map((_, idx) => 
-                    numValues > 1 ? idx / (numValues - 1) : 0
-                  );
-                  updateAnimation({ keyTimes: newKeyTimes });
-                } else {
-                  updateAnimation({ keyTimes: undefined });
-                }
-              }}
+          <div className="border-t border-border/40 pt-2">
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors w-full"
               disabled={!enabled}
-            />
-            <span className="text-xs text-muted-foreground">Specify custom timing for each keyframe</span>
+            >
+              {showAdvanced ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+              Advanced options
+            </button>
+            
+            {showAdvanced && (
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <div className="space-y-1 col-span-1">
+                  <Label htmlFor="anim-speed">Speed</Label>
+                  <Input
+                    id="anim-speed"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="h-8"
+                    value={getBuf('anim-speed', (() => { const d = Number(speed); return Number.isFinite(d) && d > 0 ? String(d) : ''; })())}
+                    onChange={(e) => setBuf('anim-speed', e.target.value)}
+                    onBlur={(e) => {
+                      const v = e.target.value.trim();
+                      const n = v === '' ? 1 : Number(v);
+                      const speed = Number.isFinite(n) && n > 0 ? n : 1;
+                      updateAnimation({ speed });
+                      clearBuf('anim-speed');
+                    }}
+                    disabled={!enabled}
+                  />
+                </div>
+                <div className="space-y-1 col-span-1">
+                  <Label>Autoreverse</Label>
+                  <div className="flex items-center gap-2 h-8">
+                    <Switch
+                      checked={(autoreverses ?? 0) === 1}
+                      onCheckedChange={(checked) => updateAnimation({ autoreverses: checked ? 1 : 0 })}
+                      disabled={!enabled}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1 col-span-1">
+                  <Label>Calculation Mode</Label>
+                  <Select
+                    value={calculationMode}
+                    onValueChange={(value: CalculationMode) => updateAnimation({ calculationMode: value })}
+                    disabled={!enabled}
+                  >
+                    <SelectTrigger className="h-8 w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="linear">Linear</SelectItem>
+                      <SelectItem value="discrete">Discrete</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col justify-end space-y-1 col-span-1">
+                  <Label>Timing Function</Label>
+                  <Select
+                    value={timingFunction}
+                    onValueChange={(value: TimingFunction) => updateAnimation({ timingFunction: value })}
+                    disabled={!enabled}
+                  >
+                    <SelectTrigger className="h-8 w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="linear">Linear</SelectItem>
+                      <SelectItem value="easeIn">Ease In</SelectItem>
+                      <SelectItem value="easeOut">Ease Out</SelectItem>
+                      <SelectItem value="easeInEaseOut">Ease In-Out</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1 col-span-2">
+                  <Label>Custom Key Times</Label>
+                  <div className="flex items-center gap-2 h-8">
+                    <Switch
+                      checked={useCustomKeyTimes}
+                      onCheckedChange={(checked) => {
+                        setUseCustomKeyTimes(checked);
+                        if (checked) {
+                          const numValues = values.length;
+                          const newKeyTimes = values.map((_, idx) => 
+                            numValues > 1 ? idx / (numValues - 1) : 0
+                          );
+                          updateAnimation({ keyTimes: newKeyTimes });
+                        } else {
+                          updateAnimation({ keyTimes: undefined });
+                        }
+                      }}
+                      disabled={!enabled}
+                    />
+                    <span className="text-xs text-muted-foreground">Custom timing per keyframe</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="space-y-2 mb-2">
-          <div className="grid grid-cols-2 gap-x-2 space-y-1">
-            <Label>
-              {(() => {
-                if (keyPath.startsWith('transform.rotation')) return 'Values (Degrees)';
-                if (keyPath === 'position') return 'Values (CGPoint)';
-                if (keyPath === 'opacity') return 'Values (Percentage)';
-                if (keyPath === 'bounds') return 'Values (CGRect)';
-                return 'Values (Number)';
-              })()}
-            </Label>
-            <div className="col-span-2 text-xs text-muted-foreground">
-              {(() => {
-                if (keyPath.startsWith('transform.rotation')) return 'Animation values in degrees for rotation.';
-                if (keyPath === 'position') return 'Animation values as x, y coordinates.';
-                if (keyPath === 'opacity') return 'Animation values as opacity percentages.';
-                if (keyPath === 'bounds') return 'Animation values as width, height dimensions.';
-                return 'Animation values as numbers.';
-              })()}
-            </div>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              onClick={() => {
-                const newValues = [...(animation.values || [])];
-                if (keyPath === 'position') {
-                  newValues.push({ x: selectedBase.position?.x ?? 0, y: selectedBase.position?.y ?? 0 });
-                } else if (keyPath === 'position.x') {
-                  newValues.push(selectedBase.position?.x ?? 0);
-                } else if (keyPath === 'position.y') {
-                  newValues.push(selectedBase.position?.y ?? 0);
-                } else if (keyPath === 'transform.rotation.z') {
-                  newValues.push(Number(selectedBase?.rotation ?? 0));
-                } else if (keyPath === 'transform.rotation.x' || keyPath === 'transform.rotation.y') {
-                  newValues.push(0);
-                } else if (keyPath === 'opacity') {
-                  newValues.push(Number(selectedBase?.opacity ?? 1));
-                } else if (keyPath === 'bounds') {
-                  newValues.push({ w: selectedBase.size?.w ?? 0, h: selectedBase.size?.h ?? 0 });
-                }
-                if (useCustomKeyTimes) {
-                  const newKeyTimes = [...(animation.keyTimes || [])];
-                  const defaultKeyTime = newValues.length <= 1 ? 0 : 1;
-                  newKeyTimes.push(defaultKeyTime);
-                  updateAnimation({ values: newValues, keyTimes: newKeyTimes });
-                } else {
-                  updateAnimation({ values: newValues });
-                }
-              }}
-              disabled={!enabled}
-              className="col-span-1"
-            >
-              + Add key value
-            </Button>
-            <div className="flex col-span-1">
+        <div className="space-y-2 mb-2 mt-3">
+          <div className="flex items-center justify-between gap-2">
+            <Label className="text-sm font-medium">Keyframes</Label>
+            <div className="flex gap-1">
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  const newValues = [...(animation.values || [])];
+                  if (keyPath === 'position') {
+                    newValues.push({ x: selectedBase.position?.x ?? 0, y: selectedBase.position?.y ?? 0 });
+                  } else if (keyPath === 'position.x') {
+                    newValues.push(selectedBase.position?.x ?? 0);
+                  } else if (keyPath === 'position.y') {
+                    newValues.push(selectedBase.position?.y ?? 0);
+                  } else if (keyPath === 'transform.rotation.z') {
+                    newValues.push(Number(selectedBase?.rotation ?? 0));
+                  } else if (keyPath === 'transform.rotation.x' || keyPath === 'transform.rotation.y') {
+                    newValues.push(0);
+                  } else if (keyPath === 'opacity') {
+                    newValues.push(Number(selectedBase?.opacity ?? 1));
+                  } else if (keyPath === 'bounds') {
+                    newValues.push({ w: selectedBase.size?.w ?? 0, h: selectedBase.size?.h ?? 0 });
+                  }
+                  if (useCustomKeyTimes) {
+                    const newKeyTimes = [...(animation.keyTimes || [])];
+                    const defaultKeyTime = newValues.length <= 1 ? 0 : 1;
+                    newKeyTimes.push(defaultKeyTime);
+                    updateAnimation({ values: newValues, keyTimes: newKeyTimes });
+                  } else {
+                    updateAnimation({ values: newValues });
+                  }
+                }}
+                disabled={!enabled}
+                className="h-7 px-2 text-xs"
+              >
+                + Add
+              </Button>
               <BulkAnimationInput
                 keyPath={keyPath as KeyPath}
                 currentValues={values}
@@ -352,145 +355,218 @@ const AnimationItem = ({
               />
             </div>
           </div>
-          <div className={`space-y-2 ${enabled ? '' : 'opacity-50'}`}>
-            {values?.map((val, idx) => {
-              const isTwoValue = keyPath === 'position' || keyPath === 'bounds';
-              const isPosition = keyPath === 'position';
-              const isOpacity = keyPath === 'opacity';
-              const currentKeyTime = keyTimes[idx] ?? (values.length > 1 ? idx / (values.length - 1) : 0);
-              const gridCols = useCustomKeyTimes ? (isTwoValue ? 'grid-cols-3' : 'grid-cols-2') : (isTwoValue ? 'grid-cols-2' : 'grid-cols-1');
-              return (
-                <div key={idx} className="space-y-1 border border-border/40 rounded-lg p-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-muted-foreground">Keyframe {idx + 1}</span>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 px-2 text-xs"
-                      onClick={() => {
-                        const newValues = [...values];
-                        newValues.splice(idx, 1);
-                        if (useCustomKeyTimes) {
-                          const newKeyTimes = [...keyTimes];
-                          newKeyTimes.splice(idx, 1);
-                          updateAnimation({ values: newValues, keyTimes: newKeyTimes });
-                        } else {
-                          updateAnimation({ values: newValues });
-                        }
-                      }}
-                      disabled={!enabled}
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                  <div className={`grid ${gridCols} gap-2 items-end`}>
-                    <div className="space-y-1">
-                      <Label className="text-xs">
-                        {isTwoValue
-                          ? (isPosition ? 'X' : 'Width')
-                          : (keyPath === 'position.x' ? 'X' : keyPath === 'position.y' ? 'Y' : isOpacity ? 'Opacity' : 'Degrees')}
-                      </Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          step="1"
-                          className="h-8"
-                          value={
-                            isTwoValue
-                              ? (isPosition
-                                ? (Number.isFinite((val as Vec2)?.x) ? String(Math.round((val as Vec2).x)) : '')
-                                : (Number.isFinite((val as Size)?.w) ? String(Math.round((val as Size).w)) : ''))
-                              : (isOpacity
-                                ? String(Math.round((typeof val === 'number' ? val : 1) * 100))
-                                : (Number.isFinite(Number(val)) ? String(Math.round(Number(val))) : ''))
-                          }
-                          onChange={(e) => {
-                            const arr = [...values];
-                            const n = Number(e.target.value);
-                            if (isTwoValue) {
-                              if (isPosition) {
-                                arr[idx] = { x: Number.isFinite(n) ? n : 0, y: (arr[idx] as Vec2)?.y ?? 0 };
+          
+          {values.length > 0 ? (
+            <div className={`border border-border/40 rounded-lg overflow-hidden ${enabled ? '' : 'opacity-50'}`}>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-muted/30 border-b border-border/40">
+                    <th className="pl-2 py-1.5 text-left font-medium text-muted-foreground w-6">#</th>
+                    {(() => {
+                      const isTwoValue = keyPath === 'position' || keyPath === 'bounds';
+                      const isPosition = keyPath === 'position';
+                      const isOpacity = keyPath === 'opacity';
+                      if (isTwoValue) {
+                        return (
+                          <>
+                            <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">{isPosition ? 'X' : 'W'}</th>
+                            <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">{isPosition ? 'Y' : 'H'}</th>
+                          </>
+                        );
+                      }
+                      return (
+                        <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">
+                          {keyPath === 'position.x' ? 'X' : keyPath === 'position.y' ? 'Y' : isOpacity ? 'Opacity' : 'Deg'}
+                        </th>
+                      );
+                    })()}
+                    {useCustomKeyTimes && <th className="px-2 py-1.5 text-left font-medium text-muted-foreground w-14">Time</th>}
+                    <th className="px-1 py-1.5 w-6"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {values.map((val, idx) => {
+                    const isTwoValue = keyPath === 'position' || keyPath === 'bounds';
+                    const isPosition = keyPath === 'position';
+                    const isOpacity = keyPath === 'opacity';
+                    const currentKeyTime = keyTimes[idx] ?? (values.length > 1 ? idx / (values.length - 1) : 0);
+                    const displayTime = idx === 0 ? 0 : Math.round(currentKeyTime * 100);
+                    const minTime = idx === 0 ? 0 : Math.round((keyTimes[idx - 1] ?? 0) * 100) + 1;
+                    const maxTime = idx === values.length - 1 ? 100 : Math.round((keyTimes[idx + 1] ?? 1) * 100) - 1;
+                    
+                    return (
+                      <tr key={idx} className="border-b border-border/20 last:border-0 hover:bg-muted/20">
+                        <td className="pl-2 py-1 text-muted-foreground">{idx + 1}</td>
+                        {isTwoValue ? (
+                          <>
+                            <td className="px-1 py-1">
+                              <Input
+                                type="number"
+                                step="1"
+                                className="h-6 text-xs px-1.5 w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                value={isPosition
+                                  ? (Number.isFinite((val as Vec2)?.x) ? String(Math.round((val as Vec2).x)) : '')
+                                  : (Number.isFinite((val as Size)?.w) ? String(Math.round((val as Size).w)) : '')}
+                                onChange={(e) => {
+                                  const arr = [...values];
+                                  const n = Number(e.target.value);
+                                  if (isPosition) {
+                                    arr[idx] = { x: Number.isFinite(n) ? n : 0, y: (arr[idx] as Vec2)?.y ?? 0 };
+                                  } else {
+                                    arr[idx] = { w: Number.isFinite(n) ? n : 0, h: (arr[idx] as Size)?.h ?? 0 };
+                                  }
+                                  updateAnimation({ values: arr });
+                                }}
+                                disabled={!enabled}
+                              />
+                            </td>
+                            <td className="px-1 py-1">
+                              <Input
+                                type="number"
+                                step="1"
+                                className="h-6 text-xs px-1.5 w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                value={isPosition
+                                  ? (Number.isFinite((val as Vec2)?.y) ? String(Math.round((val as Vec2).y)) : '')
+                                  : (Number.isFinite((val as Size)?.h) ? String(Math.round((val as Size).h)) : '')}
+                                onChange={(e) => {
+                                  const arr = [...values];
+                                  const n = Number(e.target.value);
+                                  if (isPosition) {
+                                    arr[idx] = { x: (arr[idx] as Vec2)?.x ?? 0, y: Number.isFinite(n) ? n : 0 };
+                                  } else {
+                                    arr[idx] = { w: (arr[idx] as Size)?.w ?? 0, h: Number.isFinite(n) ? n : 0 };
+                                  }
+                                  updateAnimation({ values: arr });
+                                }}
+                                disabled={!enabled}
+                              />
+                            </td>
+                          </>
+                        ) : (
+                          <td className="px-1 py-1">
+                            <div className="flex items-center gap-1">
+                              <Input
+                                type="number"
+                                step="1"
+                                className="h-6 text-xs px-1.5 w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                value={isOpacity
+                                  ? String(Math.round((typeof val === 'number' ? val : 1) * 100))
+                                  : (Number.isFinite(Number(val)) ? String(Math.round(Number(val))) : '')}
+                                onChange={(e) => {
+                                  const arr = [...values];
+                                  const n = Number(e.target.value);
+                                  if (isOpacity) {
+                                    const p = Math.max(0, Math.min(100, Math.round(n)));
+                                    arr[idx] = Math.round(p) / 100;
+                                  } else {
+                                    arr[idx] = Number.isFinite(n) ? n : 0;
+                                  }
+                                  updateAnimation({ values: arr });
+                                }}
+                                disabled={!enabled}
+                              />
+                              {isOpacity && <span className="text-muted-foreground">%</span>}
+                            </div>
+                          </td>
+                        )}
+                        {useCustomKeyTimes && (
+                          <td className="px-1 py-1">
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button
+                                  type="button"
+                                  disabled={!enabled || idx === 0}
+                                  className={`px-1.5 py-0.5 text-[10px] font-mono rounded transition-colors ${
+                                    idx === 0
+                                      ? 'bg-muted text-muted-foreground cursor-default'
+                                      : 'bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer'
+                                  }`}
+                                >
+                                  {displayTime}%
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-52 p-3" align="center" side="left">
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <Label className="text-xs font-medium">Keyframe Time</Label>
+                                    <div className="flex items-center gap-0.5">
+                                      <input
+                                        type="number"
+                                        step="1"
+                                        min={minTime}
+                                        max={maxTime}
+                                        className="w-10 h-6 text-center text-sm font-mono bg-muted/50 rounded border border-border/50 focus:border-primary/50 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        value={displayTime}
+                                        onChange={(e) => {
+                                          const newKeyTimes = [...keyTimes];
+                                          while (newKeyTimes.length < values.length) {
+                                            const i = newKeyTimes.length;
+                                            newKeyTimes.push(values.length > 1 ? i / (values.length - 1) : 0);
+                                          }
+                                          const n = Number(e.target.value);
+                                          const clamped = Math.max(minTime, Math.min(maxTime, n));
+                                          newKeyTimes[idx] = Number.isFinite(clamped) ? clamped / 100 : 0;
+                                          updateAnimation({ keyTimes: newKeyTimes });
+                                        }}
+                                      />
+                                      <span className="text-xs text-muted-foreground">%</span>
+                                    </div>
+                                  </div>
+                                  <Slider
+                                    value={[displayTime]}
+                                    min={minTime}
+                                    max={maxTime}
+                                    step={1}
+                                    onValueChange={(value) => {
+                                      const newKeyTimes = [...keyTimes];
+                                      while (newKeyTimes.length < values.length) {
+                                        const i = newKeyTimes.length;
+                                        newKeyTimes.push(values.length > 1 ? i / (values.length - 1) : 0);
+                                      }
+                                      newKeyTimes[idx] = value[0] / 100;
+                                      updateAnimation({ keyTimes: newKeyTimes });
+                                    }}
+                                    className="w-full"
+                                  />
+                                  <p className="text-[10px] text-muted-foreground">
+                                    Range: {minTime}% – {maxTime}%
+                                  </p>
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                          </td>
+                        )}
+                        <td className="px-1 py-1">
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-5 w-5"
+                            onClick={() => {
+                              const newValues = [...values];
+                              newValues.splice(idx, 1);
+                              if (useCustomKeyTimes) {
+                                const newKeyTimes = [...keyTimes];
+                                newKeyTimes.splice(idx, 1);
+                                updateAnimation({ values: newValues, keyTimes: newKeyTimes });
                               } else {
-                                arr[idx] = { w: Number.isFinite(n) ? n : 0, h: (arr[idx] as Size)?.h ?? 0 };
+                                updateAnimation({ values: newValues });
                               }
-                            } else if (isOpacity) {
-                              const p = Math.max(0, Math.min(100, Math.round(n)));
-                              arr[idx] = Math.round(p) / 100;
-                            } else {
-                              arr[idx] = Number.isFinite(n) ? n : 0;
-                            }
-                            updateAnimation({ values: arr });
-                          }}
-                          disabled={!enabled}
-                        />
-                        {!isTwoValue && isOpacity && <span className="text-xs text-muted-foreground">%</span>}
-                      </div>
-                    </div>
-                    {isTwoValue && (
-                      <div className="space-y-1">
-                        <Label className="text-xs">{isPosition ? 'Y' : 'Height'}</Label>
-                        <Input
-                          type="number"
-                          step="1"
-                          className="h-8"
-                          value={
-                            isPosition
-                              ? (Number.isFinite((val as Vec2)?.y) ? String(Math.round((val as Vec2).y)) : '')
-                              : (Number.isFinite((val as Size)?.h) ? String(Math.round((val as Size).h)) : '')
-                          }
-                          onChange={(e) => {
-                            const arr = [...values];
-                            const n = Number(e.target.value);
-                            if (isPosition) {
-                              arr[idx] = { x: (arr[idx] as Vec2)?.x ?? 0, y: Number.isFinite(n) ? n : 0 };
-                            } else {
-                              arr[idx] = { w: (arr[idx] as Size)?.w ?? 0, h: Number.isFinite(n) ? n : 0 };
-                            }
-                            updateAnimation({ values: arr });
-                          }}
-                          disabled={!enabled}
-                        />
-                      </div>
-                    )}
-                    {useCustomKeyTimes && (
-                      <div className="space-y-1">
-                        <Label className="text-xs">Time %</Label>
-                        <div className="flex items-center gap-1">
-                          <Input
-                            type="number"
-                            step="1"
-                            min={idx === 0 ? 0 : Math.round((keyTimes[idx - 1] ?? 0) * 100) + 1}
-                            max={idx === values.length - 1 ? 100 : Math.round((keyTimes[idx + 1] ?? 1) * 100) - 1}
-                            className="h-8"
-                            value={idx === 0 ? 0 : Math.round(currentKeyTime * 100)}
-                            onChange={(e) => {
-                              const newKeyTimes = [...keyTimes];
-                              while (newKeyTimes.length < values.length) {
-                                const i = newKeyTimes.length;
-                                newKeyTimes.push(values.length > 1 ? i / (values.length - 1) : 0);
-                              }
-                              const n = Number(e.target.value);
-                              const minVal = idx === 0 ? 0 : (newKeyTimes[idx - 1] ?? 0) * 100 + 1;
-                              const maxVal = idx === values.length - 1 ? 100 : (newKeyTimes[idx + 1] ?? 1) * 100 - 1;
-                              const clamped = Math.max(minVal, Math.min(maxVal, n));
-                              newKeyTimes[idx] = Number.isFinite(clamped) ? clamped / 100 : 0;
-                              updateAnimation({ keyTimes: newKeyTimes });
                             }}
-                            disabled={!enabled || idx === 0}
-                          />
-                          <span className="text-xs text-muted-foreground">%</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-            {values.length === 0 && (
-              <div className="text-xs text-muted-foreground">No key values yet. Click "+ Add key value" to add the first keyframe.</div>
-            )}
-          </div>
+                            disabled={!enabled}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-xs text-muted-foreground py-2">No keyframes yet. Click "+ Add" to create one.</div>
+          )}
         </div>
         <div className="grid grid-cols-2 gap-2">
           {enabled && values.length > 0 && (
@@ -521,10 +597,10 @@ const AnimationItem = ({
                 URL.revokeObjectURL(url);
               }}
               disabled={!enabled}
-              className="w-full gap-2"
+              className="gap-2"
             >
               <Download className="w-4 h-4" />
-              Export Values
+              Export
             </Button>
           )}
           <Button
@@ -537,7 +613,7 @@ const AnimationItem = ({
               updateLayer(selectedBase?.id, { animations });
             }}
           >
-            Remove Animation
+            Remove
           </Button>
         </div>
       </AccordionContent>
