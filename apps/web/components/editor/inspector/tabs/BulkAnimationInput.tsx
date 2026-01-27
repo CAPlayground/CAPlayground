@@ -119,10 +119,10 @@ export function BulkAnimationInput({ keyPath, currentValues, onValuesChange, dis
           size="sm"
           variant="outline"
           disabled={disabled}
-          className="gap-2 w-full"
+          className="gap-1 h-7 px-2 text-xs"
         >
-          <Zap className="w-4 h-4" />
-          Bulk Input
+          <Zap className="w-3 h-3" />
+          Bulk
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">

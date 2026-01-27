@@ -39,7 +39,7 @@ export default function IOSLockScreen({
         transform: `translateY(${homeBarTranslateY}px)`,
       }}
     >
-      <TopBar showTopBar={showTopBar} />
+      <TopBar showTopBar={showTopBar} showCarrier />
 
       <LockScreenClock homeBarTranslateY={homeBarTranslateY} />
 
@@ -75,8 +75,10 @@ export default function IOSLockScreen({
 
 export const TopBar = ({
   showTopBar,
+  showCarrier = false,
 }: {
   showTopBar: boolean;
+  showCarrier?: boolean;
 }) => {
   const { minutes, displayHours } = getTime();
   return (
@@ -85,7 +87,7 @@ export const TopBar = ({
       style={{ opacity: showTopBar ? 1 : 0 }}
     >
       <div className="text-sm font-semibold tracking-tight">
-        {displayHours}:{minutes}
+        {showCarrier ? 'CAPG' : `${displayHours}:${minutes}`}
       </div>
       <div className="flex items-center gap-1.5">
         <div className="flex items-end gap-0.5">
