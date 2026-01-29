@@ -220,13 +220,19 @@ export type KeyPath =
 
 export type Animations = Array<Animation>;
 
+export type CalculationMode = 'linear' | 'discrete';
+export type TimingFunction = 'linear' | 'easeIn' | 'easeOut' | 'easeInEaseOut';
+
 export type Animation = {
   enabled?: boolean;
   keyPath: KeyPath;
   autoreverses?: 0 | 1;
   values?: Array<Vec2 | Size | number>;
+  keyTimes?: number[];
   durationSeconds?: number;
   infinite?: 0 | 1;
   repeatDurationSeconds?: number;
   speed?: number;
+  calculationMode?: CalculationMode;
+  timingFunction?: TimingFunction;
 };
