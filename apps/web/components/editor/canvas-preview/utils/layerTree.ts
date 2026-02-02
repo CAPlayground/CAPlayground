@@ -14,6 +14,20 @@ export const findPathTo = (layers: AnyLayer[], id: string): AnyLayer[] | null =>
   return dfs(layers, []);
 };
 
+export const findPathToByName = (layers: AnyLayer[], name: string): AnyLayer[] | null => {
+  const dfs = (arr: AnyLayer[], path: AnyLayer[]): AnyLayer[] | null => {
+    for (const l of arr) {
+      if (l.name === name) return [...path, l];
+      if (l.children?.length) {
+        const sub = dfs(l.children, [...path, l]);
+        if (sub) return sub;
+      }
+    }
+    return null;
+  };
+  return dfs(layers, []);
+};
+
 export const findSiblingsOf = (layers: AnyLayer[], id: string): { siblings: AnyLayer[]; index: number } | null => {
   const walk = (arr: AnyLayer[]): { siblings: AnyLayer[]; index: number } | null => {
     const idx = arr.findIndex((l) => l.id === id);
