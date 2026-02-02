@@ -326,7 +326,9 @@ export function CanvasPreview() {
           ) : currentKey === 'wallpaper' ? (
             <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
               {showPreview && <div id="lock-screen-clock" className="pt-[35px]" />}
-              {renderedLayers.map((layer) => (
+              {renderedLayers
+                .filter((layer) => ['FLOATING', 'BACKGROUND'].includes(layer.name))
+                .map((layer) => (
                 <LayerRenderer
                   key={layer.id}
                   layer={layer}
