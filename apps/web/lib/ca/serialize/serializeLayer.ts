@@ -2,7 +2,7 @@ import { degToRad, hexToForegroundColor } from "@/lib/utils";
 import { Animations, AnyLayer, CAProject, EmitterLayer, GyroParallaxDictionary, KeyPath, ReplicatorLayer, TextLayer, VideoLayer } from "../types";
 import { CAML_NS } from "./serializeCAML";
 import { findById } from "@/lib/editor/layer-utils";
-import { findPathTo } from "@/components/editor/canvas-preview/utils/layerTree";
+import { findPathTo, findPathToByName } from "@/components/editor/canvas-preview/utils/layerTree";
 
 function setAttr(el: Element, name: string, value: string | number | undefined) {
   if (value === undefined || value === null || value === '') return;
@@ -427,10 +427,12 @@ export function serializeLayer(
       title.setAttribute('value', dict.title);
       nsDict.appendChild(title);
 
-      const view = doc.createElementNS(CAML_NS, 'view');
-      view.setAttribute('type', 'string');
-      view.setAttribute('value', dict.view);
-      nsDict.appendChild(view);
+      const path = findPathToByName(layer.children || [], dict.layerName);
+      const view = path?.some((l) => l.name === 'BACKGROUND') ? 'Background' : 'Floating';
+      const viewEl = doc.createElementNS(CAML_NS, 'view');
+      viewEl.setAttribute('type', 'string');
+      viewEl.setAttribute('value', view);
+      nsDict.appendChild(viewEl);
 
       wallpaperParallaxGroups.appendChild(nsDict);
     }

@@ -159,7 +159,9 @@ export function Inspector() {
         { id: 'animations' as TabId, icon: Play, label: 'Animations' },
       ]
     }
-    baseTabs.push({ id: 'filters' as TabId, icon: Filter, label: 'Filters' });
+    if (selected?.type !== 'transform') {
+      baseTabs.push({ id: 'filters' as TabId, icon: Filter, label: 'Filters' });
+    }
     return baseTabs;
   }, [selected?.type, doc?.meta.gyroEnabled]);
 
@@ -178,7 +180,7 @@ export function Inspector() {
       setActiveTab('emitter');
     } else if (selected?.type === 'replicator' && (['text', 'gradient', 'image', 'video', 'content', 'emitter', 'gyro'].includes(activeTab))) {
       setActiveTab('replicator');
-    } else if (selected?.type === 'transform' && (['text', 'gradient', 'image', 'video', 'emitter', 'replicator'].includes(activeTab))) {
+    } else if (selected?.type === 'transform' && (['text', 'gradient', 'image', 'video', 'emitter', 'replicator', 'filters'].includes(activeTab))) {
       setActiveTab('gyro');
     }
   }, [selected?.type, activeTab]);
