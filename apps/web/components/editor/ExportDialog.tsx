@@ -113,7 +113,7 @@ export function ExportDialog() {
           .eq("id", user.id)
           .maybeSingle();
         if (mounted && profile?.username) setUsername(profile.username as string);
-      } catch {}
+      } catch { }
     }
     loadUser();
     return () => {
@@ -127,7 +127,7 @@ export function ExportDialog() {
       try {
         await flushPersist();
         await cleanupAssets(); // Remove orphaned asset files before export
-      } catch {}
+      } catch { }
       const proj = await getProject(doc.meta.id);
       const baseName =
         (downloadNameOverride && downloadNameOverride.trim()) ||
@@ -213,7 +213,7 @@ export function ExportDialog() {
       try {
         await flushPersist();
         await cleanupAssets();
-      } catch {}
+      } catch { }
       const proj = await getProject(doc.meta.id);
       const baseName =
         (downloadNameOverride && downloadNameOverride.trim()) ||
@@ -364,7 +364,7 @@ export function ExportDialog() {
           setExportView("select");
           setExportOpen(true);
         }}
-        className="px-3 sm:px-4"
+        className="px-3 sm:px-4 no-compact"
       >
         Export
       </Button>
@@ -377,11 +377,10 @@ export function ExportDialog() {
       >
         <DialogContent className="sm:max-w-md p-4">
           <DialogHeader
-            className={`${
-              exportView === "success"
+            className={`${exportView === "success"
                 ? "flex items-center justify-start py-1"
                 : "py-2"
-            }`}
+              }`}
           >
             {exportView === "success" ? (
               <Button
@@ -409,9 +408,8 @@ export function ExportDialog() {
               }}
             >
               <div
-                className={`w-1/2 px-0 ${
-                  exportView === "success" ? "h-0 overflow-hidden" : ""
-                }`}
+                className={`w-1/2 px-0 ${exportView === "success" ? "h-0 overflow-hidden" : ""
+                  }`}
               >
                 <div className="space-y-4">
                   <div className="space-y-1">
@@ -539,9 +537,8 @@ export function ExportDialog() {
                 </div>
               </div>
               <div
-                className={`w-1/2 px-0 ${
-                  exportView === "select" ? "h-0 overflow-hidden" : ""
-                }`}
+                className={`w-1/2 px-0 ${exportView === "select" ? "h-0 overflow-hidden" : ""
+                  }`}
               >
                 <div className="pt-0 pb-4 flex flex-col items-center text-center gap-2.5">
                   <div className="text-2xl font-semibold">

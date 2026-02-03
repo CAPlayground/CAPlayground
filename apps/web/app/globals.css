@@ -12,14 +12,17 @@
   font-family: 'Copperplate';
   src: local('Copperplate');
 }
+
 @font-face {
   font-family: 'CourierNewPSMT';
   src: local('Courier New'), local('CourierNewPSMT');
 }
+
 @font-face {
   font-family: 'Futura-Medium';
   src: local('Futura'), local('Futura-Medium');
 }
+
 @font-face {
   font-family: 'Georgia';
   src: local('Georgia');
@@ -29,10 +32,12 @@
   font-family: 'Papyrus';
   src: local('Papyrus');
 }
+
 @font-face {
   font-family: 'TimesNewRomanPSMT';
   src: local('Times New Roman'), local('TimesNewRomanPSMT');
 }
+
 @font-face {
   font-family: 'Verdana';
   src: local('Verdana');
@@ -156,15 +161,22 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground font-sans;
   }
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-heading);
   }
 }
 
-button{
+button {
   @apply cursor-pointer;
 }
 
@@ -220,4 +232,114 @@ button{
 .wordmark-group path:hover {
   stroke: var(--accent);
   filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.9));
+}
+
+/* Compact UI version */
+.ui-compact {
+  --radius: 0.35rem;
+}
+
+.ui-compact [data-tour-id] {
+  border-radius: var(--radius);
+}
+
+.ui-compact .font-medium {
+  font-size: 0.875rem;
+}
+
+.ui-compact .border-b.shrink-0 {
+  padding-top: 0.2rem !important;
+  padding-bottom: 0.2rem !important;
+  min-height: 2rem;
+}
+
+.ui-compact .p-3 {
+  padding: 0.375rem !important;
+}
+
+.ui-compact .p-4 {
+  padding: 0.5rem !important;
+}
+
+.ui-compact .cursor-pointer.py-2,
+.ui-compact .cursor-pointer.px-2.py-2,
+.ui-compact button.px-2.py-2,
+.ui-compact .flex.items-center.justify-between.py-2 {
+  padding-top: 0.125rem !important;
+  padding-bottom: 0.125rem !important;
+}
+
+.ui-compact .truncate.flex-1 {
+  font-size: 0.875rem;
+}
+
+.ui-compact .text-muted-foreground {
+  font-size: 0.75rem;
+}
+
+.ui-compact .h-6.w-6 {
+  height: 1.25rem !important;
+  width: 1.25rem !important;
+}
+
+.ui-compact .h-4.w-4 {
+  height: 0.875rem !important;
+  width: 0.875rem !important;
+}
+
+.ui-compact .h-7.px-2 {
+  height: 1.5rem !important;
+  padding-left: 0.375rem !important;
+  padding-right: 0.375rem !important;
+  font-size: 0.75rem !important;
+}
+
+.ui-compact .no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.ui-compact .no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.ui-compact .grid.gap-1.5 {
+  gap: 0.25rem !important;
+}
+
+.ui-compact label {
+  font-size: 0.8125rem !important;
+  margin-bottom: 0px !important;
+}
+
+.ui-compact input,
+.ui-compact select,
+.ui-compact button.h-9:not(.no-compact),
+.ui-compact button.h-10:not(.no-compact),
+.ui-compact .h-9:not(.no-compact),
+.ui-compact .h-10:not(.no-compact) {
+  height: 1.5rem !important;
+  font-size: 0.8125rem !important;
+  padding-top: 0px !important;
+  padding-bottom: 0px !important;
+}
+
+.ui-compact .space-y-4>*+* {
+  margin-top: 0.5rem !important;
+}
+
+.ui-compact .space-y-3>*+* {
+  margin-top: 0.375rem !important;
+}
+
+.ui-compact .space-y-2>*+* {
+  margin-top: 0.25rem !important;
+}
+
+.ui-compact .space-y-1>*+* {
+  margin-top: 0.125rem !important;
+}
+
+.ui-compact .divide-y>*+* {
+  border-top-width: 1px !important;
 }

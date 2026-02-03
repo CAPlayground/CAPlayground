@@ -26,7 +26,7 @@ export function useTouchGestures({
   setPan,
   pinchZoomSensitivity,
 }: UseTouchGesturesProps) {
-  
+
   const touchGestureRef = useRef<{
     startUserScale: number;
     startPanX: number;

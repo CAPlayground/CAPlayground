@@ -30,7 +30,7 @@ export function useKeyboardShortcuts({
     moveLayer,
     deleteLayer,
   } = useEditor();
-  
+
   // Delete/Backspace - Delete selected layer
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

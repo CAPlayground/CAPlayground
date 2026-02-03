@@ -329,18 +329,18 @@ export function CanvasPreview() {
               {renderedLayers
                 .filter((layer) => ['FLOATING', 'BACKGROUND'].includes(layer.name))
                 .map((layer) => (
-                <LayerRenderer
-                  key={layer.id}
-                  layer={layer}
-                  useYUp={getRootFlip(doc?.meta.geometryFlipped) === 0}
-                  siblings={renderedLayers}
-                  gyroX={gyroX}
-                  gyroY={gyroY}
-                  useGyroControls={useGyroControls}
-                  hiddenLayerIds={hiddenLayerIds}
-                  moveableRef={moveableRef}
-                />
-              ))}
+                  <LayerRenderer
+                    key={layer.id}
+                    layer={layer}
+                    useYUp={getRootFlip(doc?.meta.geometryFlipped) === 0}
+                    siblings={renderedLayers}
+                    gyroX={gyroX}
+                    gyroY={gyroY}
+                    useGyroControls={useGyroControls}
+                    hiddenLayerIds={hiddenLayerIds}
+                    moveableRef={moveableRef}
+                  />
+                ))}
             </div>
           ) : null}
           {currentKey === 'floating' && (
