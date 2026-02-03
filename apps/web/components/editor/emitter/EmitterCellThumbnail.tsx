@@ -14,7 +14,7 @@ export default function EmitterCellThumbnail({
   className = "object-contain",
 }: EmitterCellThumbnailProps) {
   const { src, loading } = useAssetUrl({
-    cacheKey: cellId,
+    cacheKey: cellId + 'thumbnail',
     assetSrc: cellSrc,
     skip: !cellSrc,
   });

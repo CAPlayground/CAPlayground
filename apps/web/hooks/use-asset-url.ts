@@ -1,13 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { getFile } from "@/lib/storage";
 import { useEditor } from "@/components/editor/editor-context";
 import { CAEmitterCell } from "@/components/editor/emitter/emitter";
 
 class AssetCache {
-  private cache = new Map<string, string>();
+  private cache = new Map<string, string | ImageBitmap>();
   private accessOrder: string[] = [];
 
-  get(id: string): string | null {
+  get(id: string): string | ImageBitmap | null {
     const data = this.cache.get(id);
     if (data) {
       this.accessOrder = this.accessOrder.filter((k) => k !== id);
@@ -16,7 +16,7 @@ class AssetCache {
     return data || null;
   }
 
-  set(id: string, url: string) {
+  set(id: string, url: string | ImageBitmap) {
     this.cache.set(id, url);
     this.accessOrder = this.accessOrder.filter((k) => k !== id);
     this.accessOrder.push(id);
@@ -27,7 +27,7 @@ class AssetCache {
   }
 
   clear() {
-    this.cache.forEach((url) => URL.revokeObjectURL(url));
+    this.cache.forEach((url) => typeof url === 'string' && URL.revokeObjectURL(url));
     this.cache.clear();
     this.accessOrder = [];
   }
@@ -63,7 +63,7 @@ export function useAssetUrl({
   const { doc } = useEditor();
   const projectId = doc?.meta.id ?? "";
   const projectName = doc?.meta.name ?? "";
-  const [src, setSrc] = useState<string | null>(() => assetCache.get(cacheKey));
+  const [src, setSrc] = useState<string | null>(() => assetCache.get(cacheKey) as string);
   const [loading, setLoading] = useState(!assetCache.has(cacheKey) && !skip);
   const [error, setError] = useState<Error | null>(null);
 
@@ -73,7 +73,7 @@ export function useAssetUrl({
       return;
     }
 
-    const cached = assetCache.get(cacheKey);
+    const cached = assetCache.get(cacheKey) as string;
     if (cached) {
       setSrc(cached);
       setLoading(false);
@@ -156,7 +156,7 @@ export function useVideoFrames({
   const [frames, setFrames] = useState<Map<number, string>>(() => {
     const cached = new Map<number, string>();
     for (let i = 0; i < frameCount; i++) {
-      const url = assetCache.get(`${videoId}_frame_${i}`);
+      const url = assetCache.get(`${videoId}_frame_${i}`) as string;
       if (url) cached.set(i, url);
     }
     return cached;
@@ -181,7 +181,7 @@ export function useVideoFrames({
         const frameAssetId = `${videoId}_frame_${i}`;
         const frameName = `${framePrefix}${i}${frameExtension}`;
 
-        const cached = assetCache.get(frameAssetId);
+        const cached = assetCache.get(frameAssetId) as string;
         if (cached) {
           loadedFrames.set(i, cached);
           continue;
@@ -236,18 +236,9 @@ interface UseEmitterCellImagesOptions {
 }
 
 interface UseEmitterCellImagesResult {
-  cellImages: Map<string, HTMLImageElement>;
+  cellImages: Map<string, ImageBitmap>;
   loading: boolean;
 }
-
-const loadImage = (src: string): Promise<HTMLImageElement> =>
-  new Promise((resolve, reject) => {
-    const img = new Image();
-    img.decoding = "async";
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
-  });
 
 export function useEmitterCellImages({
   cells,
@@ -256,8 +247,8 @@ export function useEmitterCellImages({
   const { doc } = useEditor();
   const projectId = doc?.meta.id ?? "";
   const projectName = doc?.meta.name ?? "";
-
-  const [cellImages, setCellImages] = useState<Map<string, HTMLImageElement>>(
+  const bitmapsRef = useRef<Map<string, ImageBitmap>>(new Map());
+  const [cellImages, setCellImages] = useState<Map<string, ImageBitmap>>(
     () => new Map()
   );
   const [loading, setLoading] = useState(!skip && cells.length > 0);
@@ -272,45 +263,39 @@ export function useEmitterCellImages({
 
     async function loadAllCellImages() {
       setLoading(true);
-      const loadedImages = new Map<string, HTMLImageElement>();
+      const loadedImages = new Map<string, ImageBitmap>();
 
       for (const cell of cells) {
         if (cancelled) return;
 
-        const cached = assetCache.get(cell.id);
+        const cached = assetCache.get(cell.id) as unknown as ImageBitmap;
         if (cached) {
-          try {
-            const img = await loadImage(cached);
-            loadedImages.set(cell.id, img);
-          } catch (err) {
-            console.error(`Failed to load cached image for cell ${cell.id}:`, err);
-          }
+          loadedImages.set(cell.id, cached);
           continue;
         }
 
         if (cell.src) {
           try {
-            const paths = [
-              `${projectName}.ca/Floating.ca/${cell.src}`,
-              `${projectName}.ca/Background.ca/${cell.src}`,
-              `${projectName}.ca/Wallpaper.ca/${cell.src}`,
-            ];
+            const paths = buildAssetPaths(projectName, cell.src);
 
             let buf: ArrayBuffer | undefined;
             for (const path of paths) {
-              const file = await getFile(projectId, path);
-              if (file?.data && file.data instanceof ArrayBuffer) {
-                buf = file.data;
-                break;
+              try {
+                const file = await getFile(projectId, path);
+                if (file?.data && file.data instanceof ArrayBuffer) {
+                  buf = file.data;
+                  break;
+                }
+              } catch {
+                continue;
               }
             }
 
             if (buf) {
               const blob = new Blob([buf]);
-              const url = URL.createObjectURL(blob);
-              const img = await loadImage(url);
-              loadedImages.set(cell.id, img);
-              assetCache.set(cell.id, url);
+              const bitmap = await createImageBitmap(blob);
+              assetCache.set(cell.id, bitmap);
+              loadedImages.set(cell.id, bitmap);
             }
           } catch (err) {
             console.error(`Failed to load cell image ${cell.id}:`, err);
@@ -321,6 +306,8 @@ export function useEmitterCellImages({
       if (!cancelled) {
         setCellImages(loadedImages);
         setLoading(false);
+      } else {
+        loadedImages.forEach((b) => b.close());
       }
     }
 
@@ -328,6 +315,8 @@ export function useEmitterCellImages({
 
     return () => {
       cancelled = true;
+      bitmapsRef.current.forEach((b) => b.close());
+      bitmapsRef.current = new Map();
     };
   }, [JSON.stringify(cells.map((c) => ({ id: c.id, src: c.src }))), projectId, projectName, skip]);
 
