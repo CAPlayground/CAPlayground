@@ -293,7 +293,7 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
 
       setSubmissionStatus({ message: "Creating Pull Request..." })
       const tendiesUrl = `https://raw.githubusercontent.com/${upstreamOwner}/${upstreamRepo}/${encodeURIComponent(branchName)}/${tendiesPath}`
-      const importUrl = `https://caplayground-git-feat-link-import-caplayground.vercel.app/projects?importUrl=${encodeURIComponent(tendiesUrl)}&name=${encodeURIComponent(name)}&creator=${encodeURIComponent(username)}`
+      const importUrl = `https://caplayground.vercel.app/projects?importUrl=${encodeURIComponent(tendiesUrl)}&name=${encodeURIComponent(name)}&creator=${encodeURIComponent(username)}`
       const { data: pr } = await octokit.rest.pulls.create({
         owner: upstreamOwner,
         repo: upstreamRepo,
