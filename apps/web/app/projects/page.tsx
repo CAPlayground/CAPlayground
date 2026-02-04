@@ -299,6 +299,12 @@ function ProjectsContent() {
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const importTendiesInputRef = useRef<HTMLInputElement | null>(null);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isImportLinkDialogOpen, setIsImportLinkDialogOpen] = useState(false);
+  const [importLinkUrl, setImportLinkUrl] = useState("");
+  const [importLinkName, setImportLinkName] = useState("");
+  const [importLinkCreator, setImportLinkCreator] = useState("");
+  const [importLinkBusy, setImportLinkBusy] = useState(false);
+  const autoImportRanRef = useRef(false);
   const [isTosOpen, setIsTosOpen] = useState(false);
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [previews, setPreviews] = useState<Record<string, { bg: string; width?: number; height?: number }>>({});
@@ -336,6 +342,17 @@ function ProjectsContent() {
       setUploadMode(true);
       setIsSelectMode(true);
     }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (autoImportRanRef.current) return;
+    const u = (searchParams?.get('importUrl') || '').trim();
+    if (!u) return;
+    autoImportRanRef.current = true;
+    setImportLinkUrl(u);
+    setImportLinkName((searchParams?.get('name') || '').trim());
+    setImportLinkCreator((searchParams?.get('creator') || '').trim());
+    setIsImportLinkDialogOpen(true);
   }, [searchParams]);
 
   const fetchCloudProjects = async () => {
@@ -1188,6 +1205,126 @@ function ProjectsContent() {
   const handleImportTendiesClick = () => {
     setIsImportDialogOpen(false);
     importTendiesInputRef.current?.click();
+  };
+  const handleImportLinkClick = () => {
+    setIsImportDialogOpen(false);
+    setIsImportLinkDialogOpen(true);
+  };
+
+  const importTendiesFromUrl = async (sourceUrl: string, suggestedName?: string, suggestedCreator?: string) => {
+    const cleaned = (sourceUrl || '').trim();
+    if (!cleaned) throw new Error('Missing URL');
+    let parsed: URL;
+    try {
+      parsed = new URL(cleaned);
+    } catch {
+      throw new Error('Invalid URL');
+    }
+
+    const response = await fetch(parsed.toString());
+    if (!response.ok) throw new Error('Failed to download wallpaper');
+    const blob = await response.blob();
+
+    const { unpackTendies } = await import('@/lib/ca/ca-file');
+    const tendies = await unpackTendies(blob);
+
+    const id = Date.now().toString();
+    const baseName = (suggestedName || '').trim() || 'Imported Wallpaper';
+    const name = await ensureUniqueProjectName(baseName);
+    const width = Math.round(tendies.project.width);
+    const height = Math.round(tendies.project.height);
+
+    await createProject({ id, name, createdAt: new Date().toISOString(), width, height, gyroEnabled: !!tendies.wallpaper });
+    const folder = `${name}.ca`;
+    const indexXml = `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n  <key>rootDocument</key>\n  <string>main.caml</string>\n</dict>\n</plist>`;
+    const assetManifest = `<?xml version="1.0" encoding="UTF-8"?>\n\n<caml xmlns="http://www.apple.com/CoreAnimation/1.0">\n  <MicaAssetManifest>\n    <modules type="NSArray"/>\n  </MicaAssetManifest>\n</caml>`;
+
+    const { serializeCAML } = await import('@/lib/ca/serialize/serializeCAML');
+    const mkCaml = async (doc: { root: AnyLayer; assets?: Record<string, CAAsset>; states?: string[]; stateOverrides?: any; stateTransitions?: any; wallpaperParallaxGroups?: any }, docName: string) => {
+      const root = doc.root as any;
+      const layers = Array.isArray(root.children) ? root.children : (root ? [root] : []);
+      const group = {
+        id: `${id}-${docName}`,
+        name: `Root Layer`,
+        type: 'basic',
+        position: { x: Math.round(width / 2), y: Math.round(height / 2) },
+        size: { w: width, h: height },
+        backgroundColor: root?.backgroundColor ?? '#e5e7eb',
+        geometryFlipped: tendies.project.geometryFlipped,
+        children: layers,
+      } as any;
+      return serializeCAML(
+        group,
+        { id, name, width, height, background: root?.backgroundColor ?? '#e5e7eb', geometryFlipped: tendies.project.geometryFlipped } as any,
+        doc.states as any,
+        doc.stateOverrides as any,
+        doc.stateTransitions as any,
+        doc.wallpaperParallaxGroups as any
+      );
+    };
+
+    const creditComment = `<!--\n  Original wallpaper: ${baseName}\n  Created by: ${(suggestedCreator || '').trim() || 'Unknown'}\n  Imported from URL\n-->\n`;
+
+    if (tendies.wallpaper) {
+      const camlWallpaper = await mkCaml(tendies.wallpaper, 'Wallpaper');
+      const camlWithCredit = camlWallpaper.replace('<?xml version="1.0" encoding="UTF-8"?>', `<?xml version="1.0" encoding="UTF-8"?>\n${creditComment}`);
+      await putTextFile(id, `${folder}/Wallpaper.ca/main.caml`, camlWithCredit);
+      await putTextFile(id, `${folder}/Wallpaper.ca/index.xml`, indexXml);
+      await putTextFile(id, `${folder}/Wallpaper.ca/assetManifest.caml`, assetManifest);
+      const flAssets = (tendies.wallpaper.assets || {}) as Record<string, CAAsset>;
+      for (const [filename, asset] of Object.entries(flAssets)) {
+        try {
+          const data = asset.data instanceof Blob ? asset.data : new Blob([asset.data as ArrayBuffer]);
+          await putBlobFile(id, `${folder}/Wallpaper.ca/assets/${filename}`, data);
+        } catch {}
+      }
+    } else {
+      const floatingDoc = tendies.floating;
+      if (floatingDoc) {
+        const camlFloating = await mkCaml(floatingDoc, 'Floating');
+        const camlWithCredit = camlFloating.replace('<?xml version="1.0" encoding="UTF-8"?>', `<?xml version="1.0" encoding="UTF-8"?>\n${creditComment}`);
+        await putTextFile(id, `${folder}/Floating.ca/main.caml`, camlWithCredit);
+        await putTextFile(id, `${folder}/Floating.ca/index.xml`, indexXml);
+        await putTextFile(id, `${folder}/Floating.ca/assetManifest.caml`, assetManifest);
+        const flAssets = (floatingDoc.assets || {}) as Record<string, CAAsset>;
+        for (const [filename, asset] of Object.entries(flAssets)) {
+          try {
+            const data = asset.data instanceof Blob ? asset.data : new Blob([asset.data as ArrayBuffer]);
+            await putBlobFile(id, `${folder}/Floating.ca/assets/${filename}`, data);
+          } catch {}
+        }
+      } else {
+        const emptyFloatingCaml = `<?xml version="1.0" encoding="UTF-8"?><caml xmlns="http://www.apple.com/CoreAnimation/1.0"/>`;
+        await putTextFile(id, `${folder}/Floating.ca/main.caml`, emptyFloatingCaml);
+        await putTextFile(id, `${folder}/Floating.ca/index.xml`, indexXml);
+        await putTextFile(id, `${folder}/Floating.ca/assetManifest.caml`, assetManifest);
+      }
+
+      if (tendies.background) {
+        const camlBackground = await mkCaml(tendies.background, 'Background');
+        const camlWithCredit = camlBackground.replace('<?xml version="1.0" encoding="UTF-8"?>', `<?xml version="1.0" encoding="UTF-8"?>\n${creditComment}`);
+        await putTextFile(id, `${folder}/Background.ca/main.caml`, camlWithCredit);
+        await putTextFile(id, `${folder}/Background.ca/index.xml`, indexXml);
+        await putTextFile(id, `${folder}/Background.ca/assetManifest.caml`, assetManifest);
+        const bgAssets = (tendies.background.assets || {}) as Record<string, CAAsset>;
+        for (const [filename, asset] of Object.entries(bgAssets)) {
+          try {
+            const data = asset.data instanceof Blob ? asset.data : new Blob([asset.data as ArrayBuffer]);
+            await putBlobFile(id, `${folder}/Background.ca/assets/${filename}`, data);
+          } catch {}
+        }
+      } else {
+        const emptyBackgroundCaml = `<?xml version="1.0" encoding="UTF-8"?><caml xmlns="http://www.apple.com/CoreAnimation/1.0"/>`;
+        await putTextFile(id, `${folder}/Background.ca/main.caml`, emptyBackgroundCaml);
+        await putTextFile(id, `${folder}/Background.ca/index.xml`, indexXml);
+        await putTextFile(id, `${folder}/Background.ca/assetManifest.caml`, assetManifest);
+      }
+    }
+
+    const idbList = await listProjects();
+    setProjects(idbList.map(p => ({ id: p.id, name: p.name, createdAt: p.createdAt, width: p.width, height: p.height })));
+    recordProjectCreated();
+    router.push(`/editor/${id}`);
   };
 
   const handleImportChange: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
@@ -2213,10 +2350,89 @@ function ProjectsContent() {
                     </span>
                   </div>
                 </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleImportLinkClick}
+                  className="w-full justify-start text-left py-8"
+                >
+                  <div className="flex flex-col items-start gap-1">
+                    <span className="font-medium">Import from link</span>
+                    <span className="text-xs text-muted-foreground">
+                      Paste a direct .tendies download URL
+                    </span>
+                  </div>
+                </Button>
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsImportDialogOpen(false)}>Cancel</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isImportLinkDialogOpen} onOpenChange={setIsImportLinkDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Import from Link</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="import-link-url">.tendies URL</Label>
+                <Input
+                  id="import-link-url"
+                  value={importLinkUrl}
+                  onChange={(e) => setImportLinkUrl(e.target.value)}
+                  placeholder="https://.../wallpapers/your.tendies"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="import-link-name">Name</Label>
+                <Input
+                  id="import-link-name"
+                  value={importLinkName}
+                  onChange={(e) => setImportLinkName(e.target.value)}
+                  placeholder="Imported Wallpaper"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="import-link-creator">Creator</Label>
+                <Input
+                  id="import-link-creator"
+                  value={importLinkCreator}
+                  onChange={(e) => setImportLinkCreator(e.target.value)}
+                  placeholder="Unknown"
+                />
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsImportLinkDialogOpen(false)}
+                disabled={importLinkBusy}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={async () => {
+                  try {
+                    setImportLinkBusy(true);
+                    await importTendiesFromUrl(importLinkUrl, importLinkName, importLinkCreator);
+                    setIsImportLinkDialogOpen(false);
+                  } catch (err: any) {
+                    setMessageDialogTitle('Import Error');
+                    setMessageDialogContent(err?.message ? String(err.message) : 'Failed to import');
+                    setMessageDialogOpen(true);
+                  } finally {
+                    setImportLinkBusy(false);
+                  }
+                }}
+                disabled={importLinkBusy || !importLinkUrl.trim()}
+              >
+                Import
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
