@@ -138,7 +138,11 @@ export default function EditorPage() {
     <EditorProvider projectId={projectId} initialMeta={meta}>
       <TimelineProvider>
         <BrowserWarning />
-        <div className={cn("flex flex-col h-[100dvh] md:h-[calc(100vh)]", uiDensity === "compact" && "ui-compact")} ref={containerRef}>
+        <div
+          className={cn("flex flex-col", uiDensity === "compact" && "ui-compact")}
+          style={{ height: `calc(100dvh - var(--unofficial-banner-height, 0px))` }}
+          ref={containerRef}
+        >
           <MenuBar
             projectId={projectId}
             showLeft={showLeft}

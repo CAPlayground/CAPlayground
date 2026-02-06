@@ -12,7 +12,8 @@ function isOfficialHost(hostname: string): boolean {
     "caplayground.enkei64.xyz",
     "caplayground.netlify.app",
     "caplayground.squair.xyz",
-    "caplayground.kittycat.boo"
+    "caplayground.kittycat.boo",
+    "caplayground.cowabun.ga"
   ];
   return baseDomains.some((base) => hostname === base || hostname.endsWith(`.${base}`));
 }
@@ -30,27 +31,34 @@ export function UnofficialDomainBanner() {
     const dismissed = typeof localStorage !== "undefined" ? localStorage.getItem(key) === "1" : false;
     const shouldShow = !isOfficialHost(host) && !dismissed;
     setShow(shouldShow);
-  }, [key]);
+
+    if (shouldShow) {
+      document.documentElement.style.setProperty("--unofficial-banner-height", "48px");
+    } else {
+      document.documentElement.style.setProperty("--unofficial-banner-height", "0px");
+    }
+  }, [key, show]);
 
   if (!show) return null;
 
   return (
     <div className="sticky top-0 z-50">
-      <Alert variant="destructive" className="rounded-none border-0">
+      <Alert variant="destructive" className="rounded-none border-0 h-12 flex items-center">
         <TriangleAlert />
-        <AlertTitle>Unofficial domain</AlertTitle>
-        <AlertDescription>
+        <AlertTitle className="mb-0 mr-2">Unofficial domain</AlertTitle>
+        <AlertDescription className="mt-0">
           You are visiting this site on an unofficial domain. For the official site, please use
           {" "}
           <a className="underline font-medium" href="https://caplayground.vercel.app" target="_blank" rel="noreferrer">caplayground.vercel.app</a>
         </AlertDescription>
         <button
           type="button"
-          className="absolute right-2 top-2 text-muted-foreground hover:text-foreground"
+          className="absolute right-2 top-3 text-muted-foreground hover:text-foreground"
           aria-label="Dismiss"
           onClick={() => {
-            try { localStorage.setItem(key, "1"); } catch {}
+            try { localStorage.setItem(key, "1"); } catch { }
             setShow(false);
+            document.documentElement.style.setProperty("--unofficial-banner-height", "0px");
           }}
         >
           ✕
