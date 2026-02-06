@@ -109,7 +109,10 @@ export default async function HomePage() {
   }
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <div className="fixed top-4 left-0 right-0 z-50">
+      <div
+        className="fixed left-0 right-0 z-50 transition-all duration-300"
+        style={{ top: `calc(1rem + var(--unofficial-banner-height, 0px))` }}
+      >
         <Navigation />
       </div>
 
