@@ -203,6 +203,7 @@ export function MoveableOverlay({
           e.setFixedDirection([0, 0]);
           setIsResizingFromCenter(true);
         } else {
+          e.setFixedDirection(e.startFixedDirection);
           setIsResizingFromCenter(false);
         }
       }}
