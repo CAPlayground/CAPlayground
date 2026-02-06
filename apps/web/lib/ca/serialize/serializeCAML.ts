@@ -52,7 +52,7 @@ export function serializeCAML(
     doc,
     isWallpaperCA ? root : capRootLayer,
     project,
-    isWallpaperCA ? wallpaperParallaxGroupsInput : undefined,
+    isWallpaperCA ? (wallpaperParallaxGroupsInput || []) : undefined,
     isWallpaperCA ? stateOverridesInput : undefined,
   );
 
