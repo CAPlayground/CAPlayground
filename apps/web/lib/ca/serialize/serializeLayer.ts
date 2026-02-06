@@ -374,6 +374,9 @@ export function serializeLayer(
     }
     setAttr(el, 'preservesDepth', '1');
   }
+  if (layer.type === 'transform' && layer.perspective) {
+    setAttr(el, 'sublayerTransform', `perspective(${layer.perspective})`)
+  }
   if (wallpaperParallaxGroupsInput) {
     const style = doc.createElementNS(CAML_NS, 'style');
 

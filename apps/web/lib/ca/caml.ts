@@ -609,11 +609,14 @@ function parseCATransformLayer(el: Element): AnyLayer {
   const base = parseLayerBase(el);
   const children = parseSublayers(el);
   const parsedAnimations = parseCALayerAnimations(el);
-
+  const sublayerTransform = attr(el, 'sublayerTransform')
+  const perspectiveMatch = sublayerTransform?.match(/perspective\(([^)]+)\)/);
+  const perspective = perspectiveMatch ? Number(perspectiveMatch[1]) : null;
   return {
     ...base,
     type: 'transform',
     children,
+    perspective,
     ...(parsedAnimations ? { animations: parsedAnimations } : {} as any),
   } as AnyLayer;
 }
