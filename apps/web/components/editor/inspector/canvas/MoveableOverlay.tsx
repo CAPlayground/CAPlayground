@@ -93,9 +93,10 @@ export function MoveableOverlay({
     w: null,
     h: null,
   });
+  const [isResizingFromCenter, setIsResizingFromCenter] = useState(false);
 
   const path = findPathTo(renderedLayers, selectedLayer?.id ?? '');
-  
+
   useEffect(() => {
     if (!selectedLayer) return;
     setTargetRef(document.getElementById(selectedLayer.id));
@@ -198,6 +199,13 @@ export function MoveableOverlay({
         } else {
           setKeepRatio(false);
         }
+        if (e.inputEvent.altKey) {
+          e.setFixedDirection([0, 0]);
+          setIsResizingFromCenter(true);
+        } else {
+          e.setFixedDirection(e.startFixedDirection);
+          setIsResizingFromCenter(false);
+        }
       }}
       onResize={({
         target, width, height,
@@ -220,24 +228,35 @@ export function MoveableOverlay({
       onResizeEnd={({ target }) => {
         if (!selectedLayer) return;
         if (currentSize.w === null || currentSize.h === null) return;
-        const dx = currentTranslation.x ?? 0;
-        const dy = currentTranslation.y ?? 0;
-        const rotDeg = selectedLayer.rotation ?? 0;
-        const theta = (rotDeg * Math.PI) / 180;
-        const cosT = Math.cos(theta);
-        const sinT = Math.sin(theta);
-        const worldDx = cosT * dx - sinT * dy;
-        const worldDy = sinT * dx + cosT * dy;
-        updateLayer(selectedLayer.id, {
-          size: {
-            w: Math.round(currentSize.w),
-            h: Math.round(currentSize.h),
-          },
-          position: {
-            x: selectedLayer.position.x + worldDx / 2,
-            y: selectedLayer.position.y + worldDy / 2,
-          },
-        });
+
+        if (isResizingFromCenter) {
+          updateLayer(selectedLayer.id, {
+            size: {
+              w: Math.round(currentSize.w),
+              h: Math.round(currentSize.h),
+            },
+          });
+        } else {
+          const dx = currentTranslation.x ?? 0;
+          const dy = currentTranslation.y ?? 0;
+          const rotDeg = selectedLayer.rotation ?? 0;
+          const theta = (rotDeg * Math.PI) / 180;
+          const cosT = Math.cos(theta);
+          const sinT = Math.sin(theta);
+          const worldDx = cosT * dx - sinT * dy;
+          const worldDy = sinT * dx + cosT * dy;
+          updateLayer(selectedLayer.id, {
+            size: {
+              w: Math.round(currentSize.w),
+              h: Math.round(currentSize.h),
+            },
+            position: {
+              x: selectedLayer.position.x + worldDx / 2,
+              y: selectedLayer.position.y + worldDy / 2,
+            },
+          });
+        }
+
         setCurrentTranslation({
           x: 0,
           y: 0,
@@ -246,6 +265,7 @@ export function MoveableOverlay({
           w: null,
           h: null,
         });
+        setIsResizingFromCenter(false);
       }}
     />
   );
