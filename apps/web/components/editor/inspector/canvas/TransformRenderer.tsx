@@ -1,6 +1,47 @@
-import { TransformLayer } from "@/lib/ca/types";
+import { useMemo } from "react";
+import { GyroParallaxDictionary, TransformLayer } from "@/lib/ca/types";
 import { useEditor } from "../../editor-context";
-import { useEffect, useState } from "react";
+import { radToDeg } from "@/lib/utils";
+
+function mapRange(value: number, b1: number, b2: number) {
+  const a1 = -1;
+  const a2 = 1;
+  return b1 + ((value - a1) * (b2 - b1)) / (a2 - a1);
+}
+
+type TransformConfig = {
+  convert?: (v: number) => number;
+  invertInput?: boolean;
+  invertOutput?: boolean;
+  defaultValue: number | null;
+};
+
+const TRANSFORM_CONFIGS: Record<string, TransformConfig> = {
+  'transform.rotation.x': { convert: radToDeg, invertInput: true, defaultValue: 0 },
+  'transform.rotation.y': { convert: radToDeg, defaultValue: 0 },
+  'transform.rotation.z': { convert: radToDeg, invertOutput: true, defaultValue: 0 },
+  'transform.translation.x': { defaultValue: 0 },
+  'transform.translation.y': { invertOutput: true, defaultValue: 0 },
+  'position.x': { defaultValue: null },
+  'position.y': { defaultValue: null },
+  'anchorPoint.x': { defaultValue: null },
+  'anchorPoint.y': { defaultValue: null },
+};
+
+function computeDelta(
+  transform: GyroParallaxDictionary | undefined,
+  gyroX: number,
+  gyroY: number,
+  config: TransformConfig
+): number | null {
+  if (!transform) return config.defaultValue;
+  let gyroValue = transform.axis === 'x' ? gyroX : gyroY;
+  if (config.invertInput) gyroValue = -gyroValue;
+  let result = mapRange(gyroValue, transform.mapMinTo, transform.mapMaxTo);
+  if (config.convert) result = config.convert(result);
+  if (config.invertOutput) result = -result;
+  return result;
+}
 
 export function useTransform({
   layer,
@@ -17,95 +58,42 @@ export function useTransform({
   const currentKey = doc?.activeCA ?? 'floating';
   const current = doc?.docs?.[currentKey];
 
-  function mapRange(value: number, b1: number, b2: number) {
-    const a1 = -1;
-    const a2 = 1;
-    return b1 + ((value - a1) * (b2 - b1)) / (a2 - a1);
-  }
-  const parallaxTransform = current?.wallpaperParallaxGroups?.filter((g: any) => g.layerName === layer.name)
-  const radToDeg = (rad: number) => rad * (180 / Math.PI);
-  const transformRotationX = parallaxTransform?.filter((g: any) => g.keyPath === 'transform.rotation.x')[0]
-  const transformRotationY = parallaxTransform?.filter((g: any) => g.keyPath === 'transform.rotation.y')[0]
-  const transformTranslationX = parallaxTransform?.filter((g: any) => g.keyPath === 'transform.translation.x')[0]
-  const transformTranslationY = parallaxTransform?.filter((g: any) => g.keyPath === 'transform.translation.y')[0]
-  const transformPositionX = parallaxTransform?.filter(g => g.keyPath === 'position.x')[0];
-  const transformPositionY = parallaxTransform?.filter(g => g.keyPath === 'position.y')[0];
+  const parallaxTransforms = current?.wallpaperParallaxGroups?.filter(
+    (g) => g.layerName === layer.name
+  );
 
-  let rotationXDelta = 0;
-  let rotationYDelta = 0;
-  let translationXDelta = 0;
-  let translationYDelta = 0;
-  let positionXDelta = null;
-  let positionYDelta = null;
+  const getTransform = (keyPath: string) =>
+    parallaxTransforms?.find((g) => g.keyPath === keyPath);
 
-  if (transformRotationX) {
-    let gyroValue = transformRotationX.axis === 'x' ? gyroX : gyroY;
-    gyroValue = -gyroValue;
-    const targetValue = mapRange(gyroValue, transformRotationX.mapMinTo, transformRotationX.mapMaxTo)
-    rotationXDelta = radToDeg(targetValue);
-  }
-
-  if (transformRotationY) {
-    let gyroValue = transformRotationY.axis === 'x' ? gyroX : gyroY;
-    gyroValue = -gyroValue;
-    const targetValue = mapRange(gyroValue, transformRotationY.mapMinTo, transformRotationY.mapMaxTo)
-    rotationYDelta = radToDeg(targetValue);
-  }
-
-  if (transformTranslationX) {
-    const gyroValue = transformTranslationX.axis === 'x' ? gyroX : gyroY;
-    const targetValue = mapRange(gyroValue, transformTranslationX.mapMinTo, transformTranslationX.mapMaxTo)
-    translationXDelta = -targetValue;
-  }
-
-  if (transformTranslationY) {
-    const gyroValue = transformTranslationY.axis === 'x' ? gyroX : gyroY;
-    const targetValue = mapRange(gyroValue, transformTranslationY.mapMinTo, transformTranslationY.mapMaxTo)
-    translationYDelta = -targetValue;
-  }
-
-  if (transformPositionX) {
-    let gyroValue = transformPositionX.axis === 'x' ? gyroX : gyroY;
-    if (transformPositionX.mapMinTo > transformPositionX.mapMaxTo) {
-      gyroValue = -gyroValue;
+  const deltas = useMemo(() => {
+    const result: Record<string, number | null> = {};
+    for (const [keyPath, config] of Object.entries(TRANSFORM_CONFIGS)) {
+      result[keyPath] = computeDelta(getTransform(keyPath), gyroX, gyroY, config);
     }
-    const targetValue = mapRange(gyroValue, transformPositionX.mapMinTo, transformPositionX.mapMaxTo);
-    positionXDelta = targetValue;
-  }
+    return result;
+  }, [parallaxTransforms, gyroX, gyroY]);
 
-  if (transformPositionY) {
-    const gyroValue = transformPositionY.axis === 'x' ? gyroX : gyroY;
-    const targetValue = mapRange(gyroValue, transformPositionY.mapMinTo, transformPositionY.mapMaxTo);
-    positionYDelta = targetValue;
-  }
+  if (!useGyroControls) return {};
 
-  
-  let transformString = '';
-  let transformedX = null;
-  let transformedY = null;
-  const e = { ...layer } as TransformLayer;
-  if (useGyroControls) {
-    if (positionXDelta !== null) {
-      transformedX = positionXDelta;
-    }
-    if (positionYDelta !== null) {
-      transformedY = positionYDelta;
-    }
-    let transforms = [
-      `translateX(${translationXDelta}px)`,
-      `translateY(${translationYDelta}px)`,
-    ]
-    if (rotationYDelta !== 0) {
-      transforms.push(`rotate3d(0, 1, 0, ${(e.rotationY ?? 0) + rotationYDelta}deg)`);
-    }
-    if (rotationXDelta !== 0) {
-      transforms.push(`rotateX(${(e.rotationX ?? 0) + rotationXDelta}deg)`);
-    }
-    transformString = transforms.join(' ');
-  }
+  const rotationXDelta = deltas['transform.rotation.x'] ?? 0;
+  const rotationYDelta = deltas['transform.rotation.y'] ?? 0;
+  const rotationZDelta = deltas['transform.rotation.z'] ?? 0;
+  const translationXDelta = deltas['transform.translation.x'] ?? 0;
+  const translationYDelta = deltas['transform.translation.y'] ?? 0;
+
+  const transformString = [
+    `translateX(${translationXDelta}px)`,
+    `translateY(${translationYDelta}px)`,
+    rotationYDelta !== 0 && `rotate3d(0, 1, 0, ${(layer.rotationY ?? 0) + rotationYDelta}deg)`,
+    rotationXDelta !== 0 && `rotateX(${(layer.rotationX ?? 0) + rotationXDelta}deg)`,
+    rotationZDelta !== 0 && `rotateZ(${(layer.rotation ?? 0) + rotationZDelta}deg)`,
+  ].filter(Boolean).join(' ');
+
   return {
     transformString,
-    transformedX,
-    transformedY,
+    transformedX: deltas['position.x'],
+    transformedY: deltas['position.y'],
+    transformedAnchorX: deltas['anchorPoint.x'],
+    transformedAnchorY: deltas['anchorPoint.y'],
   };
 }

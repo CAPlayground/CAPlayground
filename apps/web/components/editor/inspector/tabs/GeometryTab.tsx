@@ -542,6 +542,32 @@ export function GeometryTab({
             <span className="text-xs text-muted-foreground">Affects this layer's sublayers' coordinate system.</span>
           </div>
         </div>
+        {selected.type === 'transform' &&
+          <div className="space-y-1 col-span-2">
+            <Label htmlFor="perspective">Perspective</Label>
+            <Input id="perspective" type="number" step="1" value={getBuf('perspective', fmt0(selected.perspective))}
+              disabled={inState}
+              onChange={(e) => {
+                setBuf('perspective', e.target.value);
+                const v = e.target.value.trim();
+                if (v === "") return;
+                const num = Math.round(Number(v));
+                if (Number.isFinite(num)) {
+                  updateLayerTransient(selected.id, { perspective: num });
+                }
+              }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
+              onBlur={(e) => {
+                const v = e.target.value.trim();
+                const num = v === "" ? undefined : Math.round(Number(v));
+                updateLayer(selected.id, { perspective: num });
+                clearBuf('perspective');
+              }} />
+            <p className="text-xs text-muted-foreground">
+              Controls how the layer is projected in 3D space.
+            </p>
+          </div>
+        }
       </div>
     </div>
   );

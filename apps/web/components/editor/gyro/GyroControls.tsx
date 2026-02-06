@@ -90,7 +90,7 @@ export default function GyroControls({
 
   const sensitivity = 50;
   const rotateX = useMemo(() => clamp((-xy.y) * sensitivity, -sensitivity, sensitivity), [xy.y]);
-  const rotateY = useMemo(() => clamp((xy.x) * sensitivity, -sensitivity, sensitivity), [xy.x]);
+  const rotateY = useMemo(() => clamp((-xy.x) * sensitivity, -sensitivity, sensitivity), [xy.x]);
 
   return (
     <div
@@ -174,7 +174,7 @@ function Pad({
     const x = (clientX - rect.left) / rect.width;  // 0..1
     const y = (clientY - rect.top) / rect.height;  // 0..1
 
-    const mappedX = clamp((x - 0.5) * 2, -1, 1);
+    const mappedX = clamp((0.5 - x) * 2, -1, 1);
     const mappedY = clamp((y - 0.5) * 2, -1, 1);
 
     onChange({ x: mappedX, y: mappedY });
@@ -194,7 +194,7 @@ function Pad({
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
   };
 
-  const knobLeft = `${((value.x + 1) / 2) * 100}%`;
+  const knobLeft = `${((-value.x + 1) / 2) * 100}%`;
   const knobTop = `${(((value.y + 1) / 2) * 100)}%`;
 
   return (
@@ -280,7 +280,7 @@ function PhoneTilt({ rotateX, rotateY, onDrag }: { rotateX: number; rotateY: num
     const r = el.getBoundingClientRect();
     const nx = clamp((clientX - r.left) / r.width, 0, 1);
     const ny = clamp((clientY - r.top) / r.height, 0, 1);
-    const x = (nx - 0.5) * 2;
+    const x = (0.5 - nx) * 2;
     const y = (ny - 0.5) * 2;
     onDrag({ x, y });
   };
