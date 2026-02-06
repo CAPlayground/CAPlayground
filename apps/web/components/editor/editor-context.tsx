@@ -1381,6 +1381,7 @@ export function EditorProvider({
       const shouldOnlyAffectState =
         !!cur.activeState &&
         cur.activeState !== 'Base State' &&
+        !('name' in patch) &&
         !('syncStateFrameMode' in patch) &&
         !('syncWWithState' in patch) &&
         !('blendMode' in patch) &&
