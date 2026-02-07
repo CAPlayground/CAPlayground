@@ -281,6 +281,7 @@ function parseLayerBase(el: Element): LayerBase {
       : undefined,
     geometryFlipped: parseBooleanAttr(el, 'geometryFlipped') || 0,
     masksToBounds: parseBooleanAttr(el, 'masksToBounds') || 0,
+    scale: 1,
   };
 
   // Parse transform attribute for additional rotation values
@@ -290,6 +291,12 @@ function parseLayerBase(el: Element): LayerBase {
     if (rotations.z !== undefined) base.rotation = base.rotation || rotations.z;
     if (rotations.x !== undefined) base.rotationX = base.rotationX || rotations.x;
     if (rotations.y !== undefined) base.rotationY = base.rotationY || rotations.y;
+  }
+  
+  if (transformAttr && /scale\(/i.test(transformAttr)) {
+    const scales = parseTransformScales(transformAttr);
+    // We use the x value to set the scale for simplicity, most of the wallpapers use the same scale for x and y
+    base.scale = scales.x;
   }
 
   const compositingFilter = directChildByTagNS(el, 'compositingFilter');
@@ -371,6 +378,22 @@ function parseTransformRotations(transformAttr: string): { x?: number; y?: numbe
   } catch { }
 
   return rotations;
+}
+
+function parseTransformScales(transformAttr: string) {
+  const scales = { x: 1, y: 1, z: 1 };
+  const match = transformAttr.match(/scale\(([^)]+)\)/);
+
+  if (match) {
+    const values = match[1].split(',').map(v => parseFloat(v.trim()));
+    [scales.x, scales.y, scales.z] = [
+      values[0] ?? 1,
+      values[1] ?? 1,
+      values[2] ?? 1
+    ];
+  }
+
+  return scales;
 }
 
 function parseCAVideoLayer(el: Element): VideoLayer {

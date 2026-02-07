@@ -22,6 +22,7 @@ export type LayerBase = {
   position: Vec2;
   zPosition?: number;
   size: Size;
+  scale?: number;
   opacity?: number;
   rotation?: number;
   rotationX?: number;

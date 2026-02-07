@@ -35,11 +35,11 @@ class AssetCache {
 
 export const assetCache = new AssetCache();
 
-function buildAssetPaths(projectName: string, assetSrc: string): string[] {
+function buildAssetPaths(projectName: string, name: string): string[] {
   return [
-    `${projectName}.ca/Floating.ca/${assetSrc}`,
-    `${projectName}.ca/Background.ca/${assetSrc}`,
-    `${projectName}.ca/Wallpaper.ca/${assetSrc}`,
+    `${projectName}.ca/Floating.ca/assets/${name}`,
+    `${projectName}.ca/Background.ca/assets/${name}`,
+    `${projectName}.ca/Wallpaper.ca/assets/${name}`,
   ];
 }
 
@@ -87,7 +87,9 @@ export function useAssetUrl({
       setError(null);
 
       try {
-        const paths = buildAssetPaths(projectName, assetSrc!);
+        const name = assetSrc?.split("/").pop() || "";
+        const nameNorm = decodeURIComponent(name);
+        const paths = buildAssetPaths(projectName, nameNorm);
         let buf: ArrayBuffer | undefined;
         for (const path of paths) {
           const file = await getFile(projectId, path);
@@ -333,4 +335,5 @@ export function useEmitterCellImages({
 
   return { cellImages, loading };
 }
+
 

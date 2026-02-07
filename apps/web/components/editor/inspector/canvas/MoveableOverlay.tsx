@@ -240,6 +240,7 @@ export function MoveableOverlay({
           const dx = currentTranslation.x ?? 0;
           const dy = currentTranslation.y ?? 0;
           const rotDeg = selectedLayer.rotation ?? 0;
+          const scale = selectedLayer.scale ?? 1;
           const theta = (rotDeg * Math.PI) / 180;
           const cosT = Math.cos(theta);
           const sinT = Math.sin(theta);
@@ -251,8 +252,8 @@ export function MoveableOverlay({
               h: Math.round(currentSize.h),
             },
             position: {
-              x: selectedLayer.position.x + worldDx / 2,
-              y: selectedLayer.position.y + worldDy / 2,
+              x: selectedLayer.position.x + (worldDx * scale) / 2,
+              y: selectedLayer.position.y + (worldDy * scale) / 2,
             },
           });
         }

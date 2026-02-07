@@ -28,6 +28,8 @@ export const applyOverrides = (
       target.size = { ...target.size, w: v };
     } else if (kp === 'bounds.size.height' && typeof v === 'number') {
       target.size = { ...target.size, h: v };
+    } else if (kp === 'transform.scale.xy' && typeof v === 'number') {
+      target.scale = v;
     } else if ((kp === 'transform.rotation' || kp === 'transform.rotation.z') && typeof v === 'number') {
       target.rotation = v;
     } else if (kp === 'transform.rotation.x' && typeof v === 'number') {
