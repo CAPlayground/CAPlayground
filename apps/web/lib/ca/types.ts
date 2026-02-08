@@ -110,6 +110,7 @@ export type EmitterLayer = LayerBase & {
 
 export type TransformLayer = LayerBase & {
   type: 'transform';
+  perspective?: number;
 };
 
 export type GradientColor = {
@@ -217,7 +218,9 @@ export type KeyPath =
   | 'transform.rotation.y'
   | 'transform.rotation.z'
   | 'opacity'
-  | 'bounds';
+  | 'bounds'
+  | 'anchorPoint.x'
+  | 'anchorPoint.y';
 
 export type Animations = Array<Animation>;
 

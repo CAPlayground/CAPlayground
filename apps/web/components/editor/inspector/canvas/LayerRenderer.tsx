@@ -75,6 +75,8 @@ export function LayerRenderer({
     transformString,
     transformedX,
     transformedY,
+    transformedAnchorX,
+    transformedAnchorY,
   } = useTransform({
     layer: layer as TransformLayer,
     useGyroControls,
@@ -102,7 +104,11 @@ export function LayerRenderer({
     });
   }, [isSelected, x, y, z, rotation, rotationX, rotationY, width, height, scale]);
 
-  const anchor = getAnchor(layer);
+  const baseAnchor = getAnchor(layer);
+  const anchor = {
+    x: transformedAnchorX ?? baseAnchor.x,
+    y: transformedAnchorY ?? baseAnchor.y,
+  };
   const transformOriginY = useYUp ? (1 - anchor.y) * 100 : anchor.y * 100;
 
   const renderChildren = (layer: AnyLayer, nextUseYUp: boolean) => {
@@ -211,6 +217,8 @@ export function LayerRenderer({
       ...style,
       transform: [style.transform, transformString].filter(Boolean).join(' '),
       transformStyle: 'preserve-3d',
+      perspective: layer.perspective ? `${layer.perspective}px` : '',
+      perspectiveOrigin: `${anchor.x * 100}% ${transformOriginY}%`
     };
   }
   if (layer.type === "replicator") {
