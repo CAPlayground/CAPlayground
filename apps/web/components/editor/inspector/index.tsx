@@ -89,6 +89,7 @@ export function Inspector() {
       else if (kp === 'zposition' && typeof v === 'number') eff.zPosition = v;
       else if (kp === 'bounds.size.width' && typeof v === 'number') eff.size.w = v;
       else if (kp === 'bounds.size.height' && typeof v === 'number') eff.size.h = v;
+      else if (kp === 'transform.scale.xy' && typeof v === 'number') eff.scale = v;
       else if (kp === 'transform.rotation.z' && typeof v === 'number') eff.rotation = v as number;
       else if (kp === 'transform.rotation.x' && typeof v === 'number') eff.rotationX = v as number;
       else if (kp === 'transform.rotation.y' && typeof v === 'number') eff.rotationY = v as number;

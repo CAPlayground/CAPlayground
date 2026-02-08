@@ -99,6 +99,9 @@ export function serializeCAML(
           case "bounds.size.height":
             defaultVal = layerIndex[override.targetId].size.h;
             break;
+          case "transform.scale.xy":
+            defaultVal = layerIndex[override.targetId].scale;
+            break;
           case "transform.rotation.z":
             defaultVal = layerIndex[override.targetId].rotation;
             break;

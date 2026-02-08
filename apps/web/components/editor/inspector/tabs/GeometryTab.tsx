@@ -15,6 +15,7 @@ import { RotationKnob } from "@/components/ui/rotation-knob";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useEditor } from "../../editor-context";
 import { getParentAbsContextFor } from "../../canvas-preview/utils/coordinates";
+import { clamp } from "@/lib/utils";
 
 interface GeometryTabProps extends InspectorTabProps {
   disablePosX: boolean;
@@ -401,6 +402,47 @@ export function GeometryTab({
                 </Button>
               </>
             )}
+          </div>
+        </div>
+        <div className="space-y-1 col-span-2">
+          <Label>Scale</Label>
+          <div className="flex items-center gap-2 w-full">
+            <Slider
+              value={[Math.round((typeof selected.scale === 'number' ? selected.scale : 1) * 100)]}
+              min={0}
+              max={400}
+              step={1}
+              onValueChange={([p]) => {
+                const clamped = clamp(Math.round(Number(p)), 0, 400);
+                updateLayerTransient(selected.id, { scale: clamped / 100 });
+              }}
+              onValueCommit={([p]) => {
+                const clamped = clamp(Math.round(Number(p)), 0, 400);
+                updateLayer(selected.id, { scale: clamped / 100 });
+              }}
+            />
+            <Input
+              className="w-24 h-8 text-right"
+              type="number"
+              min={0}
+              step={1}
+              value={getBuf('scale', String(Math.round((typeof selected.scale === 'number' ? selected.scale : 1) * 100)))}
+              onChange={(e) => {
+                setBuf('scale', e.target.value);
+                const v = e.target.value.trim();
+                if (v === "") return;
+                const p = Math.max(0, Math.round(Number(v)));
+                updateLayerTransient(selected.id, { scale: p / 100 });
+              }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
+              onBlur={(e) => {
+                const v = e.target.value.trim();
+                const p = v === "" ? 100 : Math.max(0, Math.round(Number(v)));
+                updateLayer(selected.id, { scale: p / 100 });
+                clearBuf('scale');
+              }}
+            />
+            <span className="text-xs text-muted-foreground">%</span>
           </div>
         </div>
         <div className="space-y-1 col-span-2">

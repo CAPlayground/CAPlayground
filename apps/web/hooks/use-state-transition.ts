@@ -11,6 +11,7 @@ export default function useStateTransition(
       x: layer.position.x,
     },
     zPosition: layer.zPosition ?? 0,
+    scale: layer.scale ?? 1,
     rotation: layer.rotation ?? 0,
     rotationX: layer.rotationX ?? 0,
     rotationY: layer.rotationY ?? 0,
@@ -42,6 +43,7 @@ export default function useStateTransition(
     const overrideX = layer.position.x;
     const overrideW = layer.size.w;
     const overrideH = layer.size.h;
+    const overrideScale = layer.scale ?? 1;
     const overrideRotation = layer.rotation ?? 0;
     const overrideRotationX = layer.rotationX ?? 0;
     const overrideRotationY = layer.rotationY ?? 0;
@@ -55,6 +57,7 @@ export default function useStateTransition(
         x: overrideX,
       },
       zPosition: overrideZPosition,
+      scale: overrideScale,
       rotation: overrideRotation,
       rotationX: overrideRotationX,
       rotationY: overrideRotationY,
@@ -75,6 +78,7 @@ export default function useStateTransition(
           x: layer.position.x,
         },
         zPosition: layer.zPosition ?? 0,
+        scale: layer.scale ?? 1,
         rotation: layer.rotation ?? 0,
         rotationX: layer.rotationX ?? 0,
         rotationY: layer.rotationY ?? 0,
@@ -122,6 +126,7 @@ export default function useStateTransition(
             x: lerp(startValue.current.position.x, targetValue.position.x),
           },
           zPosition: lerp(startValue.current.zPosition, targetValue.zPosition),
+          scale: lerp(startValue.current.scale, targetValue.scale),
           rotation: lerp(startValue.current.rotation, targetValue.rotation),
           rotationX: lerp(startValue.current.rotationX, targetValue.rotationX),
           rotationY: lerp(startValue.current.rotationY, targetValue.rotationY),
