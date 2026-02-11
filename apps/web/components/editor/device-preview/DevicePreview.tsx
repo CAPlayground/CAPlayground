@@ -318,6 +318,7 @@ export default function DevicePreview({
   }, [isAnimatingDragComplete]);
 
   useEffect(() => {
+    if (!showPreview) return;
     if (phoneState === PHONE_STATES.SLEEP) {
       const timeout = setTimeout(() => {
         pause();
@@ -326,7 +327,7 @@ export default function DevicePreview({
     } else {
       play();
     }
-  }, [phoneState, pause, play])
+  }, [showPreview, phoneState, pause, play])
 
   const dragStartYRef = useRef<number | null>(null);
   const dragDirectionRef = useRef<"up" | "down" | null>(null);
