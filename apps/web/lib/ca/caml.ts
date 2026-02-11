@@ -1,5 +1,5 @@
 import { CAEmitterCell } from '@/components/editor/emitter/emitter';
-import { AnyLayer, TextLayer, VideoLayer, CAStateOverrides, CAStateTransitions, GyroParallaxDictionary, KeyPath, Animations, EmitterLayer, LayerBase, ReplicatorLayer, LiquidGlassLayer } from './types';
+import { AnyLayer, TextLayer, VideoLayer, CAStateOverrides, CAStateTransitions, GyroParallaxDictionary, KeyPath, Animations, EmitterLayer, LayerBase, ReplicatorLayer, LiquidGlassLayer, TimingFunction, CalculationMode } from './types';
 import { blendModes } from '../blending';
 import { Filter, SupportedFilterTypes } from '../filters';
 import { CAML_NS } from './serialize/serializeCAML';
@@ -281,6 +281,7 @@ function parseLayerBase(el: Element): LayerBase {
       : undefined,
     geometryFlipped: parseBooleanAttr(el, 'geometryFlipped') || 0,
     masksToBounds: parseBooleanAttr(el, 'masksToBounds') || 0,
+    scale: 1,
   };
 
   // Parse transform attribute for additional rotation values
@@ -290,6 +291,12 @@ function parseLayerBase(el: Element): LayerBase {
     if (rotations.z !== undefined) base.rotation = base.rotation || rotations.z;
     if (rotations.x !== undefined) base.rotationX = base.rotationX || rotations.x;
     if (rotations.y !== undefined) base.rotationY = base.rotationY || rotations.y;
+  }
+  
+  if (transformAttr && /scale\(/i.test(transformAttr)) {
+    const scales = parseTransformScales(transformAttr);
+    // We use the x value to set the scale for simplicity, most of the wallpapers use the same scale for x and y
+    base.scale = scales.x;
   }
 
   const compositingFilter = directChildByTagNS(el, 'compositingFilter');
@@ -371,6 +378,22 @@ function parseTransformRotations(transformAttr: string): { x?: number; y?: numbe
   } catch { }
 
   return rotations;
+}
+
+function parseTransformScales(transformAttr: string) {
+  const scales = { x: 1, y: 1, z: 1 };
+  const match = transformAttr.match(/scale\(([^)]+)\)/);
+
+  if (match) {
+    const values = match[1].split(',').map(v => parseFloat(v.trim()));
+    [scales.x, scales.y, scales.z] = [
+      values[0] ?? 1,
+      values[1] ?? 1,
+      values[2] ?? 1
+    ];
+  }
+
+  return scales;
 }
 
 function parseCAVideoLayer(el: Element): VideoLayer {
@@ -609,11 +632,14 @@ function parseCATransformLayer(el: Element): AnyLayer {
   const base = parseLayerBase(el);
   const children = parseSublayers(el);
   const parsedAnimations = parseCALayerAnimations(el);
-
+  const sublayerTransform = attr(el, 'sublayerTransform')
+  const perspectiveMatch = sublayerTransform?.match(/perspective\(([^)]+)\)/);
+  const perspective = perspectiveMatch ? Number(perspectiveMatch[1]) : null;
   return {
     ...base,
     type: 'transform',
     children,
+    perspective,
     ...(parsedAnimations ? { animations: parsedAnimations } : {} as any),
   } as AnyLayer;
 }
@@ -621,6 +647,7 @@ function parseCATransformLayer(el: Element): AnyLayer {
 function parseCAReplicatorLayer(el: Element): AnyLayer {
   const base = parseLayerBase(el);
   const children = parseSublayers(el);
+  const parsedAnimations = parseCALayerAnimations(el);
 
   const instanceCount = parseNumericAttr(el, 'instanceCount') || 1;
   const instanceDelay = parseNumericAttr(el, 'instanceDelay') || 0;
@@ -656,6 +683,7 @@ function parseCAReplicatorLayer(el: Element): AnyLayer {
     instanceRotation,
     instanceDelay,
     children,
+    ...(parsedAnimations ? { animations: parsedAnimations } : {} as any),
   } as AnyLayer;
 }
 
@@ -796,6 +824,13 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
           }
         }
       }
+      const keyTimesNode = animNode.getElementsByTagNameNS(CAML_NS, 'keyTimes')[0];
+      let keyTimes = keyTimesNode
+        ? Array.from(keyTimesNode.children).map((k) => Number(k.getAttribute('value') || ''))
+        : [];
+      if (keyTimes.length > vals.length) {
+        keyTimes = keyTimes.slice(0, vals.length);
+      }
       const enabled = vals.length > 0;
       const autorevAttr = animNode.getAttribute('autoreverses');
       const autoreverses: 0 | 1 = (Number(autorevAttr) || 0) ? 1 : 0;
@@ -806,6 +841,16 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
       const repDurAttr = animNode.getAttribute('repeatDuration');
       const infinite: 0 | 1 = (repCount === 'inf' || repDurAttr === 'inf') ? 1 : 0;
       const repeatDurationSeconds = !infinite && Number.isFinite(Number(repDurAttr || '')) ? Number(repDurAttr) : undefined;
+      const calcModeAttr = animNode.getAttribute('calculationMode');
+      const timingAttr = animNode.getAttribute('timingFunction');
+      const validCalculationModes: CalculationMode[] = ['linear', 'discrete'];
+      const validTimingFunctions: TimingFunction[] = ['linear', 'easeIn', 'easeOut', 'easeInEaseOut'];
+      const calculationMode: CalculationMode = validCalculationModes.includes(calcModeAttr as CalculationMode) 
+        ? (calcModeAttr as CalculationMode) 
+        : 'linear';
+      const timingFunction: TimingFunction = validTimingFunctions.includes(timingAttr as TimingFunction)
+        ? (timingAttr as TimingFunction)
+        : 'linear';
       parsedAnimations.push({
         enabled,
         keyPath: kp,
@@ -815,6 +860,9 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
         infinite,
         repeatDurationSeconds: repeatDurationSeconds,
         speed: Number.isFinite(Number(speed)) ? Number(speed) : undefined,
+        calculationMode,
+        timingFunction,
+        keyTimes,
       });
     }
   } catch { }

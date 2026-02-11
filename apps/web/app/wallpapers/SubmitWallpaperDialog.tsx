@@ -23,6 +23,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import Link from "next/link"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Octokit } from "octokit"
 import { getSupabaseBrowserClient } from "@/lib/supabase"
 
@@ -33,7 +34,7 @@ interface SubmitWallpaperDialogProps {
   isSignedIn?: boolean
 }
 
-type Step = "form" | "preview" | "submitting" | "success"
+type Step = "form" | "preview" | "rules" | "submitting" | "success"
 
 interface SubmissionStatus {
   message: string
@@ -60,6 +61,8 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>({ message: "" })
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [prUrl, setPrUrl] = useState<string | null>(null)
+  const [agreedToRules, setAgreedToRules] = useState(false)
+  const [agreedToQuality, setAgreedToQuality] = useState(false)
 
   const tendiesInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
@@ -92,6 +95,7 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
 
   const handleBack = () => {
     if (step === "preview") setStep("form")
+    if (step === "rules") setStep("preview")
   }
 
   const handleCancel = () => {
@@ -106,6 +110,8 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
       URL.revokeObjectURL(videoPreviewUrl)
     }
     setVideoPreviewUrl(null)
+    setAgreedToRules(false)
+    setAgreedToQuality(false)
     onOpenChange(false)
   }
 
@@ -292,12 +298,13 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
       })
 
       setSubmissionStatus({ message: "Creating Pull Request..." })
-      const tendiesUrl = `https://raw.githubusercontent.com/${upstreamOwner}/${upstreamRepo}/${branchName}/${tendiesPath}`
+      const tendiesUrl = `https://raw.githubusercontent.com/${upstreamOwner}/${upstreamRepo}/${encodeURIComponent(branchName)}/${tendiesPath}`
+      const importUrl = `https://caplayground.vercel.app/projects?importUrl=${encodeURIComponent(tendiesUrl)}&name=${encodeURIComponent(name)}&creator=${encodeURIComponent(username)}`
       const { data: pr } = await octokit.rest.pulls.create({
         owner: upstreamOwner,
         repo: upstreamRepo,
         title: `Submission: ${name}`,
-        body: `Wallpaper submission from ${username}\n\nDescription: ${description}\nID: ${idString}\n[Download .tendies file](${tendiesUrl})`,
+        body: `Wallpaper submission from ${username}\n\nDescription: ${description}\nID: ${idString}\n[Download .tendies file](${tendiesUrl})\n[Open in CAPlayground](${importUrl})`,
         head: branchName,
         base: "dev",
       })
@@ -528,7 +535,63 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back
               </Button>
-              <Button onClick={handleSubmit}>
+              <Button onClick={() => setStep("rules")}>
+                Looks Good
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </DialogFooter>
+          </>
+        ) : step === "rules" ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>Submission Rules & Guidelines</DialogTitle>
+              <DialogDescription>
+                Please review and agree to the rules before submitting your wallpaper
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="py-6 space-y-6">
+              <div className="space-y-4">
+                <ul className="text-sm space-y-3 list-decimal list-inside text-muted-foreground bg-muted/50 p-4 rounded-lg">
+                  <li>No NSFW or adult-only content.</li>
+                  <li>Wallpapers must not consist of a single video layer. They should demonstrate creative use of CAPlayground's features.</li>
+                  <li>No political, inappropriate, or offensive content (including but not limited to discrimination based on sex, race, or religion).</li>
+                  <li>Ensure you have the rights to all assets used in your submission.</li>
+                </ul>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-start space-x-3">
+                  <Checkbox
+                    id="rules"
+                    checked={agreedToRules}
+                    onCheckedChange={(checked) => setAgreedToRules(checked as boolean)}
+                    className="mt-1"
+                  />
+                  <Label htmlFor="rules" className="text-sm leading-tight font-medium cursor-pointer">
+                    I confirm that this submission is original and does not contain NSFW, political, or offensive content.
+                  </Label>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <Checkbox
+                    id="quality"
+                    checked={agreedToQuality}
+                    onCheckedChange={(checked) => setAgreedToQuality(checked as boolean)}
+                    className="mt-1"
+                  />
+                  <Label htmlFor="quality" className="text-sm leading-tight font-medium cursor-pointer">
+                    I confirm that this wallpaper is more than just a single video layer.
+                  </Label>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={handleBack}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+              <Button onClick={handleSubmit} disabled={!agreedToRules || !agreedToQuality}>
                 <Github className="h-4 w-4 mr-2" />
                 Submit Wallpaper
               </Button>

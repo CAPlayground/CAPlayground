@@ -6,12 +6,12 @@ export function useCanvasSize(ref: RefObject<HTMLDivElement | null>) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    
+
     const ro = new ResizeObserver(() => {
       const rect = el.getBoundingClientRect();
       setSize({ w: rect.width, h: rect.height });
     });
-    
+
     ro.observe(el);
     return () => ro.disconnect();
   }, [ref]);

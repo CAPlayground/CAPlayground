@@ -2,7 +2,7 @@ import { degToRad, hexToForegroundColor } from "@/lib/utils";
 import { Animations, AnyLayer, CAProject, EmitterLayer, GyroParallaxDictionary, KeyPath, ReplicatorLayer, TextLayer, VideoLayer } from "../types";
 import { CAML_NS } from "./serializeCAML";
 import { findById } from "@/lib/editor/layer-utils";
-import { findPathTo } from "@/components/editor/canvas-preview/utils/layerTree";
+import { findPathTo, findPathToByName } from "@/components/editor/canvas-preview/utils/layerTree";
 
 function setAttr(el: Element, name: string, value: string | number | undefined) {
   if (value === undefined || value === null || value === '') return;
@@ -147,6 +147,9 @@ export function serializeLayer(
   parts.push(`rotate(${rotZ || 0}deg)`);
   parts.push(`rotate(${rotY || 0}deg, 0, 1, 0)`);
   parts.push(`rotate(${rotX || 0}deg, 1, 0, 0)`);
+  if (layer.scale && layer.scale !== 1) {
+    parts.push(`scale(${layer.scale}, ${layer.scale}, 1)`);
+  }
   setAttr(el, 'transform', parts.join(' '));
   const explicitBgHex = (layer as any).backgroundColor as string | undefined;
   const shapeFillHex = (layer as any).fill as string | undefined;
@@ -372,6 +375,10 @@ export function serializeLayer(
     if (parts.length > 0) {
       setAttr(el, 'instanceTransform', parts.join(' '));
     }
+    setAttr(el, 'preservesDepth', '1');
+  }
+  if (layer.type === 'transform' && layer.perspective) {
+    setAttr(el, 'sublayerTransform', `perspective(${layer.perspective})`)
   }
   if (wallpaperParallaxGroupsInput) {
     const style = doc.createElementNS(CAML_NS, 'style');
@@ -410,12 +417,14 @@ export function serializeLayer(
       nsDict.appendChild(layerName);
 
       const mapMaxTo = doc.createElementNS(CAML_NS, 'mapMaxTo');
-      mapMaxTo.setAttribute('type', 'integer');
+      const maxIsInt = Number.isInteger(dict.mapMaxTo);
+      mapMaxTo.setAttribute('type', maxIsInt ? 'integer' : 'real');
       mapMaxTo.setAttribute('value', String(dict.mapMaxTo));
       nsDict.appendChild(mapMaxTo);
 
       const mapMinTo = doc.createElementNS(CAML_NS, 'mapMinTo');
-      mapMinTo.setAttribute('type', 'integer');
+      const minIsInt = Number.isInteger(dict.mapMinTo);
+      mapMinTo.setAttribute('type', minIsInt ? 'integer' : 'real');
       mapMinTo.setAttribute('value', String(dict.mapMinTo));
       nsDict.appendChild(mapMinTo);
 
@@ -424,10 +433,12 @@ export function serializeLayer(
       title.setAttribute('value', dict.title);
       nsDict.appendChild(title);
 
-      const view = doc.createElementNS(CAML_NS, 'view');
-      view.setAttribute('type', 'string');
-      view.setAttribute('value', dict.view);
-      nsDict.appendChild(view);
+      const path = findPathToByName(layer.children || [], dict.layerName);
+      const view = path?.some((l) => l.name === 'BACKGROUND') ? 'Background' : 'Floating';
+      const viewEl = doc.createElementNS(CAML_NS, 'view');
+      viewEl.setAttribute('type', 'string');
+      viewEl.setAttribute('value', view);
+      nsDict.appendChild(viewEl);
 
       wallpaperParallaxGroups.appendChild(nsDict);
     }
@@ -535,7 +546,22 @@ export function serializeLayer(
         } else {
           a.setAttribute('repeatDuration', String(repeatDuration));
         }
-        a.setAttribute('calculationMode', 'linear');
+        a.setAttribute('calculationMode', anim.calculationMode ?? 'linear');
+        a.setAttribute('timingFunction', anim.timingFunction ?? 'linear');
+        if (anim.keyTimes && anim.keyTimes.length > 0) {
+          const keyTimesEl = doc.createElementNS(CAML_NS, 'keyTimes');
+          for (const [i, kt] of anim.keyTimes.entries()) {
+            const realEl = doc.createElementNS(CAML_NS, 'real');
+            realEl.setAttribute('value', String(i === 0 ? 0 : kt));
+            keyTimesEl.appendChild(realEl);
+          }
+          if (anim.calculationMode === 'discrete' && anim.keyTimes.length === anim.values.length) {
+            const finalDiscreteEl = doc.createElementNS(CAML_NS, 'real');
+            finalDiscreteEl.setAttribute('value', '1');
+            keyTimesEl.appendChild(finalDiscreteEl);
+          }
+          a.appendChild(keyTimesEl);
+        }
         const valuesEl = doc.createElementNS(CAML_NS, 'values');
         if (keyPath === 'position') {
           for (const ptRaw of anim.values as Array<any>) {

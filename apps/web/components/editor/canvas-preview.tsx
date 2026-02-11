@@ -326,19 +326,21 @@ export function CanvasPreview() {
           ) : currentKey === 'wallpaper' ? (
             <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
               {showPreview && <div id="lock-screen-clock" className="pt-[35px]" />}
-              {renderedLayers.map((layer) => (
-                <LayerRenderer
-                  key={layer.id}
-                  layer={layer}
-                  useYUp={getRootFlip(doc?.meta.geometryFlipped) === 0}
-                  siblings={renderedLayers}
-                  gyroX={gyroX}
-                  gyroY={gyroY}
-                  useGyroControls={useGyroControls}
-                  hiddenLayerIds={hiddenLayerIds}
-                  moveableRef={moveableRef}
-                />
-              ))}
+              {renderedLayers
+                .filter((layer) => ['FLOATING', 'BACKGROUND'].includes(layer.name))
+                .map((layer) => (
+                  <LayerRenderer
+                    key={layer.id}
+                    layer={layer}
+                    useYUp={getRootFlip(doc?.meta.geometryFlipped) === 0}
+                    siblings={renderedLayers}
+                    gyroX={gyroX}
+                    gyroY={gyroY}
+                    useGyroControls={useGyroControls}
+                    hiddenLayerIds={hiddenLayerIds}
+                    moveableRef={moveableRef}
+                  />
+                ))}
             </div>
           ) : null}
           {currentKey === 'floating' && (

@@ -17,12 +17,14 @@ import EditorOnboarding from "@/components/editor/onboarding";
 import { BrowserWarning } from "@/components/editor/browser-warning";
 import { getProject } from "@/lib/storage";
 import { TimelineProvider } from "@/context/TimelineContext";
+import { cn } from "@/lib/utils";
 
 export default function EditorPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const projectId = params?.id;
   const [meta, setMeta] = useState<{ id: string; name: string; width: number; height: number; background?: string } | null>(null);
+  const [uiDensity] = useLocalStorage<'default' | 'compact'>("caplay_settings_ui_density", 'default');
   const [leftWidth, setLeftWidth] = useLocalStorage<number>("caplay_panel_left_width", 320);
   const [rightWidth, setRightWidth] = useLocalStorage<number>("caplay_panel_right_width", 400);
   const [statesHeight, setStatesHeight] = useLocalStorage<number>("caplay_panel_states_height", 350);
@@ -30,6 +32,7 @@ export default function EditorPage() {
   const leftPaneRef = useRef<HTMLDivElement | null>(null);
   const [showLeft, setShowLeft] = useState(true);
   const [showRight, setShowRight] = useState(false);
+
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   // Mobile portrait detection
@@ -135,7 +138,11 @@ export default function EditorPage() {
     <EditorProvider projectId={projectId} initialMeta={meta}>
       <TimelineProvider>
         <BrowserWarning />
-        <div className="flex flex-col h-[100dvh] md:h-[calc(100vh)]" ref={containerRef}>
+        <div
+          className={cn("flex flex-col", uiDensity === "compact" && "ui-compact")}
+          style={{ height: `calc(100dvh - var(--unofficial-banner-height, 0px))` }}
+          ref={containerRef}
+        >
           <MenuBar
             projectId={projectId}
             showLeft={showLeft}

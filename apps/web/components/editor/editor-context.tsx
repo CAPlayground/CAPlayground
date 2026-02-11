@@ -584,19 +584,22 @@ export function EditorProvider({
     });
   }, []);
 
-  const addBase = useCallback((name: string): LayerBase => ({
-    id: genId(),
-    name,
-    position: { x: 50, y: 50 },
-    zPosition: 0,
-    size: { w: 120, h: 40 },
-    rotation: 0,
-    rotationX: 0,
-    rotationY: 0,
-    cornerRadius: 0,
-    opacity: 1,
-    visible: true,
-  }), []);
+  const addBase = useCallback((name: string): LayerBase => {
+    const existingLayers = doc?.docs[doc.activeCA]?.layers ?? [];
+    return {
+      id: genId(),
+      name: getNextLayerName(existingLayers, name),
+      position: { x: 50, y: 50 },
+      zPosition: 0,
+      size: { w: 120, h: 40 },
+      rotation: 0,
+      rotationX: 0,
+      rotationY: 0,
+      cornerRadius: 0,
+      opacity: 1,
+      visible: true,
+    };
+  }, [doc]);
 
   const addTextLayer = useCallback(() => {
     setDoc((prev) => {
@@ -1330,7 +1333,7 @@ export function EditorProvider({
       const x = (parentLayer?.size.w || canvasW) / 2;
       const y = (parentLayer?.size.h || canvasH) / 2;
       const layer: TransformLayer = {
-        ...addBase(getNextLayerName(cur.layers, 'Transform Layer')),
+        ...addBase('Transform Layer'),
         position: { x, y },
         size: { w: 200, h: 200 },
         type: 'transform',
@@ -1354,7 +1357,7 @@ export function EditorProvider({
       const x = (parentLayer?.size.w || canvasW) / 2;
       const y = (parentLayer?.size.h || canvasH) / 2;
       const layer: ReplicatorLayer = {
-        ...addBase(getNextLayerName(cur.layers, 'Replicator')),
+        ...addBase('Replicator'),
         position: { x, y },
         size: { w: canvasW, h: canvasH },
         type: 'replicator',
@@ -1378,6 +1381,7 @@ export function EditorProvider({
       const shouldOnlyAffectState =
         !!cur.activeState &&
         cur.activeState !== 'Base State' &&
+        !('name' in patch) &&
         !('syncStateFrameMode' in patch) &&
         !('syncWWithState' in patch) &&
         !('blendMode' in patch) &&
@@ -1388,7 +1392,7 @@ export function EditorProvider({
         const p: any = patch;
         const nextState = { ...(cur.stateOverrides || {}) } as Record<string, Array<{ targetId: string; keyPath: string; value: number | string }>>;
         const list = [...(nextState[cur.activeState!] || [])];
-        const upd = (keyPath: 'position.x' | 'position.y' | 'zPosition' | 'opacity' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'cornerRadius', value: number) => {
+        const upd = (keyPath: 'position.x' | 'position.y' | 'zPosition' | 'opacity' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'cornerRadius' | 'transform.scale.xy', value: number) => {
           const idx = list.findIndex((o) => o.targetId === id && o.keyPath === keyPath);
           if (idx >= 0) list[idx] = { ...list[idx], value };
           else list.push({ targetId: id, keyPath, value });
@@ -1398,6 +1402,7 @@ export function EditorProvider({
         if (p.zPosition && typeof p.zPosition === 'number') upd('zPosition', p.zPosition);
         if (p.size && typeof p.size.w === 'number') upd('bounds.size.width', p.size.w);
         if (p.size && typeof p.size.h === 'number') upd('bounds.size.height', p.size.h);
+        if (p.scale && typeof p.scale === 'number') upd('transform.scale.xy', p.scale);
         if (typeof p.rotation === 'number') upd('transform.rotation.z', p.rotation as number);
         if (typeof (p as any).rotationX === 'number') upd('transform.rotation.x', (p as any).rotationX as number);
         if (typeof (p as any).rotationY === 'number') upd('transform.rotation.y', (p as any).rotationY as number);
@@ -1425,7 +1430,7 @@ export function EditorProvider({
         const p: any = patch;
         const nextState = { ...(cur.stateOverrides || {}) } as Record<string, Array<{ targetId: string; keyPath: string; value: number | string }>>;
         const list = [...(nextState[cur.activeState] || [])];
-        const upd = (keyPath: 'position.x' | 'position.y' | 'zPosition' | 'opacity' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'cornerRadius', value: number) => {
+        const upd = (keyPath: 'position.x' | 'position.y' | 'zPosition' | 'opacity' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'cornerRadius' | 'transform.scale.xy', value: number) => {
           const idx = list.findIndex((o) => o.targetId === id && o.keyPath === keyPath);
           if (idx >= 0) list[idx] = { ...list[idx], value };
           else list.push({ targetId: id, keyPath, value });
@@ -1435,6 +1440,7 @@ export function EditorProvider({
         if (p.zPosition && typeof p.zPosition === 'number') upd('zPosition', p.zPosition);
         if (p.size && typeof p.size.w === 'number') upd('bounds.size.width', p.size.w);
         if (p.size && typeof p.size.h === 'number') upd('bounds.size.height', p.size.h);
+        if (p.scale && typeof p.scale === 'number') upd('transform.scale.xy', p.scale);
         if (typeof p.rotation === 'number') upd('transform.rotation.z', p.rotation as number);
         if (typeof (p as any).rotationX === 'number') upd('transform.rotation.x', (p as any).rotationX as number);
         if (typeof (p as any).rotationY === 'number') upd('transform.rotation.y', (p as any).rotationY as number);
@@ -1518,7 +1524,7 @@ export function EditorProvider({
     }
     setDoc((prev) => {
       if (!prev) return prev;
-      const cloned: AnyLayer[] = (src.data || []).map(cloneLayerDeep);
+      const cloned: AnyLayer[] = (src.data || []).map((layer: AnyLayer) => cloneLayerDeep(layer, cur.layers));
       const idMap = new Map<string, string>();
       const collectMap = (orig: AnyLayer[], copies: AnyLayer[]) => {
         for (let i = 0; i < orig.length; i++) {
@@ -1548,7 +1554,7 @@ export function EditorProvider({
       if (!targetId) return prev;
       const sel = findById(cur.layers, targetId);
       if (!sel) return prev;
-      const cloned = cloneLayerDeep(sel);
+      const cloned = cloneLayerDeep(sel, cur.layers);
       const idMap = new Map<string, string>();
       const buildMap = (o: AnyLayer, c: AnyLayer) => {
         idMap.set((o as any).id, (c as any).id);

@@ -6,6 +6,7 @@ import { lerp } from "@/lib/editor/layer-utils";
 interface TransitionValue {
   position: { x: number; y: number };
   zPosition: number;
+  scale: number;
   rotation: number;
   rotationX: number;
   rotationY: number;
@@ -27,6 +28,7 @@ export default function useStateTransition(layer: AnyLayer): TransitionValue {
   const layerW = layer.size.w;
   const layerH = layer.size.h;
   const layerZ = layer.zPosition ?? 0;
+  const layerScale = layer.scale ?? 1;
   const layerRotation = layer.rotation ?? 0;
   const layerRotationX = layer.rotationX ?? 0;
   const layerRotationY = layer.rotationY ?? 0;
@@ -36,6 +38,7 @@ export default function useStateTransition(layer: AnyLayer): TransitionValue {
   const [value, setValue] = useState<TransitionValue>(() => ({
     position: { x: layerX, y: layerY },
     zPosition: layerZ,
+    scale: layerScale,
     rotation: layerRotation,
     rotationX: layerRotationX,
     rotationY: layerRotationY,
@@ -53,6 +56,7 @@ export default function useStateTransition(layer: AnyLayer): TransitionValue {
   const targetRef = useRef<TransitionValue>({
     position: { x: layerX, y: layerY },
     zPosition: layerZ,
+    scale: layerScale,
     rotation: layerRotation,
     rotationX: layerRotationX,
     rotationY: layerRotationY,
@@ -64,6 +68,7 @@ export default function useStateTransition(layer: AnyLayer): TransitionValue {
   targetRef.current = {
     position: { x: layerX, y: layerY },
     zPosition: layerZ,
+    scale: layerScale,
     rotation: layerRotation,
     rotationX: layerRotationX,
     rotationY: layerRotationY,
@@ -91,6 +96,7 @@ export default function useStateTransition(layer: AnyLayer): TransitionValue {
             y: lerp(start.position.y, target.position.y, progress),
           },
           zPosition: lerp(start.zPosition, target.zPosition, progress),
+          scale: lerp(start.scale, target.scale, progress),
           rotation: lerp(start.rotation, target.rotation, progress),
           rotationX: lerp(start.rotationX, target.rotationX, progress),
           rotationY: lerp(start.rotationY, target.rotationY, progress),

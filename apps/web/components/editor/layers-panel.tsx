@@ -6,10 +6,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Plus, MoreVertical, ChevronRight, ChevronDown, Copy, Trash2, Check, Eye, EyeOff, AlertTriangle } from "lucide-react";
 import { useEditor } from "./editor-context";
 import { useEffect, useRef, useState } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { AnyLayer } from "@/lib/ca/types";
 import { isChromiumBrowser } from "@/lib/browser";
 import VideoLayerDialog from "./VideoLayerDialog";
+import { findPathTo } from "./canvas-preview/utils/layerTree";
 
 export function LayersPanel() {
   const {
@@ -120,6 +122,8 @@ export function LayersPanel() {
     const isCollapsed = collapsed.has(l.id);
     const isChecked = multiSelectedIds.includes(l.id);
     const isHidden = hiddenLayerIds.has(l.id);
+    const pathToLayer = findPathTo(layers, l.id);
+    const isOutside = isGyro && key === 'wallpaper' && pathToLayer != null && !pathToLayer.some((n) => n.name === 'FLOATING' || n.name === 'BACKGROUND');
 
     const showDropLineBefore = dragOverId === l.id && dropPosition === 'before';
     const showDropLineAfter = dragOverId === l.id && dropPosition === 'after';
@@ -158,7 +162,9 @@ export function LayersPanel() {
             const relativeY = mouseY - rect.top;
             const isBefore = relativeY < rect.height / 4;
             const isAfter = relativeY > rect.height * 3 / 4;
-            const position = isBefore ? 'before' : isAfter ? 'after' : 'into';
+            const position = isGyro && isProtected
+              ? 'into'
+              : isBefore ? 'before' : isAfter ? 'after' : 'into';
             setDragOverId(l.id);
             setDropPosition(position);
           }}
@@ -224,18 +230,31 @@ export function LayersPanel() {
             )}
           </div>
           <div className="flex items-center gap-1 pr-2">
+            {isOutside && (
+              <Popover>
+                <PopoverTrigger className="text-amber-600 dark:text-amber-500" asChild>
+                  <AlertTriangle className="h-3.5 w-3.5 ml-0.5" />
+                </PopoverTrigger>
+                <PopoverContent side="right" align="start" className="w-64 p-3 text-xs" onClick={(e) => e.stopPropagation()}>
+                  <p className="font-semibold mb-1">Won't be rendered</p>
+                  <p className="text-muted-foreground">
+                    In gyro wallpapers only layers inside FLOATING or BACKGROUND are rendered. Move this layer under one of those to see it.
+                  </p>
+                </PopoverContent>
+              </Popover>
+            )}
             {l.type === 'liquidGlass' && !isChromium && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <AlertTriangle className="h-3.5 w-3.5 ml-1 text-amber-600 dark:text-amber-500 shrink-0" />
-                </TooltipTrigger>
-                <TooltipContent side="right" className="max-w-xs">
+              <Popover>
+                <PopoverTrigger className="text-amber-600 dark:text-amber-500" asChild>
+                  <AlertTriangle className="h-3.5 w-3.5 ml-0.5" />
+                </PopoverTrigger>
+                <PopoverContent side="right" align="start" className="w-64 p-3 text-xs" onClick={(e) => e.stopPropagation()}>
                   <p className="font-semibold mb-1">Not Visible</p>
-                  <p className="text-xs">
+                  <p className="text-muted-foreground">
                     This layer only works in Chromium-based browsers and will not be visible in your current browser.
                   </p>
-                </TooltipContent>
-              </Tooltip>
+                </PopoverContent>
+              </Popover>
             )}
             <Button
               variant="ghost"
