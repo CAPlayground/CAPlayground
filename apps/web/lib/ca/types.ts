@@ -132,6 +132,7 @@ export type ReplicatorLayer = LayerBase & {
   instanceTranslation?: { x: number; y: number; z: number };
   instanceRotation?: number;
   instanceDelay?: number;
+  perspective?: number;
 };
 
 export type LiquidGlassLayer = LayerBase & {

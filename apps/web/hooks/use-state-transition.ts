@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnyLayer } from "@/lib/ca/types";
 import { useEditor } from "@/components/editor/editor-context";
 import { lerp } from "@/lib/editor/layer-utils";
@@ -53,7 +53,7 @@ export default function useStateTransition(layer: AnyLayer): TransitionValue {
   const animationRef = useRef<number | null>(null);
   const previousStateRef = useRef(activeState);
 
-  const targetRef = useRef<TransitionValue>({
+  const target = useMemo<TransitionValue>(() => ({
     position: { x: layerX, y: layerY },
     zPosition: layerZ,
     scale: layerScale,
@@ -63,19 +63,19 @@ export default function useStateTransition(layer: AnyLayer): TransitionValue {
     cornerRadius: layerCornerRadius,
     opacity: layerOpacity,
     size: { w: layerW, h: layerH },
-  });
-
-  targetRef.current = {
-    position: { x: layerX, y: layerY },
-    zPosition: layerZ,
-    scale: layerScale,
-    rotation: layerRotation,
-    rotationX: layerRotationX,
-    rotationY: layerRotationY,
-    cornerRadius: layerCornerRadius,
-    opacity: layerOpacity,
-    size: { w: layerW, h: layerH },
-  };
+  }), [
+    layerX,
+    layerY,
+    layerZ,
+    layerScale,
+    layerRotation,
+    layerRotationX,
+    layerRotationY,
+    layerCornerRadius,
+    layerOpacity,
+    layerW,
+    layerH
+  ]);
 
   useEffect(() => {
     if (activeState !== previousStateRef.current) {
@@ -87,7 +87,6 @@ export default function useStateTransition(layer: AnyLayer): TransitionValue {
       const animate = (now: number) => {
         const elapsed = now - startTimeRef.current;
         const progress = Math.min(elapsed / TRANSITION_DURATION, 1);
-        const target = targetRef.current;
         const start = startValueRef.current;
 
         setValue({
@@ -124,13 +123,13 @@ export default function useStateTransition(layer: AnyLayer): TransitionValue {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [activeState]);
+  }, [activeState, target]);
 
   useEffect(() => {
     if (!isTransitioningRef.current) {
-      setValue(targetRef.current);
+      setValue(target);
     }
-  }, [layerX, layerY, layerW, layerH, layerZ, layerRotation, layerRotationX, layerRotationY, layerCornerRadius, layerOpacity]);
+  }, [target]);
 
   return value;
 }

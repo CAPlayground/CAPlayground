@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Moon, Sun } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useTimeline } from "@/context/TimelineContext";
 
 const PHONE_STATES = {
   LOCKED: "Locked",
@@ -29,6 +30,7 @@ export default function DevicePreview({
   scale,
 }: Props) {
   const { doc } = useEditor();
+  const { play, pause } = useTimeline()
   const {
     floating,
     background,
@@ -181,7 +183,6 @@ export default function DevicePreview({
     if (phoneState !== PHONE_STATES.SLEEP) {
       previousStateRef.current = phoneState;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phoneState]);
 
   useEffect(() => {
@@ -315,6 +316,17 @@ export default function DevicePreview({
       };
     }
   }, [isAnimatingDragComplete]);
+
+  useEffect(() => {
+    if (phoneState === PHONE_STATES.SLEEP) {
+      const timeout = setTimeout(() => {
+        pause();
+      }, 4000);
+      return () => clearTimeout(timeout);
+    } else {
+      play();
+    }
+  }, [phoneState, pause, play])
 
   const dragStartYRef = useRef<number | null>(null);
   const dragDirectionRef = useRef<"up" | "down" | null>(null);

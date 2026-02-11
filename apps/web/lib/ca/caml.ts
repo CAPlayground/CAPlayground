@@ -674,6 +674,9 @@ function parseCAReplicatorLayer(el: Element): AnyLayer {
       instanceRotation = Number(rotateMatch[1]) || 0;
     }
   }
+  const sublayerTransform = attr(el, 'sublayerTransform')
+  const perspectiveMatch = sublayerTransform?.match(/perspective\(([^)]+)\)/);
+  const perspective = perspectiveMatch ? Number(perspectiveMatch[1]) : null;
 
   return {
     ...base,
@@ -683,6 +686,7 @@ function parseCAReplicatorLayer(el: Element): AnyLayer {
     instanceRotation,
     instanceDelay,
     children,
+    perspective,
     ...(parsedAnimations ? { animations: parsedAnimations } : {} as any),
   } as AnyLayer;
 }
