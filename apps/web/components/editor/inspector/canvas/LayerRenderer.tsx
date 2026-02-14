@@ -131,6 +131,10 @@ export function LayerRenderer({
     });
   };
 
+  const nextUseYUp = (typeof layer.geometryFlipped === 'number' && layer.geometryFlipped === 1)
+    ? !useYUp
+    : useYUp;
+
   const borderStyle: React.CSSProperties = (typeof layer.borderWidth === 'number' && layer.borderWidth > 0)
     ? { border: `${layer.borderWidth}px solid ${layer.borderColor || '#000000'}` }
     : {};
@@ -144,7 +148,7 @@ export function LayerRenderer({
     `translateX(${translateX}px)`,
     `translateY(${translateY}px)`,
     `translateZ(${translateZ}px)`,
-    `rotate(${-(rotation ?? 0)}deg)`,
+    `rotate(${(rotation ?? 0) * (nextUseYUp ? -1 : 1)}deg)`,
     `rotateY(${(rotationY ?? 0)}deg)`,
     `rotateX(${-(rotationX ?? 0)}deg)`,
     `scale(${scale ?? 1})`,
@@ -195,10 +199,6 @@ export function LayerRenderer({
     common.filter = filterString.trim();
   }
 
-  const nextUseYUp = (typeof layer.geometryFlipped === 'number' && layer.geometryFlipped === 1)
-    ? !useYUp
-    : useYUp;
-
   let style: React.CSSProperties = {
     ...common,
     ...bgStyleFor(layer),
@@ -225,6 +225,8 @@ export function LayerRenderer({
     style = {
       ...style,
       transformStyle: 'preserve-3d',
+      perspective: layer.perspective ? `${layer.perspective}px` : '',
+      perspectiveOrigin: `${anchor.x * 100}% ${transformOriginY}%`
     };
   }
   const { onPointerDown, onPointerMove, onPointerUp } = useMoveablePointerDrag({
@@ -262,7 +264,7 @@ export function LayerRenderer({
           <GradientRenderer layer={layer} />
         )}
         {layer.type === "emitter" && (
-          <EmitterCanvas layer={layer} />
+          <EmitterCanvas layer={layer} useYUp={nextUseYUp} />
         )}
         {layer.type !== "replicator" && layer.type !== "video" && renderChildren(layer, nextUseYUp)}
         {layer.type === "replicator" && (

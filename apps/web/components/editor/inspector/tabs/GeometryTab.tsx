@@ -584,7 +584,7 @@ export function GeometryTab({
             <span className="text-xs text-muted-foreground">Affects this layer's sublayers' coordinate system.</span>
           </div>
         </div>
-        {selected.type === 'transform' &&
+        {(selected.type === 'transform' || selected.type === 'replicator') &&
           <div className="space-y-1 col-span-2">
             <Label htmlFor="perspective">Perspective</Label>
             <Input id="perspective" type="number" step="1" value={getBuf('perspective', fmt0(selected.perspective))}
