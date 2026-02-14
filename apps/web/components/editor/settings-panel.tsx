@@ -52,7 +52,7 @@ export function SettingsPanel({
   const [showGeometryResize, setShowGeometryResize] = useLocalStorage<boolean>("caplay_settings_show_geometry_resize", false);
   const [showAlignButtons, setShowAlignButtons] = useLocalStorage<boolean>("caplay_settings_show_align_buttons", false);
   const [uiDensity, setUiDensity] = useLocalStorage<'default' | 'compact'>("caplay_settings_ui_density", 'default');
-
+  const [dragSensitivity, setDragSensitivity] = useLocalStorage<number>("caplay_settings_drag_sensitivity", 3);
 
   useEffect(() => setMounted(true), []);
 
@@ -232,6 +232,14 @@ export function SettingsPanel({
               <div className="flex items-center justify-between gap-3">
                 <Label htmlFor="show-align-buttons" className="text-sm">Show align buttons</Label>
                 <Switch id="show-align-buttons" checked={!!showAlignButtons} onCheckedChange={(c) => setShowAlignButtons(!!c)} />
+              </div>
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="drag-sensitivity" className="text-sm">Drag-to-change sensitivity</Label>
+                  <Button variant="outline" size="sm" onClick={() => { setDragSensitivity(3) }}>Reset</Button>
+                </div>
+                <Slider id="drag-sensitivity" value={[dragSensitivity]} min={0.5} max={10} step={0.5} onValueChange={([c]) => setDragSensitivity(c)} />
+                <p className="text-[11px] text-muted-foreground">Adjusts how fast values change when dragging numeric fields in the inspector.</p>
               </div>
             </div>
           </div>

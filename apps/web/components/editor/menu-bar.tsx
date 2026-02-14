@@ -25,7 +25,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { getProject, updateProject, deleteProject, isUsingOPFS } from "@/lib/storage";
 import { SettingsPanel } from "./settings-panel";
 import { ExportDialog } from "./ExportDialog";
- 
+
 
 interface ProjectMeta { id: string; name: string; width?: number; height?: number; createdAt?: string }
 
@@ -160,21 +160,21 @@ export function MenuBar({ projectId, showLeft = true, showRight = true, toggleLe
                 <span className="hidden sm:inline ml-2">{doc?.meta.name ?? "Project"}</span>
               </Button>
             </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-52">
-            <DropdownMenuItem
-              className="cursor-pointer"
-              onClick={async () => { await flushPersist(); router.push('/projects'); }}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" /> Back to projects
-            </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer" onClick={() => setRenameOpen(true)}>
-              <Pencil className="h-4 w-4 mr-2" /> Rename
-            </DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive cursor-pointer" onClick={() => setDeleteOpen(true)}>
-              <Trash2 className="h-4 w-4 mr-2" /> Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            <DropdownMenuContent align="start" className="w-52">
+              <DropdownMenuItem
+                className="cursor-pointer"
+                onClick={async () => { await flushPersist(); router.push('/projects'); }}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" /> Back to projects
+              </DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer" onClick={() => setRenameOpen(true)}>
+                <Pencil className="h-4 w-4 mr-2" /> Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive cursor-pointer" onClick={() => setDeleteOpen(true)}>
+                <Trash2 className="h-4 w-4 mr-2" /> Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         {/* Undo/Redo controls */}
         <div className="border rounded-md p-0.5">
@@ -218,22 +218,20 @@ export function MenuBar({ projectId, showLeft = true, showRight = true, toggleLe
                 title={`${savingStatus === 'saving' ? 'Saving…' : savingStatus === 'saved' ? 'Saved' : 'Idle'}${lastSavedAt ? ` - Last saved ${new Date(lastSavedAt).toLocaleTimeString()}` : ''}`}
               >
                 <div
-                  className={`w-2 h-2 rounded-full ${
-                    savingStatus === 'saving'
+                  className={`w-2 h-2 rounded-full ${savingStatus === 'saving'
                       ? 'bg-amber-500 animate-pulse'
                       : savingStatus === 'saved'
-                      ? 'bg-emerald-500'
-                      : 'bg-gray-400'
-                  }`}
+                        ? 'bg-emerald-500'
+                        : 'bg-gray-400'
+                    }`}
                 />
                 <span
-                  className={`hidden sm:inline text-xs ${
-                    savingStatus === 'saving'
+                  className={`hidden sm:inline text-xs ${savingStatus === 'saving'
                       ? 'text-amber-700 dark:text-amber-400'
                       : savingStatus === 'saved'
-                      ? 'text-emerald-700 dark:text-emerald-400'
-                      : 'text-muted-foreground'
-                  }`}
+                        ? 'text-emerald-700 dark:text-emerald-400'
+                        : 'text-muted-foreground'
+                    }`}
                 >
                   {savingStatus === 'saving' ? 'Saving…' : savingStatus === 'saved' ? 'Saved' : 'Idle'}
                 </span>
@@ -269,55 +267,55 @@ export function MenuBar({ projectId, showLeft = true, showRight = true, toggleLe
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="center" className="w-80 p-2">
-                <DropdownMenuLabel>
-                  <div className="text-sm font-medium">Choose Active CA</div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {activeCA === 'floating' && (
-                  <>
-                    <div className="px-2 py-2">
-                      <div className="flex items-center justify-between gap-3">
-                        <Label htmlFor="show-background" className="text-sm">Show background</Label>
-                        <Switch id="show-background" checked={showBackground} onCheckedChange={setShowBackground} />
+                  <DropdownMenuLabel>
+                    <div className="text-sm font-medium">Choose Active CA</div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {activeCA === 'floating' && (
+                    <>
+                      <div className="px-2 py-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <Label htmlFor="show-background" className="text-sm">Show background</Label>
+                          <Switch id="show-background" checked={showBackground} onCheckedChange={setShowBackground} />
+                        </div>
                       </div>
-                    </div>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
-                <div className="grid gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => { setActiveCA('background'); }}
-                    className={`w-full justify-start text-left py-6 ${activeCA==='background' ? 'border-primary/50' : ''}`}
-                    role="menuitemradio"
-                    aria-checked={activeCA==='background'}
-                  >
-                    <div className="flex items-center gap-3">
-                      <LayersIcon className="h-4 w-4" />
-                      <div className="flex-1 text-left">
-                        <div>Background</div>
-                        <div className="text-xs text-muted-foreground">Appears behind the clock.</div>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+                  <div className="grid gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => { setActiveCA('background'); }}
+                      className={`w-full justify-start text-left py-6 ${activeCA === 'background' ? 'border-primary/50' : ''}`}
+                      role="menuitemradio"
+                      aria-checked={activeCA === 'background'}
+                    >
+                      <div className="flex items-center gap-3">
+                        <LayersIcon className="h-4 w-4" />
+                        <div className="flex-1 text-left">
+                          <div>Background</div>
+                          <div className="text-xs text-muted-foreground">Appears behind the clock.</div>
+                        </div>
+                        {activeCA === 'background' && <Check className="h-4 w-4" />}
                       </div>
-                      {activeCA==='background' && <Check className="h-4 w-4" />}
-                    </div>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => { setActiveCA('floating'); }}
-                    className={`w-full justify-start text-left py-6 ${activeCA==='floating' ? 'border-primary/50' : ''}`}
-                    role="menuitemradio"
-                    aria-checked={activeCA==='floating'}
-                  >
-                    <div className="flex items-center gap-3">
-                      <LayersIcon className="h-4 w-4" />
-                      <div className="flex-1 text-left">
-                        <div>Floating</div>
-                        <div className="text-xs text-muted-foreground">Appears over the clock.</div>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => { setActiveCA('floating'); }}
+                      className={`w-full justify-start text-left py-6 ${activeCA === 'floating' ? 'border-primary/50' : ''}`}
+                      role="menuitemradio"
+                      aria-checked={activeCA === 'floating'}
+                    >
+                      <div className="flex items-center gap-3">
+                        <LayersIcon className="h-4 w-4" />
+                        <div className="flex-1 text-left">
+                          <div>Floating</div>
+                          <div className="text-xs text-muted-foreground">Appears over the clock.</div>
+                        </div>
+                        {activeCA === 'floating' && <Check className="h-4 w-4" />}
                       </div>
-                      {activeCA==='floating' && <Check className="h-4 w-4" />}
-                    </div>
-                  </Button>
-                </div>
+                    </Button>
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -363,11 +361,11 @@ export function MenuBar({ projectId, showLeft = true, showRight = true, toggleLe
         </div>
         {/* Settings button */}
         <div className="border rounded-md p-0.5">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8 p-0" 
-            aria-label="Settings" 
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 p-0"
+            aria-label="Settings"
             data-tour-id="settings-button"
             onClick={() => setSettingsOpen(true)}
           >
@@ -428,13 +426,24 @@ export function MenuBar({ projectId, showLeft = true, showRight = true, toggleLe
               <span>Toggle right panel</span>
               <span className="font-mono text-muted-foreground">{typeof navigator !== 'undefined' && navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} + Shift + I</span>
             </div>
+            <div className="flex items-center justify-between border-t pt-2 mt-2">
+              <span className="font-medium">Inspector Inputs</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Change value (horizontal)</span>
+              <span className="font-mono text-muted-foreground">Drag</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Change value (slower)</span>
+              <span className="font-mono text-muted-foreground">Shift + Drag</span>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShortcutsOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
+
       {/* Rename dialog */}
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
         <DialogContent className="sm:max-w-sm">
