@@ -327,7 +327,7 @@ export default function DevicePreview({
     } else {
       play();
     }
-  }, [showPreview, phoneState, pause, play])
+  }, [showPreview, phoneState])
 
   const dragStartYRef = useRef<number | null>(null);
   const dragDirectionRef = useRef<"up" | "down" | null>(null);
