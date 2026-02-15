@@ -1381,6 +1381,7 @@ export function EditorProvider({
       const shouldOnlyAffectState =
         !!cur.activeState &&
         cur.activeState !== 'Base State' &&
+        !('name' in patch) &&
         !('syncStateFrameMode' in patch) &&
         !('syncWWithState' in patch) &&
         !('blendMode' in patch) &&
@@ -1391,7 +1392,7 @@ export function EditorProvider({
         const p: any = patch;
         const nextState = { ...(cur.stateOverrides || {}) } as Record<string, Array<{ targetId: string; keyPath: string; value: number | string }>>;
         const list = [...(nextState[cur.activeState!] || [])];
-        const upd = (keyPath: 'position.x' | 'position.y' | 'zPosition' | 'opacity' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'cornerRadius', value: number) => {
+        const upd = (keyPath: 'position.x' | 'position.y' | 'zPosition' | 'opacity' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'cornerRadius' | 'transform.scale.xy', value: number) => {
           const idx = list.findIndex((o) => o.targetId === id && o.keyPath === keyPath);
           if (idx >= 0) list[idx] = { ...list[idx], value };
           else list.push({ targetId: id, keyPath, value });
@@ -1401,6 +1402,7 @@ export function EditorProvider({
         if (p.zPosition && typeof p.zPosition === 'number') upd('zPosition', p.zPosition);
         if (p.size && typeof p.size.w === 'number') upd('bounds.size.width', p.size.w);
         if (p.size && typeof p.size.h === 'number') upd('bounds.size.height', p.size.h);
+        if (p.scale && typeof p.scale === 'number') upd('transform.scale.xy', p.scale);
         if (typeof p.rotation === 'number') upd('transform.rotation.z', p.rotation as number);
         if (typeof (p as any).rotationX === 'number') upd('transform.rotation.x', (p as any).rotationX as number);
         if (typeof (p as any).rotationY === 'number') upd('transform.rotation.y', (p as any).rotationY as number);
@@ -1428,7 +1430,7 @@ export function EditorProvider({
         const p: any = patch;
         const nextState = { ...(cur.stateOverrides || {}) } as Record<string, Array<{ targetId: string; keyPath: string; value: number | string }>>;
         const list = [...(nextState[cur.activeState] || [])];
-        const upd = (keyPath: 'position.x' | 'position.y' | 'zPosition' | 'opacity' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'cornerRadius', value: number) => {
+        const upd = (keyPath: 'position.x' | 'position.y' | 'zPosition' | 'opacity' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'cornerRadius' | 'transform.scale.xy', value: number) => {
           const idx = list.findIndex((o) => o.targetId === id && o.keyPath === keyPath);
           if (idx >= 0) list[idx] = { ...list[idx], value };
           else list.push({ targetId: id, keyPath, value });
@@ -1438,6 +1440,7 @@ export function EditorProvider({
         if (p.zPosition && typeof p.zPosition === 'number') upd('zPosition', p.zPosition);
         if (p.size && typeof p.size.w === 'number') upd('bounds.size.width', p.size.w);
         if (p.size && typeof p.size.h === 'number') upd('bounds.size.height', p.size.h);
+        if (p.scale && typeof p.scale === 'number') upd('transform.scale.xy', p.scale);
         if (typeof p.rotation === 'number') upd('transform.rotation.z', p.rotation as number);
         if (typeof (p as any).rotationX === 'number') upd('transform.rotation.x', (p as any).rotationX as number);
         if (typeof (p as any).rotationY === 'number') upd('transform.rotation.y', (p as any).rotationY as number);

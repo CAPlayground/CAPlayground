@@ -1,156 +1,135 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnyLayer } from "@/lib/ca/types";
 import { useEditor } from "@/components/editor/editor-context";
+import { lerp } from "@/lib/editor/layer-utils";
 
-export default function useStateTransition(
-  layer: AnyLayer,
-) {
-  const initValue = {
-    position: {
-      y: layer.position.y,
-      x: layer.position.x,
-    },
-    zPosition: layer.zPosition ?? 0,
-    rotation: layer.rotation ?? 0,
-    rotationX: layer.rotationX ?? 0,
-    rotationY: layer.rotationY ?? 0,
-    cornerRadius: layer.cornerRadius ?? 0,
-    opacity: layer.opacity ?? 1,
-    size: {
-      w: layer.size.w,
-      h: layer.size.h,
-    },
-  }
-  const {
-    doc
-  } = useEditor();
+interface TransitionValue {
+  position: { x: number; y: number };
+  zPosition: number;
+  scale: number;
+  rotation: number;
+  rotationX: number;
+  rotationY: number;
+  cornerRadius: number;
+  opacity: number;
+  size: { w: number; h: number };
+}
+
+const TRANSITION_DURATION = 800;
+
+export default function useStateTransition(layer: AnyLayer): TransitionValue {
+  const { doc } = useEditor();
   const currentKey = doc?.activeCA ?? 'floating';
   const current = doc?.docs?.[currentKey];
   const activeState = current?.activeState ?? 'Base';
-  const [value, setValue] = useState(initValue);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const startValue = useRef(initValue);
-  const startTime = useRef<number | null>(null);
-  const previousState = useRef(activeState);
-  const transitionDuration = 800;
-  const animationRef = useRef<number | undefined>(undefined);
-  const lastTimeRef = useRef<number>(Date.now());
-  const targetValueRef = useRef(initValue);
+
+  const layerX = layer.position.x;
+  const layerY = layer.position.y;
+  const layerW = layer.size.w;
+  const layerH = layer.size.h;
+  const layerZ = layer.zPosition ?? 0;
+  const layerScale = layer.scale ?? 1;
+  const layerRotation = layer.rotation ?? 0;
+  const layerRotationX = layer.rotationX ?? 0;
+  const layerRotationY = layer.rotationY ?? 0;
+  const layerCornerRadius = layer.cornerRadius ?? 0;
+  const layerOpacity = layer.opacity ?? 1;
+
+  const [value, setValue] = useState<TransitionValue>(() => ({
+    position: { x: layerX, y: layerY },
+    zPosition: layerZ,
+    scale: layerScale,
+    rotation: layerRotation,
+    rotationX: layerRotationX,
+    rotationY: layerRotationY,
+    cornerRadius: layerCornerRadius,
+    opacity: layerOpacity,
+    size: { w: layerW, h: layerH },
+  }));
+
+  const isTransitioningRef = useRef(false);
+  const startValueRef = useRef<TransitionValue>(value);
+  const startTimeRef = useRef<number>(0);
+  const animationRef = useRef<number | null>(null);
+  const previousStateRef = useRef(activeState);
+
+  const target = useMemo<TransitionValue>(() => ({
+    position: { x: layerX, y: layerY },
+    zPosition: layerZ,
+    scale: layerScale,
+    rotation: layerRotation,
+    rotationX: layerRotationX,
+    rotationY: layerRotationY,
+    cornerRadius: layerCornerRadius,
+    opacity: layerOpacity,
+    size: { w: layerW, h: layerH },
+  }), [
+    layerX,
+    layerY,
+    layerZ,
+    layerScale,
+    layerRotation,
+    layerRotationX,
+    layerRotationY,
+    layerCornerRadius,
+    layerOpacity,
+    layerW,
+    layerH
+  ]);
 
   useEffect(() => {
-    const overrideY = layer.position.y;
-    const overrideX = layer.position.x;
-    const overrideW = layer.size.w;
-    const overrideH = layer.size.h;
-    const overrideRotation = layer.rotation ?? 0;
-    const overrideRotationX = layer.rotationX ?? 0;
-    const overrideRotationY = layer.rotationY ?? 0;
-    const overrideCornerRadius = layer.cornerRadius ?? 0;
-    const overrideOpacity = layer.opacity ?? 1;
-    const overrideZPosition = layer.zPosition ?? 0;
+    if (activeState !== previousStateRef.current) {
+      previousStateRef.current = activeState;
+      isTransitioningRef.current = true;
+      startValueRef.current = value;
+      startTimeRef.current = performance.now();
 
-    targetValueRef.current = {
-      position: {
-        y: overrideY,
-        x: overrideX,
-      },
-      zPosition: overrideZPosition,
-      rotation: overrideRotation,
-      rotationX: overrideRotationX,
-      rotationY: overrideRotationY,
-      cornerRadius: overrideCornerRadius,
-      opacity: overrideOpacity,
-      size: {
-        w: overrideW,
-        h: overrideH,
-      }
-    };
-  }, [layer]);
-
-  useEffect(() => {
-    if (activeState === previousState.current) {
-      setValue({
-        position: {
-          y: layer.position.y,
-          x: layer.position.x,
-        },
-        zPosition: layer.zPosition ?? 0,
-        rotation: layer.rotation ?? 0,
-        rotationX: layer.rotationX ?? 0,
-        rotationY: layer.rotationY ?? 0,
-        cornerRadius: layer.cornerRadius ?? 0,
-        opacity: layer.opacity ?? 1,
-        size: {
-          w: layer.size.w,
-          h: layer.size.h,
-        },
-      });
-    }
-  }, [activeState, layer]);
-
-  useEffect(() => {
-    if (activeState !== previousState.current) {
-      setIsTransitioning(true);
-      startTime.current = 0;
-      startValue.current = value;
-      previousState.current = activeState;
-    }
-  }, [activeState, value]);
-
-  useEffect(() => {
-    if (!isTransitioning) {
-      setValue(targetValueRef.current);
-      return;
-    }
-
-    const animate = () => {
-      const now = Date.now();
-      const deltaMS = now - lastTimeRef.current;
-      lastTimeRef.current = now;
-
-      const targetValue = targetValueRef.current;
-
-      if (startTime.current !== null) {
-        startTime.current += deltaMS;
-        const progress = Math.min(startTime.current / transitionDuration, 1);
-
-        const lerp = (start: number, end: number) => start + (end - start) * progress;
+      const animate = (now: number) => {
+        const elapsed = now - startTimeRef.current;
+        const progress = Math.min(elapsed / TRANSITION_DURATION, 1);
+        const start = startValueRef.current;
 
         setValue({
           position: {
-            y: lerp(startValue.current.position.y, targetValue.position.y),
-            x: lerp(startValue.current.position.x, targetValue.position.x),
+            x: lerp(start.position.x, target.position.x, progress),
+            y: lerp(start.position.y, target.position.y, progress),
           },
-          zPosition: lerp(startValue.current.zPosition, targetValue.zPosition),
-          rotation: lerp(startValue.current.rotation, targetValue.rotation),
-          rotationX: lerp(startValue.current.rotationX, targetValue.rotationX),
-          rotationY: lerp(startValue.current.rotationY, targetValue.rotationY),
-          cornerRadius: lerp(startValue.current.cornerRadius, targetValue.cornerRadius),
-          opacity: lerp(startValue.current.opacity, targetValue.opacity),
+          zPosition: lerp(start.zPosition, target.zPosition, progress),
+          scale: lerp(start.scale, target.scale, progress),
+          rotation: lerp(start.rotation, target.rotation, progress),
+          rotationX: lerp(start.rotationX, target.rotationX, progress),
+          rotationY: lerp(start.rotationY, target.rotationY, progress),
+          cornerRadius: lerp(start.cornerRadius, target.cornerRadius, progress),
+          opacity: lerp(start.opacity, target.opacity, progress),
           size: {
-            w: lerp(startValue.current.size.w, targetValue.size.w),
-            h: lerp(startValue.current.size.h, targetValue.size.h),
+            w: lerp(start.size.w, target.size.w, progress),
+            h: lerp(start.size.h, target.size.h, progress),
           },
         });
 
-        if (progress >= 1) {
-          startTime.current = null;
-          setIsTransitioning(false);
-        } else {
+        if (progress < 1) {
           animationRef.current = requestAnimationFrame(animate);
+        } else {
+          isTransitioningRef.current = false;
+          animationRef.current = null;
         }
-      }
-    };
+      };
 
-    lastTimeRef.current = Date.now();
-    animationRef.current = requestAnimationFrame(animate);
+      animationRef.current = requestAnimationFrame(animate);
+    }
 
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isTransitioning]);
+  }, [activeState, target]);
+
+  useEffect(() => {
+    if (!isTransitioningRef.current) {
+      setValue(target);
+    }
+  }, [target]);
 
   return value;
 }

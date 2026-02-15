@@ -147,6 +147,9 @@ export function serializeLayer(
   parts.push(`rotate(${rotZ || 0}deg)`);
   parts.push(`rotate(${rotY || 0}deg, 0, 1, 0)`);
   parts.push(`rotate(${rotX || 0}deg, 1, 0, 0)`);
+  if (layer.scale && layer.scale !== 1) {
+    parts.push(`scale(${layer.scale}, ${layer.scale}, 1)`);
+  }
   setAttr(el, 'transform', parts.join(' '));
   const explicitBgHex = (layer as any).backgroundColor as string | undefined;
   const shapeFillHex = (layer as any).fill as string | undefined;
@@ -373,6 +376,9 @@ export function serializeLayer(
       setAttr(el, 'instanceTransform', parts.join(' '));
     }
     setAttr(el, 'preservesDepth', '1');
+  }
+  if ((layer.type === 'transform' || layer.type === 'replicator') && layer.perspective) {
+    setAttr(el, 'sublayerTransform', `perspective(${layer.perspective})`)
   }
   if (wallpaperParallaxGroupsInput) {
     const style = doc.createElementNS(CAML_NS, 'style');

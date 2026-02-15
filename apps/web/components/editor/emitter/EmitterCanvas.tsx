@@ -9,8 +9,10 @@ import { useEmitterCellImages } from '@/hooks/use-asset-url';
 
 export function EmitterCanvas({
   layer: emitterLayer,
+  useYUp,
 }: {
   layer: EmitterLayer;
+  useYUp: boolean;
 }) {
   const { doc } = useEditor();
   const { isPlaying } = useTimeline();
@@ -57,7 +59,7 @@ export function EmitterCanvas({
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
-    const geometryFlipped = emitterLayer.geometryFlipped === 1;
+    const geometryFlipped = !useYUp;
     if (geometryFlipped) {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
     } else {
@@ -73,7 +75,7 @@ export function EmitterCanvas({
     layer.emitterSize = emitterLayer.emitterSize;
     layer.emitterShape = emitterLayer.emitterShape || layer.emitterShape;
     layer.emitterMode = emitterLayer.emitterMode || layer.emitterMode;
-    layer.geometryFlipped = !!emitterLayer.geometryFlipped;
+    layer.geometryFlipped = useYUp;
     layer.renderMode = emitterLayer.renderMode || layer.renderMode;
     layerRef.current = layer;
 
@@ -143,7 +145,7 @@ export function EmitterCanvas({
     JSON.stringify(emitterLayer.emitterCells),
     JSON.stringify(emitterLayer.emitterPosition),
     JSON.stringify(emitterLayer.emitterSize),
-    emitterLayer.geometryFlipped,
+    useYUp,
     emitterLayer.size.h,
     emitterLayer.emitterShape,
     emitterLayer.emitterMode,

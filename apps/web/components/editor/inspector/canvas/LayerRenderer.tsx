@@ -75,6 +75,8 @@ export function LayerRenderer({
     transformString,
     transformedX,
     transformedY,
+    transformedAnchorX,
+    transformedAnchorY,
   } = useTransform({
     layer: layer as TransformLayer,
     useGyroControls,
@@ -92,6 +94,7 @@ export function LayerRenderer({
   const width = animationOverrides['bounds.size.width'] ?? layer.size.w;
   const height = animationOverrides['bounds.size.height'] ?? layer.size.h;
   const opacity = animationOverrides['opacity'] ?? layer.opacity;
+  const scale = layer.scale;
 
   const isSelected = layer.id === current?.selectedId;
   useEffect(() => {
@@ -99,9 +102,13 @@ export function LayerRenderer({
     requestAnimationFrame(() => {
       moveableRef?.current?.updateRect();
     });
-  }, [isSelected, x, y, z, rotation, rotationX, rotationY, width, height]);
+  }, [isSelected, x, y, z, rotation, rotationX, rotationY, width, height, scale]);
 
-  const anchor = getAnchor(layer);
+  const baseAnchor = getAnchor(layer);
+  const anchor = {
+    x: transformedAnchorX ?? baseAnchor.x,
+    y: transformedAnchorY ?? baseAnchor.y,
+  };
   const transformOriginY = useYUp ? (1 - anchor.y) * 100 : anchor.y * 100;
 
   const renderChildren = (layer: AnyLayer, nextUseYUp: boolean) => {
@@ -124,6 +131,10 @@ export function LayerRenderer({
     });
   };
 
+  const nextUseYUp = (typeof layer.geometryFlipped === 'number' && layer.geometryFlipped === 1)
+    ? !useYUp
+    : useYUp;
+
   const borderStyle: React.CSSProperties = (typeof layer.borderWidth === 'number' && layer.borderWidth > 0)
     ? { border: `${layer.borderWidth}px solid ${layer.borderColor || '#000000'}` }
     : {};
@@ -137,9 +148,10 @@ export function LayerRenderer({
     `translateX(${translateX}px)`,
     `translateY(${translateY}px)`,
     `translateZ(${translateZ}px)`,
-    `rotate(${-(rotation ?? 0)}deg)`,
+    `rotate(${(rotation ?? 0) * (nextUseYUp ? -1 : 1)}deg)`,
     `rotateY(${(rotationY ?? 0)}deg)`,
     `rotateX(${-(rotationX ?? 0)}deg)`,
+    `scale(${scale ?? 1})`,
   ];
   const common: React.CSSProperties = {
     position: "absolute",
@@ -187,10 +199,6 @@ export function LayerRenderer({
     common.filter = filterString.trim();
   }
 
-  const nextUseYUp = (typeof layer.geometryFlipped === 'number' && layer.geometryFlipped === 1)
-    ? !useYUp
-    : useYUp;
-
   let style: React.CSSProperties = {
     ...common,
     ...bgStyleFor(layer),
@@ -209,12 +217,16 @@ export function LayerRenderer({
       ...style,
       transform: [style.transform, transformString].filter(Boolean).join(' '),
       transformStyle: 'preserve-3d',
+      perspective: layer.perspective ? `${layer.perspective}px` : '',
+      perspectiveOrigin: `${anchor.x * 100}% ${transformOriginY}%`
     };
   }
   if (layer.type === "replicator") {
     style = {
       ...style,
       transformStyle: 'preserve-3d',
+      perspective: layer.perspective ? `${layer.perspective}px` : '',
+      perspectiveOrigin: `${anchor.x * 100}% ${transformOriginY}%`
     };
   }
   const { onPointerDown, onPointerMove, onPointerUp } = useMoveablePointerDrag({
@@ -252,7 +264,7 @@ export function LayerRenderer({
           <GradientRenderer layer={layer} />
         )}
         {layer.type === "emitter" && (
-          <EmitterCanvas layer={layer} />
+          <EmitterCanvas layer={layer} useYUp={nextUseYUp} />
         )}
         {layer.type !== "replicator" && layer.type !== "video" && renderChildren(layer, nextUseYUp)}
         {layer.type === "replicator" && (

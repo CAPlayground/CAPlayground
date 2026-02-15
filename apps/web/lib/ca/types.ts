@@ -22,6 +22,7 @@ export type LayerBase = {
   position: Vec2;
   zPosition?: number;
   size: Size;
+  scale?: number;
   opacity?: number;
   rotation?: number;
   rotationX?: number;
@@ -109,6 +110,7 @@ export type EmitterLayer = LayerBase & {
 
 export type TransformLayer = LayerBase & {
   type: 'transform';
+  perspective?: number;
 };
 
 export type GradientColor = {
@@ -130,6 +132,7 @@ export type ReplicatorLayer = LayerBase & {
   instanceTranslation?: { x: number; y: number; z: number };
   instanceRotation?: number;
   instanceDelay?: number;
+  perspective?: number;
 };
 
 export type LiquidGlassLayer = LayerBase & {
@@ -216,7 +219,9 @@ export type KeyPath =
   | 'transform.rotation.y'
   | 'transform.rotation.z'
   | 'opacity'
-  | 'bounds';
+  | 'bounds'
+  | 'anchorPoint.x'
+  | 'anchorPoint.y';
 
 export type Animations = Array<Animation>;
 

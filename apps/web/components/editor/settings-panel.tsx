@@ -280,6 +280,8 @@ export function SettingsPanel({
               <div className="flex items-center justify-between"><span>Bring to Front</span><span className="font-mono text-muted-foreground text-xs">{typeof navigator !== 'undefined' && navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} + Shift + ]</span></div>
               <div className="flex items-center justify-between"><span>Send to Back</span><span className="font-mono text-muted-foreground text-xs">{typeof navigator !== 'undefined' && navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} + Shift + [</span></div>
               <div className="flex items-center justify-between"><span>Delete Layer</span><span className="font-mono text-muted-foreground text-xs">Delete</span></div>
+              <div className="flex items-center justify-between"><span>Resize from Center</span><span className="font-mono text-muted-foreground text-xs">Alt + Drag Handle</span></div>
+              <div className="flex items-center justify-between"><span>Maintain Aspect Ratio</span><span className="font-mono text-muted-foreground text-xs">Shift + Drag Handle</span></div>
             </div>
           </div>
 

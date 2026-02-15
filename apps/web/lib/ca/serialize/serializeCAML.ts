@@ -52,7 +52,7 @@ export function serializeCAML(
     doc,
     isWallpaperCA ? root : capRootLayer,
     project,
-    isWallpaperCA ? wallpaperParallaxGroupsInput : undefined,
+    isWallpaperCA ? (wallpaperParallaxGroupsInput || []) : undefined,
     isWallpaperCA ? stateOverridesInput : undefined,
   );
 
@@ -98,6 +98,9 @@ export function serializeCAML(
             break;
           case "bounds.size.height":
             defaultVal = layerIndex[override.targetId].size.h;
+            break;
+          case "transform.scale.xy":
+            defaultVal = layerIndex[override.targetId].scale;
             break;
           case "transform.rotation.z":
             defaultVal = layerIndex[override.targetId].rotation;
