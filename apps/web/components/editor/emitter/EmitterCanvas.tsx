@@ -75,7 +75,7 @@ export function EmitterCanvas({
     layer.emitterSize = emitterLayer.emitterSize;
     layer.emitterShape = emitterLayer.emitterShape || layer.emitterShape;
     layer.emitterMode = emitterLayer.emitterMode || layer.emitterMode;
-    layer.geometryFlipped = useYUp;
+    layer.geometryFlipped = geometryFlipped;
     layer.renderMode = emitterLayer.renderMode || layer.renderMode;
     layerRef.current = layer;
 
