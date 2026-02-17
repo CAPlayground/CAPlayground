@@ -3,12 +3,14 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { type InspectorTabProps } from "../types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useEditor } from "../../editor-context";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import EmitterCellThumbnail from "../../emitter/EmitterCellThumbnail";
+import { RotationKnob } from "@/components/ui/rotation-knob";
+import { SliderInput } from "@/components/ui/slider-input";
 
 interface EmitterTabProps extends InspectorTabProps {
   activeState?: string;
@@ -24,13 +26,20 @@ export function EmitterTab({
   setBuf,
   fmt0,
   fmt2,
+  round2,
   clearBuf,
   addEmitterCellImage,
 }: EmitterTabProps) {
-  const { removeEmitterCell } = useEditor();
+  const { removeEmitterCell, replaceEmitterCellImage } = useEditor();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [fileAction, setFileAction] = useState<{ type: 'add' | 'change'; cellIndex?: number } | null>(null);
   const inState = !!activeState && activeState !== 'Base State';
-  
+
+  const handleChangeImageClick = (cellIndex: number) => {
+    setFileAction({ type: 'change', cellIndex });
+    fileInputRef.current?.click();
+  };
+
   if (selected.type !== 'emitter') return null;
 
   return (
@@ -188,6 +197,28 @@ export function EmitterTab({
           </SelectContent>
         </Select>
       </div>
+      <SliderInput
+        className="col-span-2"
+        label="Speed"
+        value={round2(selected.speed ?? 1)}
+        bufferKey="speed"
+        getBuf={getBuf}
+        setBuf={setBuf}
+        clearBuf={clearBuf}
+        disabled={inState}
+        min={-2}
+        max={2}
+        step={0.01}
+        showPercentage={false}
+        snapPoints={[-2, -1, 0, 1, 2]}
+        showSnapLabels
+        onUpdateTransient={(value) => {
+          updateLayerTransient(selected.id, { speed: value });
+        }}
+        onUpdateCommitted={(value) => {
+          updateLayer(selected.id, { speed: value });
+        }}
+      />
       <div className="col-span-2">
         <div className="flex items-center justify-between">
           <Label>Cells</Label>
@@ -195,7 +226,10 @@ export function EmitterTab({
             type="button"
             variant="secondary"
             disabled={inState}
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => {
+              setFileAction({ type: 'add' });
+              fileInputRef.current?.click();
+            }}
           >
             + Add Cell
           </Button>
@@ -216,7 +250,38 @@ export function EmitterTab({
                 </div>
               </AccordionTrigger>
               <AccordionContent>
-                <div className="grid grid-cols-6 gap-3 items-end" key={i}>
+                <div className="grid grid-cols-6 gap-y-3 gap-x-1.5 items-end" key={i}>
+                  <SliderInput
+                    className="col-span-3"
+                    label="Contents Scale"
+                    value={cell.contentsScale}
+                    bufferKey={'emitterCells[' + i + '].contentsScale'}
+                    getBuf={getBuf}
+                    setBuf={setBuf}
+                    clearBuf={clearBuf}
+                    disabled={inState}
+                    min={0}
+                    max={400}
+                    onUpdateTransient={(value) => {
+                      const cells = selected.emitterCells?.slice() || [];
+                      cells[i] = { ...cell, contentsScale: value };
+                      updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
+                    }}
+                    onUpdateCommitted={(value) => {
+                      const cells = selected.emitterCells?.slice() || [];
+                      cells[i] = { ...cell, contentsScale: value };
+                      updateLayer(selected.id, { emitterCells: cells as any } as any);
+                    }}
+                  />
+                  <Button
+                    variant="secondary"
+                    type="button"
+                    className="col-span-3"
+                    disabled={inState}
+                    onClick={() => handleChangeImageClick(i)}
+                  >
+                    Change Image
+                  </Button>
                   <div className="col-span-3 space-y-1">
                     <Label>Birth Rate</Label>
                     <Input
@@ -275,7 +340,7 @@ export function EmitterTab({
                       }}
                     />
                   </div>
-                  <div className="col-span-3 space-y-1">
+                  <div className="col-span-6 space-y-1">
                     <Label>Velocity</Label>
                     <Input
                       type="number"
@@ -304,296 +369,223 @@ export function EmitterTab({
                       }}
                     />
                   </div>
-                  <div className="col-span-3 space-y-1">
-                    <Label>Emission Range</Label>
-                    <Input
-                      type="number"
-                      step="1"
-                      value={getBuf('emitterCells[' + i + '].emissionRange', fmt0(cell.emissionRange))}
-                      disabled={inState}
-                      onChange={(e) => {
-                        setBuf('emitterCells[' + i + '].emissionRange', e.target.value);
-                        const v = e.target.value.trim();
-                        if (v === "") return;
-                        const num = Number(v);
-                        const cells = selected.emitterCells?.slice() || [];
-                        cells[i] = { ...cell, emissionRange: num } as any;
-                        if (Number.isFinite(num)) updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
-                      }}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
-                      onBlur={(e) => {
-                        const v = e.target.value.trim();
-                        const num = v === "" ? 0 : Number(v);
-                        const cells = selected.emitterCells?.slice() || [];
-                        cells[i] = { ...cell, emissionRange: num } as any;
-                        updateLayer(
-                          selected.id,
-                          { emitterCells: cells as any } as any);
-                        clearBuf('emitterCells[' + i + '].emissionRange');
-                      }}
-                    />
+                  <div className="col-span-3 space-y-1 grid grid-cols-2">
+                    <Label className="col-span-2">Emission</Label>
+                    <div className="space-y-1">
+                      <div className="flex justify-center py-1">
+                        <RotationKnob
+                          label="Range"
+                          value={Number(fmt0(cell.emissionRange)) || 0}
+                          disabled={inState}
+                          onChange={(v) => {
+                            const cells = selected.emitterCells?.slice() || [];
+                            cells[i] = { ...cell, emissionRange: v };
+                            updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
+                          }}
+                          onChangeEnd={(v) => {
+                            const cells = selected.emitterCells?.slice() || [];
+                            cells[i] = { ...cell, emissionRange: v };
+                            updateLayer(selected.id, { emitterCells: cells as any } as any);
+                          }}
+                          size={60}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-center py-1">
+                        <RotationKnob
+                          label="Angle"
+                          value={Number(fmt0(cell.emissionLongitude)) || 0}
+                          disabled={inState}
+                          onChange={(v) => {
+                            const cells = selected.emitterCells?.slice() || [];
+                            cells[i] = { ...cell, emissionLongitude: v };
+                            updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
+                          }}
+                          onChangeEnd={(v) => {
+                            const cells = selected.emitterCells?.slice() || [];
+                            cells[i] = { ...cell, emissionLongitude: v };
+                            updateLayer(selected.id, { emitterCells: cells as any } as any);
+                          }}
+                          size={60}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="col-span-3 space-y-1">
-                    <Label>Emission Longitude</Label>
-                    <Input
-                      type="number"
-                      step="1"
-                      value={getBuf('emitterCells[' + i + '].emissionLongitude', fmt0(cell.emissionLongitude))}
-                      disabled={inState}
-                      onChange={(e) => {
-                        setBuf('emitterCells[' + i + '].emissionLongitude', e.target.value);
-                        const v = e.target.value.trim();
-                        if (v === "") return;
-                        const num = Number(v);
-                        const cells = selected.emitterCells?.slice() || [];
-                        cells[i] = { ...cell, emissionLongitude: num } as any;
-                        if (Number.isFinite(num)) updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
-                      }}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
-                      onBlur={(e) => {
-                        const v = e.target.value.trim();
-                        const num = v === "" ? 0 : Number(v);
-                        const cells = selected.emitterCells?.slice() || [];
-                        cells[i] = { ...cell, emissionLongitude: num } as any;
-                        updateLayer(
-                          selected.id,
-                          { emitterCells: cells as any } as any);
-                        clearBuf('emitterCells[' + i + '].emissionLongitude');
-                      }}
-                    />
+                  <div className="col-span-3 space-y-1 grid grid-cols-2">
+                    <Label className="col-span-2">Spin</Label>
+                    <div className="space-y-1">
+                      <div className="flex justify-center py-1">
+                        <RotationKnob
+                          label="Spin"
+                          value={Number(fmt0(cell.spin)) || 0}
+                          disabled={inState}
+                          onChange={(v) => {
+                            const cells = selected.emitterCells?.slice() || [];
+                            cells[i] = { ...cell, spin: v };
+                            updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
+                          }}
+                          onChangeEnd={(v) => {
+                            const cells = selected.emitterCells?.slice() || [];
+                            cells[i] = { ...cell, spin: v };
+                            updateLayer(selected.id, { emitterCells: cells as any } as any);
+                          }}
+                          size={60}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-center py-1">
+                        <RotationKnob
+                          label="Range"
+                          value={Number(fmt2(cell.spinRange)) || 0}
+                          disabled={inState}
+                          onChange={(v) => {
+                            const cells = selected.emitterCells?.slice() || [];
+                            cells[i] = { ...cell, spinRange: v };
+                            updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
+                          }}
+                          onChangeEnd={(v) => {
+                            const cells = selected.emitterCells?.slice() || [];
+                            cells[i] = { ...cell, spinRange: v };
+                            updateLayer(selected.id, { emitterCells: cells as any } as any);
+                          }}
+                          size={60}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="col-span-3 space-y-1">
-                    <Label>Emission Latitude</Label>
-                    <Input
-                      type="number"
-                      step="1"
-                      value={getBuf('emitterCells[' + i + '].emissionLatitude', fmt0(cell.emissionLatitude))}
-                      disabled={inState}
-                      onChange={(e) => {
-                        setBuf('emitterCells[' + i + '].emissionLatitude', e.target.value);
-                        const v = e.target.value.trim();
-                        if (v === "") return;
-                        const num = Number(v);
-                        const cells = selected.emitterCells?.slice() || [];
-                        cells[i] = { ...cell, emissionLatitude: num } as any;
-                        if (Number.isFinite(num)) updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
-                      }}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
-                      onBlur={(e) => {
-                        const v = e.target.value.trim();
-                        const num = v === "" ? 0 : Number(v);
-                        const cells = selected.emitterCells?.slice() || [];
-                        cells[i] = { ...cell, emissionLatitude: num } as any;
-                        updateLayer(
-                          selected.id,
-                          { emitterCells: cells as any } as any);
-                        clearBuf('emitterCells[' + i + '].emissionLatitude');
-                      }}
-                    />
-                  </div>
-                  <div className="col-span-2 space-y-1">
-                    <Label>Scale</Label>
-                    <Input
-                      type="number"
-                      step="1"
-                      value={getBuf('emitterCells[' + i + '].scale', fmt2(cell.scale))}
-                      disabled={inState}
-                      onChange={(e) => {
-                        setBuf('emitterCells[' + i + '].scale', e.target.value);
-                        const v = e.target.value.trim();
-                        if (v === "") return;
-                        const num = Number(v);
-                        const cells = selected.emitterCells?.slice() || [];
-                        cells[i] = { ...cell, scale: num } as any;
-                        if (Number.isFinite(num)) updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
-                      }}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
-                      onBlur={(e) => {
-                        const v = e.target.value.trim();
-                        const num = v === "" ? 0 : Number(v);
-                        const cells = selected.emitterCells?.slice() || [];
-                        cells[i] = { ...cell, scale: num } as any;
-                        updateLayer(
-                          selected.id,
-                          { emitterCells: cells as any } as any);
-                        clearBuf('emitterCells[' + i + '].scale');
-                      }}
-                    />
-                  </div>
-                  <div className="col-span-2 space-y-1">
-                    <Label>Scale Range</Label>
-                    <Input
-                      type="number"
-                      step="1"
-                      value={getBuf('emitterCells[' + i + '].scaleRange', fmt2(cell.scaleRange))}
-                      disabled={inState}
-                      onChange={(e) => {
-                        setBuf('emitterCells[' + i + '].scaleRange', e.target.value);
-                        const v = e.target.value.trim();
-                        if (v === "") return;
-                        const num = Number(v);
-                        const cells = selected.emitterCells?.slice() || [];
-                        cells[i] = { ...cell, scaleRange: num } as any;
-                        if (Number.isFinite(num)) updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
-                      }}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
-                      onBlur={(e) => {
-                        const v = e.target.value.trim();
-                        const num = v === "" ? 0 : Number(v);
-                        const cells = selected.emitterCells?.slice() || [];
-                        cells[i] = { ...cell, scaleRange: num } as any;
-                        updateLayer(
-                          selected.id,
-                          { emitterCells: cells as any } as any);
-                        clearBuf('emitterCells[' + i + '].scaleRange');
-                      }}
-                    />
-                  </div>
-                  <div className="col-span-2 space-y-1">
-                    <Label>Scale Speed</Label>
-                    <Input
-                      type="number"
-                      step="1"
-                      value={getBuf('emitterCells[' + i + '].scaleSpeed', fmt2(cell.scaleSpeed))}
-                      disabled={inState}
-                      onChange={(e) => {
-                        setBuf('emitterCells[' + i + '].scaleSpeed', e.target.value);
-                        const v = e.target.value.trim();
-                        if (v === "") return;
-                        const num = Number(v);
-                        const cells = selected.emitterCells?.slice() || [];
-                        cells[i] = { ...cell, scaleSpeed: num } as any;
-                        if (Number.isFinite(num)) updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
-                      }}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
-                      onBlur={(e) => {
-                        const v = e.target.value.trim();
-                        const num = v === "" ? 0 : Number(v);
-                        const cells = selected.emitterCells?.slice() || [];
-                        cells[i] = { ...cell, scaleSpeed: num } as any;
-                        updateLayer(
-                          selected.id,
-                          { emitterCells: cells as any } as any);
-                        clearBuf('emitterCells[' + i + '].scaleSpeed');
-                      }}
-                    />
-                  </div>
-                  <div className="col-span-3 space-y-1">
-                    <Label>Alpha Range</Label>
-                    <Input
-                      type="number"
-                      step="1"
-                      value={getBuf('emitterCells[' + i + '].alphaRange', fmt2(cell.alphaRange))}
-                      disabled={inState}
-                      onChange={(e) => {
-                        setBuf('emitterCells[' + i + '].alphaRange', e.target.value);
-                        const v = e.target.value.trim();
-                        if (v === "") return;
-                        const num = Number(v);
-                        const cells = selected.emitterCells?.slice() || [];
-                        cells[i] = { ...cell, alphaRange: num } as any;
-                        if (Number.isFinite(num)) updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
-                      }}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
-                      onBlur={(e) => {
-                        const v = e.target.value.trim();
-                        const num = v === "" ? 0 : Number(v);
-                        const cells = selected.emitterCells?.slice() || [];
-                        cells[i] = { ...cell, alphaRange: num } as any;
-                        updateLayer(
-                          selected.id,
-                          { emitterCells: cells as any } as any);
-                        clearBuf('emitterCells[' + i + '].alphaRange');
-                      }}
-                    />
-                  </div>
-                  <div className="col-span-3 space-y-1">
-                    <Label>Alpha Speed</Label>
-                    <Input
-                      type="number"
-                      step="1"
-                      value={getBuf('emitterCells[' + i + '].alphaSpeed', fmt2(cell.alphaSpeed))}
-                      disabled={inState}
-                      onChange={(e) => {
-                        setBuf('emitterCells[' + i + '].alphaSpeed', e.target.value);
-                        const v = e.target.value.trim();
-                        if (v === "") return;
-                        const num = Number(v);
-                        const cells = selected.emitterCells?.slice() || [];
-                        cells[i] = { ...cell, alphaSpeed: num } as any;
-                        if (Number.isFinite(num)) updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
-                      }}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
-                      onBlur={(e) => {
-                        const v = e.target.value.trim();
-                        const num = v === "" ? 0 : Number(v);
-                        const cells = selected.emitterCells?.slice() || [];
-                        cells[i] = { ...cell, alphaSpeed: num } as any;
-                        updateLayer(
-                          selected.id,
-                          { emitterCells: cells as any } as any);
-                        clearBuf('emitterCells[' + i + '].alphaSpeed');
-                      }}
-                    />
-                  </div>
-                  <div className="col-span-3 space-y-1">
-                    <Label>Spin</Label>
-                    <Input
-                      type="number"
-                      step="1"
-                      value={getBuf('emitterCells[' + i + '].spin', fmt0(cell.spin))}
-                      disabled={inState}
-                      onChange={(e) => {
-                        setBuf('emitterCells[' + i + '].spin', e.target.value);
-                        const v = e.target.value.trim();
-                        if (v === "") return;
-                        const num = Number(v);
-                        const cells = selected.emitterCells?.slice() || [];
-                        cells[i] = { ...cell, spin: num } as any;
-                        if (Number.isFinite(num)) updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
-                      }}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
-                      onBlur={(e) => {
-                        const v = e.target.value.trim();
-                        const num = v === "" ? 0 : Number(v);
-                        const cells = selected.emitterCells?.slice() || [];
-                        cells[i] = { ...cell, spin: num } as any;
-                        updateLayer(
-                          selected.id,
-                          { emitterCells: cells as any } as any);
-                        clearBuf('emitterCells[' + i + '].spin');
-                      }}
-                    />
-                  </div>
-                  <div className="col-span-3 space-y-1">
-                    <Label>Spin Range</Label>
-                    <Input
-                      type="number"
-                      step="1"
-                      value={getBuf('emitterCells[' + i + '].spinRange', fmt2(cell.spinRange))}
-                      disabled={inState}
-                      onChange={(e) => {
-                        setBuf('emitterCells[' + i + '].spinRange', e.target.value);
-                        const v = e.target.value.trim();
-                        if (v === "") return;
-                        const num = Number(v);
-                        const cells = selected.emitterCells?.slice() || [];
-                        cells[i] = { ...cell, spinRange: num } as any;
-                        if (Number.isFinite(num)) updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
-                      }}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); e.preventDefault(); } }}
-                      onBlur={(e) => {
-                        const v = e.target.value.trim();
-                        const num = v === "" ? 0 : Number(v);
-                        const cells = selected.emitterCells?.slice() || [];
-                        cells[i] = { ...cell, spinRange: num } as any;
-                        updateLayer(
-                          selected.id,
-                          { emitterCells: cells as any } as any);
-                        clearBuf('emitterCells[' + i + '].spinRange');
-                      }}
-                    />
-                  </div>
+                  <SliderInput
+                    className="col-span-6"
+                    label="Scale"
+                    value={cell.scale}
+                    bufferKey={'emitterCells[' + i + '].scale'}
+                    getBuf={getBuf}
+                    setBuf={setBuf}
+                    clearBuf={clearBuf}
+                    disabled={inState}
+                    onUpdateTransient={(value) => {
+                      const cells = selected.emitterCells?.slice() || [];
+                      cells[i] = { ...cell, scale: value };
+                      updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
+                    }}
+                    onUpdateCommitted={(value) => {
+                      const cells = selected.emitterCells?.slice() || [];
+                      cells[i] = { ...cell, scale: value };
+                      updateLayer(selected.id, { emitterCells: cells as any } as any);
+                    }}
+                  />
+                  <SliderInput
+                    className="col-span-3"
+                    label="Scale Range"
+                    value={cell.scaleRange}
+                    bufferKey={'emitterCells[' + i + '].scaleRange'}
+                    getBuf={getBuf}
+                    setBuf={setBuf}
+                    clearBuf={clearBuf}
+                    disabled={inState}
+                    onUpdateTransient={(value) => {
+                      const cells = selected.emitterCells?.slice() || [];
+                      cells[i] = { ...cell, scaleRange: value };
+                      updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
+                    }}
+                    onUpdateCommitted={(value) => {
+                      const cells = selected.emitterCells?.slice() || [];
+                      cells[i] = { ...cell, scaleRange: value };
+                      updateLayer(selected.id, { emitterCells: cells as any } as any);
+                    }}
+                  />
+                  <SliderInput
+                    className="col-span-3"
+                    label="Scale Speed"
+                    value={cell.scaleSpeed}
+                    bufferKey={'emitterCells[' + i + '].scaleSpeed'}
+                    getBuf={getBuf}
+                    setBuf={setBuf}
+                    clearBuf={clearBuf}
+                    disabled={inState}
+                    onUpdateTransient={(value) => {
+                      const cells = selected.emitterCells?.slice() || [];
+                      cells[i] = { ...cell, scaleSpeed: value };
+                      updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
+                    }}
+                    onUpdateCommitted={(value) => {
+                      const cells = selected.emitterCells?.slice() || [];
+                      cells[i] = { ...cell, scaleSpeed: value };
+                      updateLayer(selected.id, { emitterCells: cells as any } as any);
+                    }}
+                  />
+                  <SliderInput
+                    className="col-span-6"
+                    label="Alpha"
+                    value={cell.alpha}
+                    bufferKey={'emitterCells[' + i + '].alpha'}
+                    getBuf={getBuf}
+                    setBuf={setBuf}
+                    clearBuf={clearBuf}
+                    disabled={inState}
+                    min={0}
+                    max={100}
+                    snapPoints={[50]}
+                    onUpdateTransient={(value) => {
+                      const cells = selected.emitterCells?.slice() || [];
+                      cells[i] = { ...cell, alpha: value };
+                      updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
+                    }}
+                    onUpdateCommitted={(value) => {
+                      const cells = selected.emitterCells?.slice() || [];
+                      cells[i] = { ...cell, alpha: value };
+                      updateLayer(selected.id, { emitterCells: cells as any } as any);
+                    }}
+                  />
+                  <SliderInput
+                    className="col-span-3"
+                    label="Alpha Range"
+                    value={cell.alphaRange}
+                    bufferKey={'emitterCells[' + i + '].alphaRange'}
+                    getBuf={getBuf}
+                    setBuf={setBuf}
+                    clearBuf={clearBuf}
+                    disabled={inState}
+                    min={-100}
+                    max={100}
+                    snapPoints={[0]}
+                    snapThreshold={0.08}
+                    onUpdateTransient={(value) => {
+                      const cells = selected.emitterCells?.slice() || [];
+                      cells[i] = { ...cell, alphaRange: value };
+                      updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
+                    }}
+                    onUpdateCommitted={(value) => {
+                      const cells = selected.emitterCells?.slice() || [];
+                      cells[i] = { ...cell, alphaRange: value };
+                      updateLayer(selected.id, { emitterCells: cells as any } as any);
+                    }}
+                  />
+                  <SliderInput
+                    className="col-span-3"
+                    label="Alpha Speed"
+                    value={cell.alphaSpeed}
+                    bufferKey={'emitterCells[' + i + '].alphaSpeed'}
+                    getBuf={getBuf}
+                    setBuf={setBuf}
+                    clearBuf={clearBuf}
+                    disabled={inState}
+                    min={-100}
+                    max={100}
+                    snapPoints={[0]}
+                    snapThreshold={0.08}
+                    onUpdateTransient={(value) => {
+                      const cells = selected.emitterCells?.slice() || [];
+                      cells[i] = { ...cell, alphaSpeed: value };
+                      updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
+                    }}
+                    onUpdateCommitted={(value) => {
+                      const cells = selected.emitterCells?.slice() || [];
+                      cells[i] = { ...cell, alphaSpeed: value };
+                      updateLayer(selected.id, { emitterCells: cells as any } as any);
+                    }}
+                  />
                   <div className="col-span-3 space-y-1">
                     <Label>X Acceleration</Label>
                     <Input
@@ -652,6 +644,174 @@ export function EmitterTab({
                       }}
                     />
                   </div>
+                  <div className="col-span-6">
+                    <Accordion type="single" collapsible>
+                      <AccordionItem value="advanced-color">
+                        <AccordionTrigger className="text-sm text-muted-foreground hover:text-foreground">
+                          Advanced Color Controls
+                        </AccordionTrigger>
+                        <AccordionContent className="grid grid-cols-6 gap-3">
+                          <div className="col-span-6 space-y-1">
+                            <Label>Color</Label>
+                            <Input
+                              type="color"
+                              value={cell.color}
+                              disabled={inState}
+                              onChange={(e) => {
+                                const cells = selected.emitterCells?.slice() || [];
+                                cells[i] = { ...cell, color: e.target.value } as any;
+                                updateLayer(selected.id, { emitterCells: cells as any } as any);
+                              }}
+                            />
+                          </div>
+                          <SliderInput
+                            className="col-span-3"
+                            label="Red Range"
+                            value={cell.redRange}
+                            bufferKey={'emitterCells[' + i + '].redRange'}
+                            getBuf={getBuf}
+                            setBuf={setBuf}
+                            clearBuf={clearBuf}
+                            disabled={inState}
+                            min={-100}
+                            max={100}
+                            snapPoints={[0]}
+                            snapThreshold={0.08}
+                            onUpdateTransient={(value) => {
+                              const cells = selected.emitterCells?.slice() || [];
+                              cells[i] = { ...cell, redRange: value };
+                              updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
+                            }}
+                            onUpdateCommitted={(value) => {
+                              const cells = selected.emitterCells?.slice() || [];
+                              cells[i] = { ...cell, redRange: value };
+                              updateLayer(selected.id, { emitterCells: cells as any } as any);
+                            }}
+                          />
+                          <SliderInput
+                            className="col-span-3"
+                            label="Speed"
+                            value={cell.redSpeed}
+                            bufferKey={'emitterCells[' + i + '].redSpeed'}
+                            getBuf={getBuf}
+                            setBuf={setBuf}
+                            clearBuf={clearBuf}
+                            disabled={inState}
+                            min={-100}
+                            max={100}
+                            snapPoints={[0]}
+                            snapThreshold={0.08}
+                            onUpdateTransient={(value) => {
+                              const cells = selected.emitterCells?.slice() || [];
+                              cells[i] = { ...cell, redSpeed: value };
+                              updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
+                            }}
+                            onUpdateCommitted={(value) => {
+                              const cells = selected.emitterCells?.slice() || [];
+                              cells[i] = { ...cell, redSpeed: value };
+                              updateLayer(selected.id, { emitterCells: cells as any } as any);
+                            }}
+                          />
+                          <SliderInput
+                            className="col-span-3"
+                            label="Green Range"
+                            value={cell.greenRange}
+                            bufferKey={'emitterCells[' + i + '].greenRange'}
+                            getBuf={getBuf}
+                            setBuf={setBuf}
+                            clearBuf={clearBuf}
+                            disabled={inState}
+                            min={-100}
+                            max={100}
+                            snapPoints={[0]}
+                            snapThreshold={0.08}
+                            onUpdateTransient={(value) => {
+                              const cells = selected.emitterCells?.slice() || [];
+                              cells[i] = { ...cell, greenRange: value };
+                              updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
+                            }}
+                            onUpdateCommitted={(value) => {
+                              const cells = selected.emitterCells?.slice() || [];
+                              cells[i] = { ...cell, greenRange: value };
+                              updateLayer(selected.id, { emitterCells: cells as any } as any);
+                            }}
+                          />
+                          <SliderInput
+                            className="col-span-3"
+                            label="Speed"
+                            value={cell.greenSpeed}
+                            bufferKey={'emitterCells[' + i + '].greenSpeed'}
+                            getBuf={getBuf}
+                            setBuf={setBuf}
+                            clearBuf={clearBuf}
+                            disabled={inState}
+                            min={-100}
+                            max={100}
+                            snapPoints={[0]}
+                            snapThreshold={0.08}
+                            onUpdateTransient={(value) => {
+                              const cells = selected.emitterCells?.slice() || [];
+                              cells[i] = { ...cell, greenSpeed: value };
+                              updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
+                            }}
+                            onUpdateCommitted={(value) => {
+                              const cells = selected.emitterCells?.slice() || [];
+                              cells[i] = { ...cell, greenSpeed: value };
+                              updateLayer(selected.id, { emitterCells: cells as any } as any);
+                            }}
+                          />
+                          <SliderInput
+                            className="col-span-3"
+                            label="Blue Range"
+                            value={cell.blueRange}
+                            bufferKey={'emitterCells[' + i + '].blueRange'}
+                            getBuf={getBuf}
+                            setBuf={setBuf}
+                            clearBuf={clearBuf}
+                            disabled={inState}
+                            min={-100}
+                            max={100}
+                            snapPoints={[0]}
+                            snapThreshold={0.08}
+                            onUpdateTransient={(value) => {
+                              const cells = selected.emitterCells?.slice() || [];
+                              cells[i] = { ...cell, blueRange: value };
+                              updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
+                            }}
+                            onUpdateCommitted={(value) => {
+                              const cells = selected.emitterCells?.slice() || [];
+                              cells[i] = { ...cell, blueRange: value };
+                              updateLayer(selected.id, { emitterCells: cells as any } as any);
+                            }}
+                          />
+                          <SliderInput
+                            className="col-span-3"
+                            label="Speed"
+                            value={cell.blueSpeed}
+                            bufferKey={'emitterCells[' + i + '].blueSpeed'}
+                            getBuf={getBuf}
+                            setBuf={setBuf}
+                            clearBuf={clearBuf}
+                            disabled={inState}
+                            min={-100}
+                            max={100}
+                            snapPoints={[0]}
+                            snapThreshold={0.08}
+                            onUpdateTransient={(value) => {
+                              const cells = selected.emitterCells?.slice() || [];
+                              cells[i] = { ...cell, blueSpeed: value };
+                              updateLayerTransient(selected.id, { emitterCells: cells as any } as any);
+                            }}
+                            onUpdateCommitted={(value) => {
+                              const cells = selected.emitterCells?.slice() || [];
+                              cells[i] = { ...cell, blueSpeed: value };
+                              updateLayer(selected.id, { emitterCells: cells as any } as any);
+                            }}
+                          />
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  </div>
                   <Button
                     type="button"
                     variant="destructive"
@@ -673,12 +833,18 @@ export function EmitterTab({
           className="hidden"
           onChange={async (e) => {
             const file = e.target.files?.[0];
-            if (file) await addEmitterCellImage(selected.id, file);
-            if (fileInputRef.current) fileInputRef.current.value = "";
+            if (file && fileAction) {
+              if (fileAction.type === 'add') {
+                await addEmitterCellImage(selected.id, file);
+              } else if (fileAction.type === 'change' && fileAction.cellIndex !== undefined) {
+                await replaceEmitterCellImage(selected.id, fileAction.cellIndex, file);
+              }
+            }
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            setFileAction(null);
           }}
         />
       </div>
-
     </div>
   );
 }

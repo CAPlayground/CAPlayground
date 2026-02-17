@@ -58,6 +58,7 @@ export type EditorContextValue = {
   addImageLayerFromBlob: (blob: Blob, filename?: string) => Promise<void>;
   replaceImageForLayer: (layerId: string, file: File) => Promise<void>;
   addEmitterCellImage: (layerId: string, file: File) => Promise<void>;
+  replaceEmitterCellImage: (layerId: string, cellIndex: number, file: File) => Promise<void>;
   addShapeLayer: (shape?: ShapeLayer["shape"]) => void;
   addGradientLayer: () => void;
   addVideoLayerFromFile: (file: File) => Promise<void>;
@@ -598,6 +599,7 @@ export function EditorProvider({
       cornerRadius: 0,
       opacity: 1,
       visible: true,
+      speed: 1,
     };
   }, [doc]);
 
@@ -784,6 +786,55 @@ export function EditorProvider({
           return l;
         });
       const next = { ...cur, layers: updateRec(cur.layers) };
+      return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
+    });
+
+  }, [doc]);
+
+  const replaceEmitterCellImage = useCallback(async (layerId: string, cellIndex: number, file: File) => {
+    if (/image\/gif/i.test(file.type || '') || /\.gif$/i.test(file.name || '')) {
+      throw new Error('Cannot replace emitter cell image with a GIF. Please use Video Layer to import GIFs.');
+    }
+
+    const { file: fileToUpload, filename } = await convertSvgToPngIfNeeded(file);
+    const safe = sanitizeFilename(filename) || `image-${Date.now()}.png`;
+
+    try {
+      const caFolder = (currentKey === 'floating') ? 'Floating.ca' : (currentKey === 'wallpaper') ? 'Wallpaper.ca' : 'Background.ca';
+      const projName = doc?.meta.name || initialMeta.name;
+      const folder = `${projName}.ca`;
+      await putBlobFile(projectId, `${folder}/${caFolder}/assets/${safe}`, fileToUpload);
+    } catch { }
+
+    setDoc((prev) => {
+      if (!prev) return prev;
+      pushHistory(prev);
+      const key = prev.activeCA;
+      const cur = prev.docs[key];
+      const updateRec = (layers: AnyLayer[]): AnyLayer[] =>
+        layers.map((l) => {
+          if (l.id === layerId) {
+            const cells = [...((l as any).emitterCells || [])];
+            if (cells[cellIndex]) {
+              cells[cellIndex] = { ...cells[cellIndex], src: `assets/${safe}` };
+              assetCache.set(cells[cellIndex].id, '');
+            }
+            return {
+              ...l,
+              emitterCells: cells,
+            } as EmitterLayer;
+          }
+          if (l.children?.length) {
+            return {
+              ...l,
+              children: updateRec(l.children),
+            };
+          }
+          return l;
+        });
+        
+      const next = { ...cur, layers: updateRec(cur.layers) };
+      console.log(next);
       return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
 
@@ -1712,6 +1763,7 @@ export function EditorProvider({
     addImageLayerFromFile,
     addImageLayerFromBlob,
     replaceImageForLayer,
+    replaceEmitterCellImage,
     addEmitterCellImage,
     removeEmitterCell,
     addShapeLayer,

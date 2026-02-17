@@ -18,6 +18,7 @@ import { BrowserWarning } from "@/components/editor/browser-warning";
 import { getProject } from "@/lib/storage";
 import { TimelineProvider } from "@/context/TimelineContext";
 import { cn } from "@/lib/utils";
+import { assetCache } from "@/hooks/use-asset-url";
 
 export default function EditorPage() {
   const params = useParams<{ id: string }>();
@@ -118,6 +119,7 @@ export default function EditorPage() {
 
   useEffect(() => {
     if (!projectId) return;
+    assetCache.clear();
     (async () => {
       try {
         const p = await getProject(projectId);
