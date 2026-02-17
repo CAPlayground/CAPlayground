@@ -13,6 +13,9 @@ interface RotationKnobProps {
   size?: number;
   label?: string;
   className?: string;
+  unit?: string;
+  step?: number;
+  snapToOrthogonal?: boolean;
 }
 
 export function RotationKnob({
@@ -25,6 +28,9 @@ export function RotationKnob({
   size = 72,
   label,
   className,
+  unit = "°",
+  step = 1,
+  snapToOrthogonal = true,
 }: RotationKnobProps) {
   const knobRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -50,21 +56,28 @@ export function RotationKnob({
     };
   }, []);
 
-  const MAGNETIC_THRESHOLD = 4;
+  const MAGNETIC_THRESHOLD = 10;
 
   const snapValue = (v: number) => {
     if (isShiftHeld) {
-      return Math.round(v / 15) * 15;
+      // If shift is held, snap to 15x step (or 15 degrees if step is 1)
+      // For small steps (0.01), 15x might be too small/large, but let's keep it simple for now
+      // or just default to 15 degree increments if it's rotation?
+      // Let's make it 10x step for generic
+      const shiftStep = step * 10;
+      return Math.round(v / shiftStep) * shiftStep;
     }
 
-    const nearest90 = Math.round(v / 90) * 90;
-    const distanceTo90 = Math.abs(v - nearest90);
+    if (snapToOrthogonal) {
+      const nearest90 = Math.round(v / 90) * 90;
+      const distanceTo90 = Math.abs(v - nearest90);
 
-    if (distanceTo90 <= MAGNETIC_THRESHOLD) {
-      return nearest90;
+      if (distanceTo90 <= MAGNETIC_THRESHOLD) {
+        return nearest90;
+      }
     }
 
-    return Math.round(v);
+    return Math.round(v / step) * step;
   };
 
   const displayAngle = ((value % 360) + 360) % 360;
@@ -96,10 +109,22 @@ export function RotationKnob({
     if (angleDelta > 180) angleDelta -= 360;
     if (angleDelta < -180) angleDelta += 360;
 
+    // Scale delta based on step? 
+    // If step is small (0.01), 1 degree of rotation should maybe correspond to more change?
+    // For now keep 1 degree rotation = 1 unit change, unless it's way too fast.
+    // If step is user defined, we might want sensitivity.
+    // But rotation knobs usually map angle directly. 
+    // Let's leave 1:1 for now.
+
     accumulatedValueRef.current += angleDelta;
     lastAngleRef.current = currentAngle;
 
-    const newValue = Math.max(min, Math.min(max, snapValue(accumulatedValueRef.current)));
+    const snapped = snapValue(accumulatedValueRef.current);
+    // Fix float precision issues
+    const precision = step.toString().split('.')[1]?.length || 0;
+    const fixed = Number(snapped.toFixed(precision));
+
+    const newValue = Math.max(min, Math.min(max, fixed));
     onChange?.(newValue);
   };
 
@@ -108,15 +133,21 @@ export function RotationKnob({
     setIsDragging(false);
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
 
-    const newValue = Math.max(min, Math.min(max, snapValue(accumulatedValueRef.current)));
+    const snapped = snapValue(accumulatedValueRef.current);
+    const precision = step.toString().split('.')[1]?.length || 0;
+    const fixed = Number(snapped.toFixed(precision));
+
+    const newValue = Math.max(min, Math.min(max, fixed));
     onChangeEnd?.(newValue);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
-    const num = parseInt(e.target.value, 10);
+    const num = parseFloat(e.target.value);
     if (!Number.isNaN(num)) {
-      const clamped = Math.max(min, Math.min(max, Math.round(num)));
+      const precision = step.toString().split('.')[1]?.length || 0;
+      const rounded = Number(num.toFixed(precision));
+      const clamped = Math.max(min, Math.min(max, rounded));
       onChange?.(clamped);
     }
   };
@@ -128,9 +159,11 @@ export function RotationKnob({
 
   const handleInputBlur = () => {
     setIsFocused(false);
-    const num = parseInt(inputValue, 10);
+    const num = parseFloat(inputValue);
     if (!Number.isNaN(num)) {
-      const clamped = Math.max(min, Math.min(max, Math.round(num)));
+      const precision = step.toString().split('.')[1]?.length || 0;
+      const rounded = Number(num.toFixed(precision));
+      const clamped = Math.max(min, Math.min(max, rounded));
       onChangeEnd?.(clamped);
     } else {
       setInputValue(String(value));
@@ -239,8 +272,9 @@ export function RotationKnob({
               <input
                 ref={inputRef}
                 type="number"
+                step={step}
                 className={cn(
-                  "w-12 h-5 text-center text-sm font-mono font-medium",
+                  "w-16 h-5 text-center text-sm font-mono font-medium",
                   "bg-transparent border-none outline-none",
                   "text-foreground",
                   "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -271,7 +305,9 @@ export function RotationKnob({
                 disabled={disabled}
               >
                 {value}
-                <span className="absolute top-0 -right-1.5 text-[10px] text-muted-foreground/70 -ml-1">°</span>
+                {unit && (
+                  <span className="absolute top-0 -right-1.5 text-[10px] text-muted-foreground/70 -ml-1 whitespace-nowrap translate-x-full">{unit}</span>
+                )}
               </button>
             )}
           </div>
