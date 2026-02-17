@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { InspectorTabProps } from '../types';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { XIcon } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
@@ -75,28 +76,18 @@ const FilterItem = ({ filter, selected }: { filter: Filter; selected: AnyLayer }
     );
   };
 
+  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    updateLayer(
+      selected.id,
+      { filters: currentFilters.map(f => f.name === filter.name ? { ...f, value: Number(e.target.value) } : f) }
+    )
+  };
+
   const updateValue = (val: number) => {
     updateLayer(
       selected.id,
       { filters: currentFilters.map(f => f.name === filter.name ? { ...f, value: val } : f) }
     )
-  }
-
-  const getKnobProps = (type: SupportedFilterTypes) => {
-    switch (type) {
-      case 'colorHueRotate':
-        return { unit: '°', step: 1, snapToOrthogonal: true };
-      case 'gaussianBlur':
-        return { unit: '', step: 1, snapToOrthogonal: false };
-      case 'colorContrast':
-      case 'colorSaturate':
-        return { unit: '', step: 0.1, snapToOrthogonal: false };
-      case 'colorInvert':
-      case 'CISepiaTone':
-        return { unit: '', step: 0.01, snapToOrthogonal: false };
-      default:
-        return { unit: '', step: 1, snapToOrthogonal: false };
-    }
   }
 
   return (
@@ -126,16 +117,32 @@ const FilterItem = ({ filter, selected }: { filter: Filter; selected: AnyLayer }
         const def = supportedFilters[(filter as any).type as SupportedFilterTypes];
         if (!def || !def.valueLabel) return null;
 
-        const knobProps = getKnobProps((filter as any).type as SupportedFilterTypes);
+        // Use RotationKnob only for Hue Rotate
+        if ((filter as any).type === 'colorHueRotate') {
+          return (
+            <div className="space-y-1 flex justify-start py-2">
+              <RotationKnob
+                label={def.valueLabel}
+                value={filter.value}
+                onChange={updateValue}
+                onChangeEnd={updateValue}
+                unit="°"
+                step={1}
+                snapToOrthogonal={true}
+              />
+            </div>
+          );
+        }
 
+        // Use regular Input for other filters
         return (
-          <div className="space-y-1 flex justify-start py-2">
-            <RotationKnob
-              label={def.valueLabel}
+          <div className="space-y-1">
+            <Label>{def.valueLabel}</Label>
+            <Input
+              type="number"
               value={filter.value}
-              onChange={updateValue}
-              onChangeEnd={updateValue}
-              {...knobProps}
+              onChange={onChange}
+              step={(filter as any).type === 'colorContrast' || (filter as any).type === 'colorSaturate' ? 0.1 : (filter as any).type === 'colorInvert' || (filter as any).type === 'CISepiaTone' ? 0.01 : 1}
             />
           </div>
         );
