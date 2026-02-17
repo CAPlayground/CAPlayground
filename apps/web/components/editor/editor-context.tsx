@@ -834,7 +834,6 @@ export function EditorProvider({
         });
         
       const next = { ...cur, layers: updateRec(cur.layers) };
-      console.log(next);
       return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
 
