@@ -94,6 +94,7 @@ export function LayerRenderer({
   const width = animationOverrides['bounds.size.width'] ?? layer.size.w;
   const height = animationOverrides['bounds.size.height'] ?? layer.size.h;
   const opacity = animationOverrides['opacity'] ?? layer.opacity;
+  const backgroundColor = animationOverrides['backgroundColor'] ?? layer.backgroundColor;
   const scale = layer.scale;
 
   const isSelected = layer.id === current?.selectedId;
@@ -203,6 +204,11 @@ export function LayerRenderer({
     ...common,
     ...bgStyleFor(layer),
   };
+
+  // Apply backgroundColor animation override
+  if (backgroundColor) {
+    style.backgroundColor = backgroundColor as string;
+  }
   if (layer.type === "shape") {
     const s = layer as ShapeLayer;
     const corner = layer.cornerRadius as number | undefined;

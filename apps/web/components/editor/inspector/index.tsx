@@ -28,7 +28,7 @@ import { findById } from "@/lib/editor/layer-utils";
 import { useTimeline } from "@/context/TimelineContext";
 
 export function Inspector() {
-  const { doc, setDoc, updateLayer, updateLayerTransient, replaceImageForLayer, addEmitterCellImage, animatedLayers, selectLayer } = useEditor();
+  const { doc, setDoc, updateLayer, updateLayerTransient, replaceImageForLayer, addEmitterCellImage, animatedLayers, selectLayer, updateRootAnimations } = useEditor();
   const { isPlaying } = useTimeline();
   const [sidebarPosition, setSidebarPosition] = useLocalStorage<'left' | 'top' | 'right'>('caplay_inspector_tab_position', 'left');
   const [uiDensity] = useLocalStorage<'default' | 'compact'>("caplay_settings_ui_density", 'default');
@@ -46,6 +46,7 @@ export function Inspector() {
   }, [isPlaying, animatedLayers, current?.selectedId]);
 
   const [inputs, setInputs] = useState<Record<string, string>>({});
+  const [rootTab, setRootTab] = useState<'settings' | 'animations'>('settings');
   const selKey = selectedBase ? selectedBase.id : "__none__";
 
   useEffect(() => {
@@ -95,6 +96,7 @@ export function Inspector() {
       else if (kp === 'transform.rotation.y' && typeof v === 'number') eff.rotationY = v as number;
       else if (kp === 'opacity' && typeof v === 'number') eff.opacity = v as number;
       else if (kp === 'cornerradius' && typeof v === 'number') eff.cornerRadius = v as number;
+      else if (kp === 'backgroundcolor' && typeof v === 'string') eff.backgroundColor = v;
     }
     return eff;
   })();
@@ -193,46 +195,112 @@ export function Inspector() {
     const widthVal = doc?.meta.width ?? 0;
     const heightVal = doc?.meta.height ?? 0;
     const gf = (doc?.meta as any)?.geometryFlipped ?? 0;
+    const rootAnims = current?.rootAnimations ?? [];
+
+    // Synthetic root layer object so AnimationsTab can work with it
+    const rootLayerObj = {
+      id: '__root__',
+      name: 'Root Layer',
+      type: 'basic' as const,
+      position: { x: widthVal / 2, y: heightVal / 2 },
+      size: { w: widthVal, h: heightVal },
+      animations: rootAnims,
+    } as any;
+
+    const rootUpdateLayer = (_id: string, patch: any) => {
+      if (patch.animations !== undefined) {
+        updateRootAnimations(patch.animations);
+      }
+    };
+
+    const rootTabs = [
+      { id: 'settings', icon: Cog, label: 'Settings' },
+      { id: 'animations', icon: Play, label: 'Animations' },
+    ] as const;
+
     return (
       <Card className="h-full flex flex-col overflow-hidden p-0 gap-0" data-tour-id="inspector">
         <div className={cn("px-3 py-2 border-b shrink-0 flex items-center justify-between", isCompact && "py-1 px-2")}>
           <div className="font-medium">Inspector</div>
         </div>
 
-        <div
-          className="flex-1 overflow-y-auto p-3"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) selectLayer(null);
-          }}
-        >
-          <div className="grid grid-cols-2 gap-1.5">
-            <div className="space-y-1">
-              <Label htmlFor="root-w">Width</Label>
-              <Input id="root-w" type="number" step="1" value={String(widthVal)}
-                onChange={(e) => {
-                  const n = Number(e.target.value);
-                  if (!Number.isFinite(n)) return;
-                  setDoc((prev) => prev ? ({ ...prev, meta: { ...prev.meta, width: Math.max(0, Math.round(n)) } }) : prev);
-                }} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="root-h">Height</Label>
-              <Input id="root-h" type="number" step="1" value={String(heightVal)}
-                onChange={(e) => {
-                  const n = Number(e.target.value);
-                  if (!Number.isFinite(n)) return;
-                  setDoc((prev) => prev ? ({ ...prev, meta: { ...prev.meta, height: Math.max(0, Math.round(n)) } }) : prev);
-                }} />
-            </div>
-            <div className="space-y-1 col-span-2">
-              <Label>Flip Geometry</Label>
-              <div className="flex items-center gap-2 h-8">
-                <Switch checked={gf === 1}
-                  onCheckedChange={(checked) => setDoc((prev) => prev ? ({ ...prev, meta: { ...prev.meta, geometryFlipped: checked ? 1 : 0 } }) : prev)} />
-                <span className="text-xs text-muted-foreground">When on, origin becomes top-left and Y increases down.</span>
+        {/* Tab bar */}
+        <div className={cn("flex border-b shrink-0", sidebarPosition === 'top' ? "flex-row" : "flex-col")}>
+          {rootTabs.map((tab) => (
+            <Tooltip key={tab.id}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setRootTab(tab.id)}
+                  className={cn(
+                    "flex items-center justify-center transition-colors",
+                    sidebarPosition === 'top' ? "flex-1 py-2 px-3 gap-1.5 text-xs" : "w-full py-2 px-3 gap-2",
+                    rootTab === tab.id
+                      ? "bg-primary/10 text-primary border-primary/30"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                    sidebarPosition === 'left' && "border-l-2",
+                    sidebarPosition === 'right' && "border-r-2",
+                    sidebarPosition === 'top' && "border-b-2",
+                    rootTab !== tab.id && "border-transparent"
+                  )}
+                >
+                  <tab.icon className={cn("shrink-0", isCompact ? "h-3.5 w-3.5" : "h-4 w-4")} />
+                  {sidebarPosition === 'top' && <span>{tab.label}</span>}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side={sidebarPosition === 'left' ? 'right' : sidebarPosition === 'right' ? 'left' : 'bottom'}>
+                {tab.label}
+              </TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-3">
+          {rootTab === 'settings' && (
+            <div className="grid grid-cols-2 gap-1.5">
+              <div className="space-y-1">
+                <Label htmlFor="root-w">Width</Label>
+                <Input id="root-w" type="number" step="1" value={String(widthVal)}
+                  onChange={(e) => {
+                    const n = Number(e.target.value);
+                    if (!Number.isFinite(n)) return;
+                    setDoc((prev) => prev ? ({ ...prev, meta: { ...prev.meta, width: Math.max(0, Math.round(n)) } }) : prev);
+                  }} />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="root-h">Height</Label>
+                <Input id="root-h" type="number" step="1" value={String(heightVal)}
+                  onChange={(e) => {
+                    const n = Number(e.target.value);
+                    if (!Number.isFinite(n)) return;
+                    setDoc((prev) => prev ? ({ ...prev, meta: { ...prev.meta, height: Math.max(0, Math.round(n)) } }) : prev);
+                  }} />
+              </div>
+              <div className="space-y-1 col-span-2">
+                <Label>Flip Geometry</Label>
+                <div className="flex items-center gap-2 h-8">
+                  <Switch checked={gf === 1}
+                    onCheckedChange={(checked) => setDoc((prev) => prev ? ({ ...prev, meta: { ...prev.meta, geometryFlipped: checked ? 1 : 0 } }) : prev)} />
+                  <span className="text-xs text-muted-foreground">When on, origin becomes top-left and Y increases down.</span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
+          {rootTab === 'animations' && (
+            <AnimationsTab
+              selected={rootLayerObj}
+              selectedBase={rootLayerObj}
+              updateLayer={rootUpdateLayer}
+              updateLayerTransient={rootUpdateLayer}
+              getBuf={getBuf}
+              setBuf={setBuf}
+              clearBuf={clearBuf}
+              round2={round2}
+              fmt2={fmt2}
+              fmt0={fmt0}
+              allowedKeyPaths={['backgroundColor']}
+            />
+          )}
         </div>
       </Card>
     );

@@ -1,5 +1,6 @@
 import { AnyLayer, CAProject, GyroParallaxDictionary } from "../types";
 import { serializeLayer } from "./serializeLayer";
+import { hexToForegroundColor } from "@/lib/utils";
 
 export const CAML_NS = 'http://www.apple.com/CoreAnimation/1.0';
 
@@ -46,6 +47,7 @@ export function serializeCAML(
     name: 'CAPlayground Root Layer',
     geometryFlipped: 0,
     children: [root],
+    animations: undefined,
   }
 
   const rootEl = serializeLayer(
@@ -120,6 +122,9 @@ export function serializeCAML(
           case "zPosition":
             defaultVal = layerIndex[override.targetId]?.zPosition;
             break;
+          case "backgroundColor":
+            defaultVal = (layerIndex[override.targetId] as any)?.backgroundColor ?? '#000000';
+            break;
         }
         stateNames.forEach((checkState) => {
           let checkOverrides = (stateOverridesInput || {})[checkState] || [];
@@ -149,7 +154,13 @@ export function serializeCAML(
       el.setAttribute('targetId', ov.targetId);
       el.setAttribute('keyPath', ov.keyPath);
       const vEl = doc.createElementNS(CAML_NS, 'value');
-      if (typeof ov.value === 'number') {
+      if (ov.keyPath === 'backgroundColor' && typeof ov.value === 'string') {
+        // backgroundColor uses CGColor format with final="false"
+        el.setAttribute('final', 'false');
+        const floatTriplet = hexToForegroundColor(ov.value);
+        vEl.setAttribute('type', 'CGColor');
+        if (floatTriplet) vEl.setAttribute('value', floatTriplet);
+      } else if (typeof ov.value === 'number') {
         let outVal = ov.value;
         if (ov.keyPath === 'transform.rotation.z') {
           outVal = Number((ov.value * Math.PI / 180).toFixed(5));
@@ -174,6 +185,31 @@ export function serializeCAML(
   });
 
   const stateTransitions = doc.createElementNS(CAML_NS, 'stateTransitions');
+
+  // Collect all backgroundColor overrides across all states to auto-generate spring transitions
+  const bgColorTransitionTargets: Array<{ targetId: string }> = [];
+  if (stateOverridesInput) {
+    for (const [, ovList] of Object.entries(stateOverridesInput)) {
+      for (const ov of (ovList || [])) {
+        if (ov.keyPath === 'backgroundColor' && !bgColorTransitionTargets.find(t => t.targetId === ov.targetId)) {
+          bgColorTransitionTargets.push({ targetId: ov.targetId });
+        }
+      }
+    }
+  }
+
+  const springAnimationSpec = {
+    type: 'CASpringAnimation',
+    damping: 50,
+    mass: 2,
+    stiffness: 300,
+    velocity: 0,
+    mica_autorecalculatesDuration: 1,
+    keyPath: 'backgroundColor',
+    duration: 0.8,
+    fillMode: 'backwards',
+  };
+
   const transitionsToWrite = (stateTransitionsInput && stateTransitionsInput.length
     ? stateTransitionsInput
     : [
@@ -185,6 +221,26 @@ export function serializeCAML(
       { fromState: 'Sleep', toState: '*', elements: [] },
     ]);
 
+  // Inject spring transition elements for backgroundColor into Unlock transitions
+  if (bgColorTransitionTargets.length > 0) {
+    for (const t of transitionsToWrite) {
+      if ((t.fromState === '*' && t.toState === 'Unlock') || (t.fromState === 'Unlock' && t.toState === '*')) {
+        for (const target of bgColorTransitionTargets) {
+          const alreadyHas = (t.elements || []).some(
+            (e) => e.targetId === target.targetId && e.keyPath === 'backgroundColor'
+          );
+          if (!alreadyHas) {
+            t.elements = [...(t.elements || []), {
+              targetId: target.targetId,
+              keyPath: 'backgroundColor',
+              animation: springAnimationSpec,
+            }];
+          }
+        }
+      }
+    }
+  }
+
   transitionsToWrite.forEach((t) => {
     const transition = doc.createElementNS(CAML_NS, 'LKStateTransition');
     transition.setAttribute('fromState', t.fromState);
@@ -194,6 +250,9 @@ export function serializeCAML(
       const el = doc.createElementNS(CAML_NS, 'LKStateTransitionElement');
       el.setAttribute('targetId', elSpec.targetId);
       el.setAttribute('key', elSpec.keyPath);
+      if (elSpec.keyPath === 'backgroundColor') {
+        el.setAttribute('final', 'false');
+      }
       if (elSpec.animation) {
         const a = doc.createElementNS(CAML_NS, 'animation');
         if (elSpec.animation.type) a.setAttribute('type', String(elSpec.animation.type));

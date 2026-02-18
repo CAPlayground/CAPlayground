@@ -292,7 +292,7 @@ function parseLayerBase(el: Element): LayerBase {
     if (rotations.x !== undefined) base.rotationX = base.rotationX || rotations.x;
     if (rotations.y !== undefined) base.rotationY = base.rotationY || rotations.y;
   }
-  
+
   if (transformAttr && /scale\(/i.test(transformAttr)) {
     const scales = parseTransformScales(transformAttr);
     // We use the x value to set the scale for simplicity, most of the wallpapers use the same scale for x and y
@@ -787,9 +787,23 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
     for (const animNode of [...animFirst, ...animNodes]) {
       const kp = (animNode.getAttribute('keyPath') || 'position') as KeyPath;
       const valuesNode = animNode.getElementsByTagNameNS(CAML_NS, 'values')[0];
-      const vals: Array<{ x: number; y: number } | { w: number; h: number } | number> = [];
+      const vals: Array<{ x: number; y: number } | { w: number; h: number } | number | string> = [];
       if (valuesNode) {
-        if (kp === 'position') {
+        if (kp === 'backgroundColor') {
+          const colors = Array.from(valuesNode.getElementsByTagNameNS(CAML_NS, 'CGColor'));
+          for (const c of colors) {
+            const v = c.getAttribute('value') || '';
+            // v is "R G B" floats in 0-1 range
+            const parts = v.trim().split(/\s+/).map(Number);
+            if (parts.length >= 3 && parts.every(Number.isFinite)) {
+              const r = Math.round(parts[0] * 255);
+              const g = Math.round(parts[1] * 255);
+              const b = Math.round(parts[2] * 255);
+              const hex = '#' + [r, g, b].map(n => n.toString(16).padStart(2, '0')).join('');
+              vals.push(hex);
+            }
+          }
+        } else if (kp === 'position') {
           const pts = Array.from(valuesNode.getElementsByTagNameNS(CAML_NS, 'CGPoint'));
           for (const p of pts) {
             const v = p.getAttribute('value') || '';
@@ -849,8 +863,8 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
       const timingAttr = animNode.getAttribute('timingFunction');
       const validCalculationModes: CalculationMode[] = ['linear', 'discrete'];
       const validTimingFunctions: TimingFunction[] = ['linear', 'easeIn', 'easeOut', 'easeInEaseOut'];
-      const calculationMode: CalculationMode = validCalculationModes.includes(calcModeAttr as CalculationMode) 
-        ? (calcModeAttr as CalculationMode) 
+      const calculationMode: CalculationMode = validCalculationModes.includes(calcModeAttr as CalculationMode)
+        ? (calcModeAttr as CalculationMode)
         : 'linear';
       const timingFunction: TimingFunction = validTimingFunctions.includes(timingAttr as TimingFunction)
         ? (timingAttr as TimingFunction)

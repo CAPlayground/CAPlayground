@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useTimeline } from "@/context/TimelineContext";
 import { Animation, Vec2, Size, CalculationMode, TimingFunction } from "@/lib/ca/types";
 
-type KeyframeValue = number | Vec2 | Size;
+type KeyframeValue = number | Vec2 | Size | string;
 
 function cubicBezier(p1x: number, p1y: number, p2x: number, p2y: number): (t: number) => number {
   const NEWTON_ITERATIONS = 4;
@@ -106,7 +106,7 @@ function interpolateKeyframe(
   const cycleMs = autoreverses ? durationMs * 2 : durationMs;
   const effectiveSpeed = Number.isFinite(speed) && speed > 0 ? speed : 1;
   const tGlobal = (currentTime - delayMs) * effectiveSpeed;
-  
+
   let adjustedTime: number;
   if (infinite) {
     adjustedTime = tGlobal % cycleMs;
@@ -123,11 +123,11 @@ function interpolateKeyframe(
   }
 
   const easing = timingFunctions[timingFunction] || timingFunctions.linear;
-  
+
   let easedKeyTime: number;
   let path: KeyframeValue[];
   let pathKeyTimes: number[];
-  
+
   if (!autoreverses) {
     const normalizedTime = adjustedTime / durationMs;
     easedKeyTime = easing(Math.max(0, Math.min(1, normalizedTime)));
@@ -135,7 +135,7 @@ function interpolateKeyframe(
     pathKeyTimes = forwardKeyTimes;
   } else {
     const inForwardHalf = adjustedTime < durationMs;
-    
+
     if (inForwardHalf) {
       const localTime = adjustedTime / durationMs;
       easedKeyTime = easing(Math.max(0, Math.min(1, localTime)));
@@ -174,9 +174,12 @@ function interpolateKeyframe(
 
   const u = Math.max(0, Math.min(1, segProgress));
 
-  if (typeof a === "number" && typeof b === "number") {
+  if (typeof a === "string" || typeof b === "string") {
+    // For string values (like backgroundColor), use discrete interpolation
+    return u < 0.5 ? a : b;
+  } else if (typeof a === "number" && typeof b === "number") {
     return a + (b - a) * u;
-  } else if ("x" in (a as any) && "x" in (b as any)) {
+  } else if (typeof a === "object" && a && typeof b === "object" && b && "x" in a && "x" in b) {
     const va = a as Vec2;
     const vb = b as Vec2;
     return {
@@ -196,11 +199,11 @@ function interpolateKeyframe(
 export default function useLayerAnimations(
   animations: Animation[] | undefined,
   delayMs: number = 0
-): Record<string, number> {
+): Record<string, any> {
   const { currentTime } = useTimeline();
 
   const animationOverrides = useMemo(() => {
-    const overrides: Record<string, number> = {};
+    const overrides: Record<string, any> = {};
 
     if (!animations || animations.length === 0) {
       return overrides;
@@ -235,6 +238,10 @@ export default function useLayerAnimations(
       } else if (anim.keyPath === 'bounds') {
         overrides['bounds.size.width'] = (animation as Size).w;
         overrides['bounds.size.height'] = (animation as Size).h;
+      } else if (anim.keyPath === 'backgroundColor') {
+        // backgroundColor animations return string values (hex colors)
+        // Store as a special key that the layer application logic can handle
+        overrides['backgroundColor'] = animation as any;
       } else {
         overrides[anim.keyPath] = animation as number;
       }

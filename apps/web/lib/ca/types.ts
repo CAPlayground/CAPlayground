@@ -221,7 +221,8 @@ export type KeyPath =
   | 'opacity'
   | 'bounds'
   | 'anchorPoint.x'
-  | 'anchorPoint.y';
+  | 'anchorPoint.y'
+  | 'backgroundColor';
 
 export type Animations = Array<Animation>;
 
@@ -232,7 +233,7 @@ export type Animation = {
   enabled?: boolean;
   keyPath: KeyPath;
   autoreverses?: 0 | 1;
-  values?: Array<Vec2 | Size | number>;
+  values?: Array<Vec2 | Size | number | string>;
   keyTimes?: number[];
   durationSeconds?: number;
   infinite?: 0 | 1;
