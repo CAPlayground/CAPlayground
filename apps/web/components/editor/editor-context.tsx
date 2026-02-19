@@ -30,7 +30,6 @@ type CADoc = {
   appearanceMode?: 'light' | 'dark';
   wallpaperParallaxGroups?: GyroParallaxDictionary[];
   camlHeaderComments?: string;
-  rootAnimations?: import('@/lib/ca/types').Animations;
 };
 
 export type ProjectDocument = {
@@ -90,7 +89,6 @@ export type EditorContextValue = {
       [state in 'Base State' | 'Locked' | 'Unlock' | 'Sleep' | 'Locked Light' | 'Unlock Light' | 'Sleep Light' | 'Locked Dark' | 'Unlock Dark' | 'Sleep Dark']: number[];
     }>,
   ) => void;
-  updateRootAnimations: (animations: import('@/lib/ca/types').Animations) => void;
   animatedLayers: AnyLayer[];
   setAnimatedLayers: React.Dispatch<React.SetStateAction<AnyLayer[]>>;
   hiddenLayerIds: Set<string>;
@@ -487,8 +485,8 @@ export function EditorProvider({
         };
 
         const root = key === 'floating'
-          ? { ...rootBase, animations: caDoc.rootAnimations || [] }
-          : { ...rootBase, backgroundColor: snapshot.meta.background, animations: caDoc.rootAnimations || [] };
+          ? rootBase
+          : { ...rootBase, backgroundColor: snapshot.meta.background };
 
         const mapVariantToBaseOverrides = (docPart: CADoc): Record<string, Array<{ targetId: string; keyPath: string; value: string | number }>> => {
           const baseStates = ["Locked", "Unlock", "Sleep"] as const;
@@ -1707,17 +1705,6 @@ export function EditorProvider({
     });
   }, [pushHistory]);
 
-  const updateRootAnimations = useCallback((animations: import('@/lib/ca/types').Animations) => {
-    setDoc((prev) => {
-      if (!prev) return prev;
-      const key = prev.activeCA;
-      const cur = prev.docs[key];
-      pushHistory(prev);
-      const nextCur = { ...cur, rootAnimations: animations } as CADoc;
-      return { ...prev, docs: { ...prev.docs, [key]: nextCur } } as ProjectDocument;
-    });
-  }, [pushHistory]);
-
   const toggleLayerVisibility = useCallback((id: string) => {
     setHiddenLayerIds((prev) => {
       const next = new Set(prev);
@@ -1771,7 +1758,6 @@ export function EditorProvider({
     updateStateOverrideTransient,
     updateStateOverrideColor,
     updateBatchSpecificStateOverride,
-    updateRootAnimations,
     animatedLayers,
     setAnimatedLayers,
     hiddenLayerIds,
@@ -1815,7 +1801,6 @@ export function EditorProvider({
     updateStateOverrideTransient,
     updateStateOverrideColor,
     updateBatchSpecificStateOverride,
-    updateRootAnimations,
     animatedLayers,
     setAnimatedLayers,
     hiddenLayerIds,

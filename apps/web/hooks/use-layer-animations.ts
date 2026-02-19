@@ -175,7 +175,24 @@ function interpolateKeyframe(
   const u = Math.max(0, Math.min(1, segProgress));
 
   if (typeof a === "string" || typeof b === "string") {
-    // For string values (like backgroundColor), use discrete interpolation
+    if (calculationMode === 'discrete') {
+      return u < 0.5 ? a : b;
+    }
+    const hexToRgb = (hex: string): [number, number, number] => {
+      const m = hex.trim().match(/^#?([0-9a-f]{6}|[0-9a-f]{3})$/i);
+      if (!m) return [0, 0, 0];
+      let h = m[1];
+      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+      return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+    };
+    if (typeof a === "string" && typeof b === "string") {
+      const [r1, g1, b1] = hexToRgb(a);
+      const [r2, g2, b2] = hexToRgb(b);
+      const r = Math.round(r1 + (r2 - r1) * u);
+      const g = Math.round(g1 + (g2 - g1) * u);
+      const bv = Math.round(b1 + (b2 - b1) * u);
+      return '#' + [r, g, bv].map(n => Math.max(0, Math.min(255, n)).toString(16).padStart(2, '0')).join('');
+    }
     return u < 0.5 ? a : b;
   } else if (typeof a === "number" && typeof b === "number") {
     return a + (b - a) * u;

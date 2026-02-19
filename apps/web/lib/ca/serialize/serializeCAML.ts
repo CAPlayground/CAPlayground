@@ -47,7 +47,6 @@ export function serializeCAML(
     name: 'CAPlayground Root Layer',
     geometryFlipped: 0,
     children: [root],
-    animations: undefined,
   }
 
   const rootEl = serializeLayer(

@@ -46,15 +46,15 @@ const insertLayerInTree = (layers: AnyLayer[], selId: string | null, node: AnyLa
 
 export function cloneLayerDeep(layer: AnyLayer, existingLayers?: AnyLayer[]): AnyLayer {
   const createdLayers: AnyLayer[] = [];
-  
+
   const cloneRecursive = (node: AnyLayer): AnyLayer => {
     const newId = genId();
-    
+
     const allExisting = existingLayers ? [...existingLayers, ...createdLayers] : [];
-    const newName = existingLayers 
+    const newName = existingLayers
       ? getNextLayerName(allExisting, node.name)
       : `${node.name} copy`;
-    
+
     if (node.children?.length) {
       const cloned = {
         ...JSON.parse(JSON.stringify({ ...node, id: newId })),
@@ -66,7 +66,7 @@ export function cloneLayerDeep(layer: AnyLayer, existingLayers?: AnyLayer[]): An
       createdLayers.push(cloned);
       return cloned;
     }
-    
+
     const base = JSON.parse(JSON.stringify({ ...node })) as AnyLayer;
     base.id = newId;
     base.name = newName;
@@ -74,7 +74,7 @@ export function cloneLayerDeep(layer: AnyLayer, existingLayers?: AnyLayer[]): An
     createdLayers.push(base);
     return base;
   };
-  
+
   return cloneRecursive(layer);
 }
 
@@ -198,11 +198,35 @@ export function lerp(start: number, end: number, t: number): number {
   return start + (end - start) * t;
 }
 
+function hexToRgb(hex: string): [number, number, number] {
+  const m = hex.trim().match(/^#?([0-9a-f]{6}|[0-9a-f]{3})$/i);
+  if (!m) return [0, 0, 0];
+  let h = m[1];
+  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+
+function lerpColor(a: string, b: string, t: number): string {
+  const [r1, g1, b1] = hexToRgb(a);
+  const [r2, g2, b2] = hexToRgb(b);
+  const r = Math.round(lerp(r1, r2, t));
+  const g = Math.round(lerp(g1, g2, t));
+  const bv = Math.round(lerp(b1, b2, t));
+  return '#' + [r, g, bv].map(n => Math.max(0, Math.min(255, n)).toString(16).padStart(2, '0')).join('');
+}
+
 export function interpolateLayers(baseLayers: AnyLayer[], targetLayers: AnyLayer[], progress: number): AnyLayer[] {
   const interpolate = (base: AnyLayer[], target: AnyLayer[], prog: number): AnyLayer[] => {
     return base.map((baseLayer, index) => {
       const targetLayer = target[index];
       if (!targetLayer) return baseLayer;
+
+      const baseBg = (baseLayer as any).backgroundColor as string | undefined;
+      const targetBg = (targetLayer as any).backgroundColor as string | undefined;
+      const interpolatedBg =
+        baseBg && targetBg && baseBg !== targetBg
+          ? lerpColor(baseBg, targetBg, prog)
+          : prog >= 1 ? targetBg : baseBg;
 
       return {
         ...baseLayer,
@@ -219,6 +243,7 @@ export function interpolateLayers(baseLayers: AnyLayer[], targetLayers: AnyLayer
         rotationY: lerp(baseLayer.rotationY ?? 0, targetLayer.rotationY ?? 0, prog),
         opacity: lerp(baseLayer.opacity ?? 1, targetLayer.opacity ?? 1, prog),
         zPosition: lerp(baseLayer.zPosition ?? 0, targetLayer.zPosition ?? 0, prog),
+        ...(interpolatedBg !== undefined ? { backgroundColor: interpolatedBg } : {}),
         children: baseLayer.children && targetLayer.children
           ? interpolate(baseLayer.children, targetLayer.children, prog)
           : baseLayer.children,

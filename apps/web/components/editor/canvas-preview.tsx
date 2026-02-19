@@ -60,7 +60,6 @@ export function CanvasPreview() {
     play,
     pause,
     stop,
-    currentTime,
   } = useTimeline();
 
   useEffect(() => {
@@ -149,41 +148,8 @@ export function CanvasPreview() {
       if (layer.type === 'replicator' && (layer.instanceDelay ?? 0) > 0) return true;
       return layer.children?.some(hasAnimation) ?? false;
     };
-    if (current?.rootAnimations?.some(a => a.enabled)) return true;
     return renderedLayers?.some(hasAnimation) ?? false;
-  }, [renderedLayers, current?.rootAnimations]);
-
-  // Interpolate root layer background color from rootAnimations
-  const animatedRootBg = useMemo(() => {
-    if (!isPlaying) return null;
-    const anim = current?.rootAnimations?.find(a => a.enabled && a.keyPath === 'backgroundColor');
-    if (!anim || !anim.values || anim.values.length < 2) return null;
-    const duration = anim.durationSeconds ?? 10;
-    const autoreverses = (anim.autoreverses ?? 1) === 1;
-    const cycleDuration = autoreverses ? duration * 2 : duration;
-    const currentTimeSec = currentTime / 1000;
-    const tRaw = (currentTimeSec % cycleDuration) / duration;
-    // tRaw: 0..1 = forward, 1..2 = reverse
-    const t = tRaw <= 1 ? tRaw : (autoreverses ? 2 - tRaw : tRaw % 1);
-    const colors = anim.values as string[];
-    const n = colors.length;
-    const pos = t * (n - 1);
-    const lo = Math.min(Math.floor(pos), n - 2);
-    const hi = lo + 1;
-    const frac = pos - lo;
-    // Parse hex to rgb
-    const parseHex = (hex: string) => {
-      const h = hex.replace('#', '');
-      const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
-      return [parseInt(full.slice(0, 2), 16), parseInt(full.slice(2, 4), 16), parseInt(full.slice(4, 6), 16)];
-    };
-    const [r1, g1, b1] = parseHex(colors[lo]);
-    const [r2, g2, b2] = parseHex(colors[hi]);
-    const r = Math.round(r1 + (r2 - r1) * frac);
-    const g = Math.round(g1 + (g2 - g1) * frac);
-    const b = Math.round(b1 + (b2 - b1) * frac);
-    return `rgb(${r},${g},${b})`;
-  }, [isPlaying, currentTime, current?.rootAnimations]);
+  }, [renderedLayers]);
 
   useEffect(() => {
     if (!hasAnyEnabledAnimation && isPlaying) {
@@ -315,7 +281,7 @@ export function CanvasPreview() {
           style={{
             width: doc?.meta.width,
             height: doc?.meta.height,
-            background: animatedRootBg ?? doc?.meta.background ?? "#f3f4f6",
+            background: doc?.meta.background ?? "#f3f4f6",
             transform: showPreview ? `scale(1)` : `translate(${offsetX}px, ${offsetY}px) scale(${scale})`,
             transformOrigin: "top left",
             borderRadius: 0,
@@ -338,6 +304,7 @@ export function CanvasPreview() {
                   hiddenLayerIds={hiddenLayerIds}
                   moveableRef={moveableRef}
                   disableHitTesting
+                  disableStateTransition={showPreview}
                 />
               )}
             </div>
@@ -354,6 +321,7 @@ export function CanvasPreview() {
                   useGyroControls={useGyroControls}
                   hiddenLayerIds={hiddenLayerIds}
                   moveableRef={moveableRef}
+                  disableStateTransition={showPreview}
                 />
               ))}
             </div>
@@ -373,6 +341,7 @@ export function CanvasPreview() {
                     useGyroControls={useGyroControls}
                     hiddenLayerIds={hiddenLayerIds}
                     moveableRef={moveableRef}
+                    disableStateTransition={showPreview}
                   />
                 ))}
             </div>
@@ -392,6 +361,7 @@ export function CanvasPreview() {
                     useGyroControls={useGyroControls}
                     hiddenLayerIds={hiddenLayerIds}
                     moveableRef={moveableRef}
+                    disableStateTransition={showPreview}
                   />
                 ))
                 : renderedLayers.map((layer) => (
@@ -405,6 +375,7 @@ export function CanvasPreview() {
                     useGyroControls={useGyroControls}
                     hiddenLayerIds={hiddenLayerIds}
                     moveableRef={moveableRef}
+                    disableStateTransition={showPreview}
                   />
                 ))
               }

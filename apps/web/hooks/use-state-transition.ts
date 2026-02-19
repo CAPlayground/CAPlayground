@@ -13,9 +13,36 @@ interface TransitionValue {
   cornerRadius: number;
   opacity: number;
   size: { w: number; h: number };
+  backgroundColor?: string;
 }
 
 const TRANSITION_DURATION = 800;
+
+function hexToRgb(hex: string): [number, number, number] {
+  const m = hex.trim().match(/^#?([0-9a-f]{6}|[0-9a-f]{3})$/i);
+  if (!m) return [0, 0, 0];
+  let h = m[1];
+  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  return [
+    parseInt(h.slice(0, 2), 16),
+    parseInt(h.slice(2, 4), 16),
+    parseInt(h.slice(4, 6), 16),
+  ];
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+  return '#' + [r, g, b].map(n => Math.round(Math.max(0, Math.min(255, n))).toString(16).padStart(2, '0')).join('');
+}
+
+function lerpColor(a: string, b: string, t: number): string {
+  const [r1, g1, b1] = hexToRgb(a);
+  const [r2, g2, b2] = hexToRgb(b);
+  return rgbToHex(
+    lerp(r1, r2, t),
+    lerp(g1, g2, t),
+    lerp(b1, b2, t),
+  );
+}
 
 export default function useStateTransition(layer: AnyLayer): TransitionValue {
   const { doc } = useEditor();
@@ -34,6 +61,7 @@ export default function useStateTransition(layer: AnyLayer): TransitionValue {
   const layerRotationY = layer.rotationY ?? 0;
   const layerCornerRadius = layer.cornerRadius ?? 0;
   const layerOpacity = layer.opacity ?? 1;
+  const layerBgColor = (layer as any).backgroundColor as string | undefined;
 
   const [value, setValue] = useState<TransitionValue>(() => ({
     position: { x: layerX, y: layerY },
@@ -45,6 +73,7 @@ export default function useStateTransition(layer: AnyLayer): TransitionValue {
     cornerRadius: layerCornerRadius,
     opacity: layerOpacity,
     size: { w: layerW, h: layerH },
+    backgroundColor: layerBgColor,
   }));
 
   const isTransitioningRef = useRef(false);
@@ -63,6 +92,7 @@ export default function useStateTransition(layer: AnyLayer): TransitionValue {
     cornerRadius: layerCornerRadius,
     opacity: layerOpacity,
     size: { w: layerW, h: layerH },
+    backgroundColor: layerBgColor,
   }), [
     layerX,
     layerY,
@@ -74,7 +104,8 @@ export default function useStateTransition(layer: AnyLayer): TransitionValue {
     layerCornerRadius,
     layerOpacity,
     layerW,
-    layerH
+    layerH,
+    layerBgColor,
   ]);
 
   useEffect(() => {
@@ -88,6 +119,13 @@ export default function useStateTransition(layer: AnyLayer): TransitionValue {
         const elapsed = now - startTimeRef.current;
         const progress = Math.min(elapsed / TRANSITION_DURATION, 1);
         const start = startValueRef.current;
+
+        const startBg = start.backgroundColor;
+        const targetBg = target.backgroundColor;
+        let interpolatedBg: string | undefined = targetBg;
+        if (startBg && targetBg && startBg !== targetBg) {
+          interpolatedBg = lerpColor(startBg, targetBg, progress);
+        }
 
         setValue({
           position: {
@@ -105,6 +143,7 @@ export default function useStateTransition(layer: AnyLayer): TransitionValue {
             w: lerp(start.size.w, target.size.w, progress),
             h: lerp(start.size.h, target.size.h, progress),
           },
+          backgroundColor: interpolatedBg,
         });
 
         if (progress < 1) {

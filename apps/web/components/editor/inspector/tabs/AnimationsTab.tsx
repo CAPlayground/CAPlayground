@@ -35,11 +35,9 @@ export function AnimationsTab({
   getBuf,
   setBuf,
   clearBuf,
-  allowedKeyPaths,
-}: InspectorTabProps & { allowedKeyPaths?: string[] }) {
+}: InspectorTabProps) {
   const addAnimation = (keyPath: KeyPath) => {
     const current = selectedBase?.animations || [];
-    const isBgColor = keyPath === 'backgroundColor';
     updateLayer(
       selectedBase!.id,
       {
@@ -49,10 +47,9 @@ export function AnimationsTab({
             keyPath,
             enabled: true,
             values: [],
-            durationSeconds: isBgColor ? 10 : 1,
+            durationSeconds: 1,
             speed: 1,
             infinite: 1,
-            autoreverses: isBgColor ? 1 : 0,
           }]
       });
   };
@@ -67,7 +64,7 @@ export function AnimationsTab({
           <SelectValue placeholder="Add animation" />
         </SelectTrigger>
         <SelectContent>
-          {(allowedKeyPaths ? supportedAnimations.filter(kp => allowedKeyPaths.includes(kp)) : supportedAnimations)
+          {supportedAnimations
             .filter((kp) => !selectedBase?.animations?.some((a) => a.keyPath === kp))
             .map((kp) => (
               <SelectItem key={kp} value={kp}>
@@ -86,7 +83,6 @@ export function AnimationsTab({
               animation={animation}
               selected={selected}
               selectedBase={selectedBase}
-              updateLayer={updateLayer}
               getBuf={getBuf}
               setBuf={setBuf}
               clearBuf={clearBuf}
@@ -105,7 +101,6 @@ interface AnimationsItemProps {
   selectedBase: AnyLayer;
   index: number;
   animation: Animation;
-  updateLayer: (id: string, patch: Partial<AnyLayer>) => void;
   getBuf: (key: string, fallback: string) => string;
   setBuf: (key: string, val: string) => void;
   clearBuf: (key: string) => void;
@@ -116,7 +111,6 @@ const AnimationItem = ({
   selected,
   selectedBase,
   index,
-  updateLayer,
   getBuf,
   setBuf,
   clearBuf,
@@ -134,6 +128,7 @@ const AnimationItem = ({
     calculationMode = 'linear',
     timingFunction = 'linear',
   } = animation;
+  const { updateLayer } = useEditor();
   const [useCustomKeyTimes, setUseCustomKeyTimes] = useState(() => keyTimes.length > 0);
   const [showAdvanced, setShowAdvanced] = useState(false);
 

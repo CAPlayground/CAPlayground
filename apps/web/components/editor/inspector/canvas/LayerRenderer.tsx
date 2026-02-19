@@ -22,6 +22,7 @@ interface LayerRendererProps {
   useYUp: boolean;
   siblings: AnyLayer[];
   disableHitTesting?: boolean;
+  disableStateTransition?: boolean;
   hiddenLayerIds: Set<string>;
   gyroX: number;
   gyroY: number;
@@ -55,6 +56,7 @@ export function LayerRenderer({
   useYUp,
   siblings,
   disableHitTesting = false,
+  disableStateTransition = false,
   hiddenLayerIds,
   gyroX,
   gyroY,
@@ -67,10 +69,14 @@ export function LayerRenderer({
   const currentKey = doc?.activeCA ?? 'floating';
   const current = doc?.docs?.[currentKey];
   const layerTransition = useStateTransition(initialLayer);
-  const layer = {
-    ...initialLayer,
-    ...layerTransition
-  }
+  const { backgroundColor: transitionBgColor, ...layerTransitionRest } = layerTransition;
+  const layer = disableStateTransition
+    ? initialLayer
+    : {
+      ...initialLayer,
+      ...layerTransitionRest,
+      ...(transitionBgColor !== undefined ? { backgroundColor: transitionBgColor } : {}),
+    };
   const {
     transformString,
     transformedX,
@@ -127,6 +133,7 @@ export function LayerRenderer({
           moveableRef={moveableRef}
           delayMs={delayMs}
           disableHitTesting={disableHitTesting}
+          disableStateTransition={disableStateTransition}
         />
       );
     });
