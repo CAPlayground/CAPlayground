@@ -22,7 +22,7 @@ export function EmitterCanvas({
   const runningRef = useRef(!paused);
   const layerRef = useRef<CAEmitterLayer>(null);
   const startAnimationRef = useRef<(() => void) | null>(null);
-  
+
   const docHeight = doc?.meta.height ?? 0;
   const docWidth = doc?.meta.width ?? 0;
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -76,6 +76,7 @@ export function EmitterCanvas({
     layer.emitterShape = emitterLayer.emitterShape || layer.emitterShape;
     layer.emitterMode = emitterLayer.emitterMode || layer.emitterMode;
     layer.geometryFlipped = geometryFlipped;
+    layer.speed = emitterLayer.speed ?? 1;
     layer.renderMode = emitterLayer.renderMode || layer.renderMode;
     layerRef.current = layer;
 
@@ -85,6 +86,7 @@ export function EmitterCanvas({
         const newCell = new CAEmitterCell();
         newCell.name = cell.id;
         newCell.contents = img;
+        newCell.contentsScale = cell.contentsScale;
         newCell.birthRate = reduceMotion ? 0 : cell.birthRate;
         newCell.lifetime = cell.lifetime;
         newCell.velocity = cell.velocity;
@@ -92,8 +94,23 @@ export function EmitterCanvas({
         newCell.emissionLongitude = Math.PI * cell.emissionLongitude / 180;
         newCell.emissionLatitude = Math.PI * cell.emissionLatitude / 180;
         newCell.scale = cell.scale;
+        const color = cell.color;
+        const hex = color.replace('#', '');
+        const r = parseInt(hex.slice(0, 2), 16) / 255;
+        const g = parseInt(hex.slice(2, 4), 16) / 255;
+        const b = parseInt(hex.slice(4, 6), 16) / 255;
+        newCell.red = r;
+        newCell.green = g;
+        newCell.blue = b;
+        newCell.redRange = cell.redRange;
+        newCell.greenRange = cell.greenRange;
+        newCell.blueRange = cell.blueRange;
+        newCell.redSpeed = cell.redSpeed;
+        newCell.greenSpeed = cell.greenSpeed;
+        newCell.blueSpeed = cell.blueSpeed;
         newCell.scaleRange = cell.scaleRange;
         newCell.scaleSpeed = cell.scaleSpeed;
+        newCell.alpha = cell.alpha;
         newCell.alphaRange = cell.alphaRange;
         newCell.alphaSpeed = cell.alphaSpeed;
         newCell.spin = Math.PI * cell.spin / 180;
@@ -125,7 +142,8 @@ export function EmitterCanvas({
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.restore();
-        layerRef.current?.step(dt);
+        const speed = layerRef.current?.speed ?? 1;
+        layerRef.current?.step(dt * speed);
         layerRef.current?.draw(ctx);
 
         rafIdRef.current = requestAnimationFrame(tick);
@@ -150,6 +168,7 @@ export function EmitterCanvas({
     emitterLayer.emitterShape,
     emitterLayer.emitterMode,
     emitterLayer.renderMode,
+    emitterLayer.speed,
     cellImages,
   ]);
 

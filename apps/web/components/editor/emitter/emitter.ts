@@ -1,4 +1,6 @@
+import { getTintedSprite } from "@/hooks/use-asset-url";
 import { Size, Vec2 } from "@/lib/ca/types";
+import { clamp } from "@/lib/utils";
 
 export const kCAEmitterLayerShape = { point: 'point', line: 'line', rectangle: 'rectangle' };
 export const kCAEmitterLayerMode = { volume: 'volume', outline: 'outline', surface: 'surface' };
@@ -8,6 +10,7 @@ export class CAEmitterCell {
   id: string;
   name: string | undefined;
   src: string | undefined;
+  contentsScale: number;
   birthRate: number;
   lifetime: number;
   lifetimeRange: number;
@@ -20,6 +23,10 @@ export class CAEmitterCell {
   yAcceleration: number;
   contents: any;
   color: string;
+  alpha: number;
+  red: number;
+  green: number;
+  blue: number;
   scale: number;
   scaleRange: number;
   scaleSpeed: number;
@@ -27,12 +34,19 @@ export class CAEmitterCell {
   alphaSpeed: number;
   spin: number;
   spinRange: number;
+  redRange: number;
+  redSpeed: number;
+  greenRange: number;
+  greenSpeed: number;
+  blueRange: number;
+  blueSpeed: number;
   _acc: number;
 
   constructor() {
     this.id = '';
     this.name = undefined;
     this.src = undefined;
+    this.contentsScale = 1;
     // Emission
     this.birthRate = 0;
     this.lifetime = 0;
@@ -49,7 +63,17 @@ export class CAEmitterCell {
 
     // Appearance
     this.contents = null;
-    this.color = 'rgba(255, 255, 255, 1)';
+    this.color = '#FFFFFF';
+    this.alpha = 1;
+    this.red = 1;
+    this.green = 1;
+    this.blue = 1;
+    this.redRange = 0;
+    this.redSpeed = 0;
+    this.greenRange = 0;
+    this.greenSpeed = 0;
+    this.blueRange = 0;
+    this.blueSpeed = 0;
     this.scale = 1;
     this.scaleRange = 0;
     this.scaleSpeed = 0;
@@ -76,6 +100,7 @@ export class CAEmitterLayer {
   birthRate: number;
   lifetime: number;
   seed: number;
+  speed: number;
   emitterCells: CAEmitterCell[];
   _live: any[];
   _pool: any[];
@@ -94,6 +119,7 @@ export class CAEmitterLayer {
     this.birthRate = 1;
     this.lifetime = 1;
     this.seed = (Math.random() * 1e9) | 0;
+    this.speed = 1;
 
     this.emitterCells = [];
 
@@ -120,6 +146,9 @@ export class CAEmitterLayer {
       p.rot += p.spin * dt;
       p.scale += p.cell.scaleSpeed * dt;
       p.alpha += p.cell.alphaSpeed * dt;
+      p.red += p.cell.redSpeed * dt;
+      p.green += p.cell.greenSpeed * dt;
+      p.blue += p.cell.blueSpeed * dt;
 
       p.x += p.vx * dt;
       p.y += p.vy * dt;
@@ -133,6 +162,8 @@ export class CAEmitterLayer {
     const additive = this.renderMode === kCAEmitterLayerRenderMode.additive;
     if (additive) ctx.globalCompositeOperation = 'lighter';
 
+    this._live.sort((a, b) => this.emitterCells.indexOf(a.cell) - this.emitterCells.indexOf(b.cell));
+
     for (let i = 0; i < this._live.length; i++) {
       const p = this._live[i];
       const a = Math.max(0, Math.min(1, p.alpha));
@@ -144,14 +175,20 @@ export class CAEmitterLayer {
       if (p.sprite) {
         const iw = p.sprite.naturalWidth || p.sprite.width || 1;
         const ih = p.sprite.naturalHeight || p.sprite.height || 1;
-        const w = iw * p.scale;
-        const h = ih * p.scale;
-
+        const w = Math.round(iw * p.scale / p.cell.contentsScale);
+        const h = Math.round(ih * p.scale / p.cell.contentsScale);
+        if (w <= 0 || h <= 0) continue;
+        const tint = {
+          r: clamp(p.red, 0, 1),
+          g: clamp(p.green, 0, 1),
+          b: clamp(p.blue, 0, 1)
+        };
+        const tintedSprite = getTintedSprite(p.sprite, tint) as HTMLCanvasElement;
         ctx.save();
         ctx.translate(p.x, p.y);
         if (p.spin !== 0) ctx.rotate(p.rot);
         if (!this.geometryFlipped) ctx.scale(1, -1);
-        ctx.drawImage(p.sprite, -w / 2, -h / 2, w, h);
+        ctx.drawImage(tintedSprite, -w / 2, -h / 2, w, h);
         ctx.restore();
       } else {
         ctx.beginPath();
@@ -177,7 +214,7 @@ export class CAEmitterLayer {
       if (life <= 0) continue;
 
       const speed = this._randRange(cell.velocity, cell.velocityRange);
-      const ang = cell.emissionLongitude + (Math.random() * 2 - 1) * cell.emissionRange;
+      const ang = this._randRangeFull(cell.emissionLongitude, cell.emissionRange);
 
       const { x, y } = this._emitPoint();
       const vx = Math.cos(ang) * speed;
@@ -185,16 +222,22 @@ export class CAEmitterLayer {
 
       const baseSize = cell.contents ? Math.max(12, (cell.contents.width || 16)) : 16;
       const scale = this._randRange(cell.scale, cell.scaleRange);
-      const alpha0 = this._randRange(1, cell.alphaRange);
-      const spin = cell.spin + (Math.random() * 2 - 1) * cell.spinRange;
+      const alpha = this._randRange(cell.alpha, cell.alphaRange);
+      const blue = this._randRange(cell.blue, Math.abs(cell.blueRange));
+      const red = this._randRange(cell.red, Math.abs(cell.redRange));
+      const green = this._randRange(cell.green, Math.abs(cell.greenRange));
+      const spin = this._randRange(cell.spin, cell.spinRange);
 
       const p = this._getParticle();
       p.x = x; p.y = y; p.vx = vx; p.vy = vy;
       p.rot = 0; p.spin = spin;
-      p.life = life; p.alpha = alpha0;
+      p.life = life; p.alpha = alpha;
       p.scale = scale; p.baseSize = baseSize;
       p.sprite = cell.contents || null; p.color = cell.color;
       p.cell = cell;
+      p.blue = blue;
+      p.red = red;
+      p.green = green;
 
       this._live.push(p);
       if (this._live.length > this._capacity) this._live.shift();
@@ -218,10 +261,10 @@ export class CAEmitterLayer {
         if (this.emitterMode === kCAEmitterLayerMode.outline) {
           const per = 2 * (w + h);
           let d = Math.random() * per;
-          if (d < w) return { x: ep.x - w/2 + d, y: ep.y - h/2 };
-          d -= w; if (d < h) return { x: ep.x + w/2, y: ep.y - h/2 + d };
-          d -= h; if (d < w) return { x: ep.x + w/2 - d, y: ep.y + h/2 };
-          d -= w; return { x: ep.x - w/2, y: ep.y + h/2 - d };
+          if (d < w) return { x: ep.x - w / 2 + d, y: ep.y - h / 2 };
+          d -= w; if (d < h) return { x: ep.x + w / 2, y: ep.y - h / 2 + d };
+          d -= h; if (d < w) return { x: ep.x + w / 2 - d, y: ep.y + h / 2 };
+          d -= w; return { x: ep.x - w / 2, y: ep.y + h / 2 - d };
         }
         return { x: ep.x + (Math.random() - 0.5) * w, y: ep.y + (Math.random() - 0.5) * h };
       }
@@ -230,5 +273,6 @@ export class CAEmitterLayer {
   }
 
   _getParticle() { return this._pool.length ? this._pool.pop() : {}; }
-  _randRange(base: number, range: number) { return base + (Math.random() * 2 - 1) * (range || 0); }
+  _randRange(base: number, range: number) { return base + (Math.random() - 0.5) * (range || 0); }
+  _randRangeFull(base: number, range: number) { return base + (Math.random() * 2 - 1) * (range || 0); }
 }
