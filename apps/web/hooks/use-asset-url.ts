@@ -5,30 +5,36 @@ import { CAEmitterCell } from "@/components/editor/emitter/emitter";
 
 class AssetCache {
   private cache = new Map<string, string>();
+  private cacheTint = new Map<string, HTMLCanvasElement>();
   private accessOrder: string[] = [];
 
-  get(id: string): string | null {
-    const data = this.cache.get(id);
+  get(id: string): string | HTMLCanvasElement | null {
+    const data = this.cache.get(id) || this.cacheTint.get(id);
     if (data) {
       this.accessOrder = this.accessOrder.filter((k) => k !== id);
       this.accessOrder.push(id);
     }
     return data || null;
   }
-
-  set(id: string, url: string) {
-    this.cache.set(id, url);
+  
+  set(id: string, value: string | HTMLCanvasElement) {
+    if (value instanceof HTMLCanvasElement) {
+      this.cacheTint.set(id, value);
+    } else {
+      this.cache.set(id, value);
+    }
     this.accessOrder = this.accessOrder.filter((k) => k !== id);
     this.accessOrder.push(id);
   }
 
   has(id: string): boolean {
-    return this.cache.has(id);
+    return this.cache.has(id) || this.cacheTint.has(id);
   }
 
   clear() {
     this.cache.forEach((url) => URL.revokeObjectURL(url));
     this.cache.clear();
+    this.cacheTint.clear();
     this.accessOrder = [];
   }
 }
@@ -63,7 +69,7 @@ export function useAssetUrl({
   const { doc } = useEditor();
   const projectId = doc?.meta.id ?? "";
   const projectName = doc?.meta.name ?? "";
-  const [src, setSrc] = useState<string | null>(() => assetCache.get(cacheKey));
+  const [src, setSrc] = useState<string | null>(() => assetCache.get(cacheKey) as string | null);
   const [loading, setLoading] = useState(!assetCache.has(cacheKey) && !skip);
   const [error, setError] = useState<Error | null>(null);
 
@@ -75,7 +81,7 @@ export function useAssetUrl({
 
     const cached = assetCache.get(cacheKey);
     if (cached) {
-      setSrc(cached);
+      setSrc(cached as string);
       setLoading(false);
       return;
     }
@@ -159,7 +165,7 @@ export function useVideoFrames({
     const cached = new Map<number, string>();
     for (let i = 0; i < frameCount; i++) {
       const url = assetCache.get(`${videoId}_frame_${i}`);
-      if (url) cached.set(i, url);
+      if (url) cached.set(i, url as string);
     }
     return cached;
   });
@@ -185,7 +191,7 @@ export function useVideoFrames({
 
         const cached = assetCache.get(frameAssetId);
         if (cached) {
-          loadedFrames.set(i, cached);
+          loadedFrames.set(i, cached as string);
           continue;
         }
 
@@ -282,7 +288,7 @@ export function useEmitterCellImages({
         const cached = assetCache.get(cell.id);
         if (cached) {
           try {
-            const img = await loadImage(cached);
+            const img = await loadImage(cached as string);
             loadedImages.set(cell.id, img);
           } catch (err) {
             console.error(`Failed to load cached image for cell ${cell.id}:`, err);
@@ -336,4 +342,34 @@ export function useEmitterCellImages({
   return { cellImages, loading };
 }
 
+export function getTintedSprite(
+  img: HTMLImageElement,
+  tint: { r: number; g: number; b: number }
+) {
+  if (tint.r === 1 && tint.g === 1 && tint.b === 1) return img;
+  const qr = Math.round(tint.r * 20) / 20;
+  const qg = Math.round(tint.g * 20) / 20;
+  const qb = Math.round(tint.b * 20) / 20;
+  const key = `${img.src}|${qr},${qg},${qb}`;
+  
+  if (assetCache.has(key)) return assetCache.get(key);
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth || img.width || 1;
+  canvas.height = img.naturalHeight || img.height || 1;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
 
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0);
+
+  ctx.globalCompositeOperation = "multiply";
+  ctx.fillStyle = `rgb(${Math.floor(qr * 255)},${Math.floor(qg * 255)},${Math.floor(qb * 255)})`;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.globalCompositeOperation = "destination-in";
+  ctx.drawImage(img, 0, 0);
+
+  assetCache.set(key, canvas);
+  
+  return canvas;
+}

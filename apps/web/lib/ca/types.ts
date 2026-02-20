@@ -23,6 +23,7 @@ export type LayerBase = {
   zPosition?: number;
   size: Size;
   scale?: number;
+  speed?: number;
   opacity?: number;
   rotation?: number;
   rotationX?: number;
