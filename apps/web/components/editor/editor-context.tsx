@@ -81,7 +81,6 @@ export type EditorContextValue = {
   setActiveState: (state: 'Base State' | 'Locked' | 'Unlock' | 'Sleep' | 'Locked Light' | 'Unlock Light' | 'Sleep Light' | 'Locked Dark' | 'Unlock Dark' | 'Sleep Dark') => void;
   updateStateOverride: (targetId: string, keyPath: 'position.x' | 'position.y' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'opacity' | 'cornerRadius', value: number) => void;
   updateStateOverrideTransient: (targetId: string, keyPath: 'position.x' | 'position.y' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'opacity' | 'cornerRadius', value: number) => void;
-  updateStateOverrideColor: (targetId: string, value: string) => void;
   updateBatchSpecificStateOverride: (
     targetIds: string[],
     keyPath: 'position.x' | 'position.y' | 'zPosition' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'opacity' | 'cornerRadius',
@@ -1393,7 +1392,7 @@ export function EditorProvider({
         const p: any = patch;
         const nextState = { ...(cur.stateOverrides || {}) } as Record<string, Array<{ targetId: string; keyPath: string; value: number | string }>>;
         const list = [...(nextState[cur.activeState!] || [])];
-        const upd = (keyPath: 'position.x' | 'position.y' | 'zPosition' | 'opacity' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'cornerRadius' | 'transform.scale.xy', value: number) => {
+        const upd = (keyPath: 'position.x' | 'position.y' | 'zPosition' | 'opacity' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'cornerRadius' | 'transform.scale.xy' | 'backgroundColor', value: number | string) => {
           const idx = list.findIndex((o) => o.targetId === id && o.keyPath === keyPath);
           if (idx >= 0) list[idx] = { ...list[idx], value };
           else list.push({ targetId: id, keyPath, value });
@@ -1409,6 +1408,7 @@ export function EditorProvider({
         if (typeof (p as any).rotationY === 'number') upd('transform.rotation.y', (p as any).rotationY as number);
         if (typeof p.opacity === 'number') upd('opacity', p.opacity as number);
         if (typeof (p as any).cornerRadius === 'number') upd('cornerRadius', (p as any).cornerRadius as number);
+        if (typeof p.backgroundColor === 'string') upd('backgroundColor', p.backgroundColor);
         nextState[cur.activeState!] = list;
         pushHistory(prev);
         const nextCur = { ...cur, stateOverrides: nextState } as CADoc;
@@ -1648,25 +1648,6 @@ export function EditorProvider({
     });
   }, []);
 
-  const updateStateOverrideColor = useCallback((targetId: string, value: string) => {
-    setDoc((prev) => {
-      if (!prev) return prev;
-      const key = prev.activeCA;
-      const cur = prev.docs[key];
-      const state = cur.activeState && cur.activeState !== 'Base State' ? cur.activeState : null;
-      if (!state) return prev;
-      const next = { ...(cur.stateOverrides || {}) } as Record<string, Array<{ targetId: string; keyPath: string; value: number | string }>>;
-      const list = [...(next[state] || [])];
-      const idx = list.findIndex((o) => o.targetId === targetId && o.keyPath === 'backgroundColor');
-      if (idx >= 0) list[idx] = { ...list[idx], value };
-      else list.push({ targetId, keyPath: 'backgroundColor', value });
-      next[state] = list;
-      pushHistory(prev);
-      const nextCur = { ...cur, stateOverrides: next } as CADoc;
-      return { ...prev, docs: { ...prev.docs, [key]: nextCur } } as ProjectDocument;
-    });
-  }, [pushHistory]);
-
   const updateBatchSpecificStateOverride = useCallback((
     targetIds: string[],
     keyPath: 'position.x' | 'position.y' | 'zPosition' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'opacity' | 'cornerRadius',
@@ -1756,7 +1737,6 @@ export function EditorProvider({
     setActiveState,
     updateStateOverride,
     updateStateOverrideTransient,
-    updateStateOverrideColor,
     updateBatchSpecificStateOverride,
     animatedLayers,
     setAnimatedLayers,
@@ -1799,7 +1779,6 @@ export function EditorProvider({
     setActiveState,
     updateStateOverride,
     updateStateOverrideTransient,
-    updateStateOverrideColor,
     updateBatchSpecificStateOverride,
     animatedLayers,
     setAnimatedLayers,

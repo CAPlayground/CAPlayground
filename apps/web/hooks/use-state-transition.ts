@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnyLayer } from "@/lib/ca/types";
 import { useEditor } from "@/components/editor/editor-context";
-import { lerp } from "@/lib/editor/layer-utils";
+import { lerp, lerpColor } from "@/lib/editor/layer-utils";
 
 interface TransitionValue {
   position: { x: number; y: number };
@@ -17,32 +17,6 @@ interface TransitionValue {
 }
 
 const TRANSITION_DURATION = 800;
-
-function hexToRgb(hex: string): [number, number, number] {
-  const m = hex.trim().match(/^#?([0-9a-f]{6}|[0-9a-f]{3})$/i);
-  if (!m) return [0, 0, 0];
-  let h = m[1];
-  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
-  return [
-    parseInt(h.slice(0, 2), 16),
-    parseInt(h.slice(2, 4), 16),
-    parseInt(h.slice(4, 6), 16),
-  ];
-}
-
-function rgbToHex(r: number, g: number, b: number): string {
-  return '#' + [r, g, b].map(n => Math.round(Math.max(0, Math.min(255, n))).toString(16).padStart(2, '0')).join('');
-}
-
-function lerpColor(a: string, b: string, t: number): string {
-  const [r1, g1, b1] = hexToRgb(a);
-  const [r2, g2, b2] = hexToRgb(b);
-  return rgbToHex(
-    lerp(r1, r2, t),
-    lerp(g1, g2, t),
-    lerp(b1, b2, t),
-  );
-}
 
 export default function useStateTransition(layer: AnyLayer): TransitionValue {
   const { doc } = useEditor();
@@ -61,7 +35,7 @@ export default function useStateTransition(layer: AnyLayer): TransitionValue {
   const layerRotationY = layer.rotationY ?? 0;
   const layerCornerRadius = layer.cornerRadius ?? 0;
   const layerOpacity = layer.opacity ?? 1;
-  const layerBgColor = (layer as any).backgroundColor as string | undefined;
+  const layerBgColor = layer.backgroundColor ?? "";
 
   const [value, setValue] = useState<TransitionValue>(() => ({
     position: { x: layerX, y: layerY },
@@ -122,7 +96,7 @@ export default function useStateTransition(layer: AnyLayer): TransitionValue {
 
         const startBg = start.backgroundColor;
         const targetBg = target.backgroundColor;
-        let interpolatedBg: string | undefined = targetBg;
+        let interpolatedBg = targetBg;
         if (startBg && targetBg && startBg !== targetBg) {
           interpolatedBg = lerpColor(startBg, targetBg, progress);
         }

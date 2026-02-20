@@ -174,6 +174,8 @@ export function parseStateOverrides(xml: string): CAStateOverrides {
               if (/^(integer|float|real|number)$/i.test(type)) {
                 const n = Number(vAttr);
                 val = Number.isFinite(n) ? n : vAttr;
+              } else if (type === 'CGColor') {
+                val = floatsToHexColor(vAttr) ?? '#FFFFFF';
               } else {
                 val = vAttr;
               }
@@ -205,7 +207,7 @@ function parseNumberList(input?: string): number[] {
     .map((s) => Number(s));
 }
 
-function floatsToHexColor(rgb: string | undefined): string | undefined {
+export function floatsToHexColor(rgb: string | undefined): string | undefined {
   if (!rgb) return undefined;
   const parts = rgb.split(/[\s]+/).map((s) => Number(s));
   if (parts.length < 3) return undefined;
@@ -778,7 +780,6 @@ function parseCALayer(el: Element): AnyLayer {
 }
 
 function parseCALayerAnimations(el: Element): Animations | undefined {
-  // Parse per-layer keyframe animations
   let parsedAnimations: Animations = [];
   try {
     const animationsEl = directChildByTagNS(el, 'animations');
@@ -793,7 +794,6 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
           const colors = Array.from(valuesNode.getElementsByTagNameNS(CAML_NS, 'CGColor'));
           for (const c of colors) {
             const v = c.getAttribute('value') || '';
-            // v is "R G B" floats in 0-1 range
             const parts = v.trim().split(/\s+/).map(Number);
             if (parts.length >= 3 && parts.every(Number.isFinite)) {
               const r = Math.round(parts[0] * 255);

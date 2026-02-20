@@ -342,7 +342,7 @@ const AnimationItem = ({
                   } else if (keyPath === 'bounds') {
                     newValues.push({ w: selected.size?.w ?? 0, h: selected.size?.h ?? 0 });
                   } else if (keyPath === 'backgroundColor') {
-                    newValues.push((selected as any).backgroundColor ?? '#ffffff');
+                    newValues.push(selected.backgroundColor ?? '#ffffff');
                   }
                   if (useCustomKeyTimes) {
                     const newKeyTimes = [...(animation.keyTimes || [])];

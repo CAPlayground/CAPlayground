@@ -22,7 +22,6 @@ interface LayerRendererProps {
   useYUp: boolean;
   siblings: AnyLayer[];
   disableHitTesting?: boolean;
-  disableStateTransition?: boolean;
   hiddenLayerIds: Set<string>;
   gyroX: number;
   gyroY: number;
@@ -56,7 +55,6 @@ export function LayerRenderer({
   useYUp,
   siblings,
   disableHitTesting = false,
-  disableStateTransition = false,
   hiddenLayerIds,
   gyroX,
   gyroY,
@@ -69,14 +67,10 @@ export function LayerRenderer({
   const currentKey = doc?.activeCA ?? 'floating';
   const current = doc?.docs?.[currentKey];
   const layerTransition = useStateTransition(initialLayer);
-  const { backgroundColor: transitionBgColor, ...layerTransitionRest } = layerTransition;
-  const layer = disableStateTransition
-    ? initialLayer
-    : {
-      ...initialLayer,
-      ...layerTransitionRest,
-      ...(transitionBgColor !== undefined ? { backgroundColor: transitionBgColor } : {}),
-    };
+  const layer = {
+    ...initialLayer,
+    ...layerTransition
+  }
   const {
     transformString,
     transformedX,
@@ -133,7 +127,6 @@ export function LayerRenderer({
           moveableRef={moveableRef}
           delayMs={delayMs}
           disableHitTesting={disableHitTesting}
-          disableStateTransition={disableStateTransition}
         />
       );
     });
@@ -209,19 +202,18 @@ export function LayerRenderer({
 
   let style: React.CSSProperties = {
     ...common,
-    ...bgStyleFor(layer),
+    ...bgStyleFor({
+      ...layer,
+      backgroundColor,
+    }),
   };
 
-  // Apply backgroundColor animation override
-  if (backgroundColor) {
-    style.backgroundColor = backgroundColor as string;
-  }
   if (layer.type === "shape") {
     const s = layer as ShapeLayer;
     const corner = layer.cornerRadius as number | undefined;
     const legacy = s.radius;
     const borderRadius = s.shape === "circle" ? 9999 : ((corner ?? legacy ?? 0));
-    style = layer.backgroundColor
+    style = backgroundColor
       ? { ...style, borderRadius }
       : { ...style, background: s.fill, borderRadius };
   }

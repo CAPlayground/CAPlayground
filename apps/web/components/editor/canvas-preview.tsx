@@ -304,7 +304,6 @@ export function CanvasPreview() {
                   hiddenLayerIds={hiddenLayerIds}
                   moveableRef={moveableRef}
                   disableHitTesting
-                  disableStateTransition={showPreview}
                 />
               )}
             </div>
@@ -321,7 +320,6 @@ export function CanvasPreview() {
                   useGyroControls={useGyroControls}
                   hiddenLayerIds={hiddenLayerIds}
                   moveableRef={moveableRef}
-                  disableStateTransition={showPreview}
                 />
               ))}
             </div>
@@ -341,7 +339,6 @@ export function CanvasPreview() {
                     useGyroControls={useGyroControls}
                     hiddenLayerIds={hiddenLayerIds}
                     moveableRef={moveableRef}
-                    disableStateTransition={showPreview}
                   />
                 ))}
             </div>
@@ -361,7 +358,6 @@ export function CanvasPreview() {
                     useGyroControls={useGyroControls}
                     hiddenLayerIds={hiddenLayerIds}
                     moveableRef={moveableRef}
-                    disableStateTransition={showPreview}
                   />
                 ))
                 : renderedLayers.map((layer) => (
@@ -375,7 +371,6 @@ export function CanvasPreview() {
                     useGyroControls={useGyroControls}
                     hiddenLayerIds={hiddenLayerIds}
                     moveableRef={moveableRef}
-                    disableStateTransition={showPreview}
                   />
                 ))
               }

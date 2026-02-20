@@ -26,17 +26,11 @@ export function ContentTab({
   setActiveTab,
   activeState,
 }: ContentTabProps) {
-  const { doc, updateStateOverrideColor } = useEditor();
+  const { doc } = useEditor();
   const key = doc?.activeCA ?? 'floating';
   const current = doc?.docs?.[key];
   const inState = !!activeState && activeState !== 'Base State';
 
-  // Get the current state's backgroundColor override for this layer
-  const stateColorOverride = inState
-    ? ((current?.stateOverrides || {})[activeState!] || []).find(
-      (o) => o.targetId === selected.id && o.keyPath === 'backgroundColor'
-    )?.value as string | undefined
-    : undefined;
   return (
     <div className="grid grid-cols-2 gap-x-1.5 gap-y-3">
       {selected.type !== 'gradient' && (
@@ -51,15 +45,11 @@ export function ContentTab({
               )}
             </Label>
             <Input
-              id={inState ? "unlockBackgroundColor" : "backgroundColor"}
+              id={"backgroundColor"}
               type="color"
               className="w-full h-8"
-              value={inState
-                ? (stateColorOverride ?? (selected as any).backgroundColor ?? "#ffffff")
-                : ((selected as any).backgroundColor ?? "#ffffff")}
-              onChange={(e) => inState
-                ? updateStateOverrideColor(selected.id, e.target.value)
-                : updateLayer(selected.id, { backgroundColor: e.target.value } as any)}
+              value={selected.backgroundColor ?? "#ffffff"}
+              onChange={(e) => updateLayer(selected.id, { backgroundColor: e.target.value })}
             />
           </div>
           <div className="space-y-1 col-span-2">

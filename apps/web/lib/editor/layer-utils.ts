@@ -1,4 +1,5 @@
 import type { AnyLayer } from "@/lib/ca/types";
+import { clamp } from "../utils";
 
 export const genId = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 
@@ -198,21 +199,25 @@ export function lerp(start: number, end: number, t: number): number {
   return start + (end - start) * t;
 }
 
-function hexToRgb(hex: string): [number, number, number] {
+export function hexToRgb(hex: string): [number, number, number] {
   const m = hex.trim().match(/^#?([0-9a-f]{6}|[0-9a-f]{3})$/i);
   if (!m) return [0, 0, 0];
   let h = m[1];
   if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
-  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  return [
+    parseInt(h.slice(0, 2), 16),
+    parseInt(h.slice(2, 4), 16),
+    parseInt(h.slice(4, 6), 16)
+  ];
 }
 
-function lerpColor(a: string, b: string, t: number): string {
+export function lerpColor(a: string, b: string, t: number): string {
   const [r1, g1, b1] = hexToRgb(a);
   const [r2, g2, b2] = hexToRgb(b);
   const r = Math.round(lerp(r1, r2, t));
   const g = Math.round(lerp(g1, g2, t));
   const bv = Math.round(lerp(b1, b2, t));
-  return '#' + [r, g, bv].map(n => Math.max(0, Math.min(255, n)).toString(16).padStart(2, '0')).join('');
+  return '#' + [r, g, bv].map(n => clamp(n, 0, 255).toString(16).padStart(2, '0')).join('');
 }
 
 export function interpolateLayers(baseLayers: AnyLayer[], targetLayers: AnyLayer[], progress: number): AnyLayer[] {
@@ -221,8 +226,8 @@ export function interpolateLayers(baseLayers: AnyLayer[], targetLayers: AnyLayer
       const targetLayer = target[index];
       if (!targetLayer) return baseLayer;
 
-      const baseBg = (baseLayer as any).backgroundColor as string | undefined;
-      const targetBg = (targetLayer as any).backgroundColor as string | undefined;
+      const baseBg = baseLayer.backgroundColor;
+      const targetBg = targetLayer.backgroundColor;
       const interpolatedBg =
         baseBg && targetBg && baseBg !== targetBg
           ? lerpColor(baseBg, targetBg, prog)
