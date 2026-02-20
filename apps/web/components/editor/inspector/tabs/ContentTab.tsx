@@ -26,11 +26,7 @@ export function ContentTab({
   setActiveTab,
   activeState,
 }: ContentTabProps) {
-  const { doc } = useEditor();
-  const key = doc?.activeCA ?? 'floating';
-  const current = doc?.docs?.[key];
   const inState = !!activeState && activeState !== 'Base State';
-
   return (
     <div className="grid grid-cols-2 gap-x-1.5 gap-y-3">
       {selected.type !== 'gradient' && (
@@ -45,7 +41,7 @@ export function ContentTab({
               )}
             </Label>
             <Input
-              id={"backgroundColor"}
+              id="backgroundColor"
               type="color"
               className="w-full h-8"
               value={selected.backgroundColor ?? "#ffffff"}

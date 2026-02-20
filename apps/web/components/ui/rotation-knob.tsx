@@ -54,7 +54,7 @@ export function RotationKnob({
     };
   }, []);
 
-  const MAGNETIC_THRESHOLD = 10;
+  const MAGNETIC_THRESHOLD = 4;
 
   const snapValue = (v: number) => {
     if (isShiftHeld) {

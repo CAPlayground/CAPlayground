@@ -510,7 +510,7 @@ export function EditorProvider({
         const buildTransitions = (stateNames: string[], overrides: Record<string, Array<{ targetId: string; keyPath: string; value: string | number }>> | undefined) => {
           const result: Array<{ fromState: string; toState: string; elements: Array<{ targetId: string; keyPath: string; animation?: any }> }> = [];
           if (!overrides) return result;
-          const allowed = new Set(['opacity', 'cornerRadius', 'zPosition', 'backgroundColor']);
+          const allowed = new Set(['opacity', 'cornerRadius', 'zPosition']);
           const names = (stateNames || []).filter((n) => n && n !== 'Base State');
           for (const st of names) {
             const ovs = (overrides[st] || []).filter((o) => allowed.has(o.keyPath));

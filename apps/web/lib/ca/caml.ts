@@ -175,7 +175,7 @@ export function parseStateOverrides(xml: string): CAStateOverrides {
                 const n = Number(vAttr);
                 val = Number.isFinite(n) ? n : vAttr;
               } else if (type === 'CGColor') {
-                val = floatsToHexColor(vAttr) ?? '#FFFFFF';
+                val = floatsToHexColor(vAttr) ?? '#ffffff';
               } else {
                 val = vAttr;
               }
