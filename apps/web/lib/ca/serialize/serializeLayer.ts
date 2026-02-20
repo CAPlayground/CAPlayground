@@ -613,6 +613,27 @@ export function serializeLayer(
             p.setAttribute('value', `0 0 ${w} ${h}`);
             valuesEl.appendChild(p);
           }
+        } else if (keyPath === 'colors') {
+          for (const stopsRaw of anim.values as Array<any>) {
+            const stops = Array.isArray(stopsRaw) ? stopsRaw : [];
+            const nsArray = doc.createElementNS(CAML_NS, 'NSArray');
+            for (const stop of stops) {
+              const cgColor = doc.createElementNS(CAML_NS, 'CGColor');
+              const colorValue = hexToForegroundColor(stop.color);
+              if (colorValue) cgColor.setAttribute('value', colorValue);
+              const op = stop.opacity ?? 1;
+              if (op < 1) cgColor.setAttribute('opacity', String(Math.round(op * 100) / 100));
+              nsArray.appendChild(cgColor);
+            }
+            valuesEl.appendChild(nsArray);
+          }
+        } else if (keyPath === 'backgroundColor') {
+          for (const v of anim.values as Array<any>) {
+            const cgColor = doc.createElementNS(CAML_NS, 'CGColor');
+            const colorValue = hexToForegroundColor(String(v));
+            if (colorValue) cgColor.setAttribute('value', colorValue);
+            valuesEl.appendChild(cgColor);
+          }
         }
         a.appendChild(valuesEl);
         animationsEl.appendChild(a);

@@ -1,6 +1,49 @@
-import { getTintedSprite } from "@/hooks/use-asset-url";
 import { Size, Vec2 } from "@/lib/ca/types";
 import { clamp } from "@/lib/utils";
+
+const tintCache = new Map<string, HTMLCanvasElement>();
+
+export function getTintedSprite(
+  img: HTMLImageElement | HTMLCanvasElement,
+  tint: { r: number; g: number; b: number }
+): HTMLCanvasElement | HTMLImageElement {
+  if (tint.r === 1 && tint.g === 1 && tint.b === 1) return img;
+
+  const w = img.width || (img as HTMLImageElement).naturalWidth;
+  const h = img.height || (img as HTMLImageElement).naturalHeight;
+  if (!w || !h) return img;
+
+  const src = img instanceof HTMLImageElement ? img.src : "canvas";
+  const cacheKey = `${src}_${tint.r}_${tint.g}_${tint.b}_${w}_${h}`;
+  if (tintCache.has(cacheKey)) {
+    return tintCache.get(cacheKey)!;
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return img;
+
+  ctx.drawImage(img, 0, 0, w, h);
+
+  ctx.globalCompositeOperation = "multiply";
+  ctx.fillStyle = `rgb(${Math.round(tint.r * 255)}, ${Math.round(tint.g * 255)}, ${Math.round(tint.b * 255)})`;
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.globalCompositeOperation = "destination-in";
+  ctx.drawImage(img, 0, 0, w, h);
+
+  ctx.globalCompositeOperation = "source-over";
+
+  if (tintCache.size > 100) {
+    const firstKey = tintCache.keys().next().value;
+    if (firstKey) tintCache.delete(firstKey);
+  }
+  tintCache.set(cacheKey, canvas);
+
+  return canvas;
+}
 
 export const kCAEmitterLayerShape = { point: 'point', line: 'line', rectangle: 'rectangle' };
 export const kCAEmitterLayerMode = { volume: 'volume', outline: 'outline', surface: 'surface' };

@@ -261,7 +261,7 @@ export function LayerRenderer({
           <VideoRenderer layer={layer} />
         )}
         {layer.type === "gradient" && (
-          <GradientRenderer layer={layer} />
+          <GradientRenderer layer={layer} animatedColors={animationOverrides['colors']} />
         )}
         {layer.type === "emitter" && (
           <EmitterCanvas layer={layer} useYUp={nextUseYUp} />

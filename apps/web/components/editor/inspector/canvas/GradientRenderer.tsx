@@ -1,11 +1,13 @@
-import { GradientLayer } from "@/lib/ca/types";
+import { GradientColor, GradientLayer } from "@/lib/ca/types";
 
 interface GradientRendererProps {
   layer: GradientLayer;
+  animatedColors?: GradientColor[];
 }
 
 export default function GradientRenderer({
   layer,
+  animatedColors,
 }: GradientRendererProps) {
   const gradType = layer.gradientType || 'axial';
   const startX = (layer.startPoint?.x ?? 0) * 100;
@@ -13,7 +15,9 @@ export default function GradientRenderer({
   const endX = (layer.endPoint?.x ?? 1) * 100;
   const endY = (layer.endPoint?.y ?? 1) * 100;
 
-  const colors = (layer.colors || []).map((c: any) => {
+  const resolvedColors = animatedColors ?? (layer.colors || []);
+
+  const colors = resolvedColors.map((c: any) => {
     const opacity = c.opacity ?? 1;
     const hex = c.color || '#000000';
     const r = parseInt(hex.slice(1, 3), 16);
@@ -27,7 +31,7 @@ export default function GradientRenderer({
   const isSamePoint = Math.abs(startX - endX) < 0.01 && Math.abs(startY - endY) < 0.01;
 
   if (isSamePoint) {
-    const firstColor = (layer.colors || [])[0];
+    const firstColor = resolvedColors[0];
     if (firstColor) {
       const opacity = firstColor.opacity ?? 1;
       const hex = firstColor.color || '#000000';

@@ -10,7 +10,7 @@ import { Slider } from "@/components/ui/slider";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ChevronDown, ChevronRight, Download, X } from "lucide-react";
 import type { InspectorTabProps } from "../types";
-import type { Animation, AnyLayer, KeyPath, Size, Vec2, CalculationMode, TimingFunction } from "@/lib/ca/types";
+import type { Animation, AnyLayer, GradientColor, GradientLayer, KeyPath, Size, Vec2, CalculationMode, TimingFunction } from "@/lib/ca/types";
 import { BulkAnimationInput } from "./BulkAnimationInput";
 import { useEditor } from "../../editor-context";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -25,6 +25,10 @@ const supportedAnimations = [
   "transform.rotation.z",
   "opacity",
   "bounds",
+]
+
+const gradientOnlyAnimations = [
+  "colors",
 ]
 
 export function AnimationsTab({
@@ -63,7 +67,7 @@ export function AnimationsTab({
           <SelectValue placeholder="Add animation" />
         </SelectTrigger>
         <SelectContent>
-          {supportedAnimations
+          {[...supportedAnimations, ...(selected?.type === 'gradient' ? gradientOnlyAnimations : [])]
             .filter((kp) => !selectedBase?.animations?.some((a) => a.keyPath === kp))
             .map((kp) => (
               <SelectItem key={kp} value={kp}>
@@ -340,6 +344,9 @@ const AnimationItem = ({
                     newValues.push(Number(selected?.opacity ?? 1));
                   } else if (keyPath === 'bounds') {
                     newValues.push({ w: selected.size?.w ?? 0, h: selected.size?.h ?? 0 });
+                  } else if (keyPath === 'colors') {
+                    const stops = ((selected as GradientLayer).colors || []).map((c: GradientColor) => ({ ...c }));
+                    newValues.push(stops.length > 0 ? stops : [{ color: '#ffffff', opacity: 1 }]);
                   }
                   if (useCustomKeyTimes) {
                     const newKeyTimes = [...(animation.keyTimes || [])];
@@ -357,7 +364,7 @@ const AnimationItem = ({
               </Button>
               <BulkAnimationInput
                 keyPath={keyPath as KeyPath}
-                currentValues={values}
+                currentValues={values as any}
                 onValuesChange={(values) => updateAnimation({ values })}
                 disabled={!enabled}
               />
@@ -371,6 +378,9 @@ const AnimationItem = ({
                   <tr className="bg-muted/30 border-b border-border/40">
                     <th className="pl-2 py-1.5 text-left font-medium text-muted-foreground w-6">#</th>
                     {(() => {
+                      if (keyPath === 'colors') {
+                        return <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">Color Stops</th>;
+                      }
                       const isTwoValue = keyPath === 'position' || keyPath === 'bounds';
                       const isPosition = keyPath === 'position';
                       const isOpacity = keyPath === 'opacity';
@@ -397,6 +407,7 @@ const AnimationItem = ({
                     const isTwoValue = keyPath === 'position' || keyPath === 'bounds';
                     const isPosition = keyPath === 'position';
                     const isOpacity = keyPath === 'opacity';
+                    const isColors = keyPath === 'colors';
                     const currentKeyTime = keyTimes[idx] ?? (values.length > 1 ? idx / (values.length - 1) : 0);
                     const displayTime = idx === 0 ? 0 : Math.round(currentKeyTime * 100);
                     const minTime = idx === 0 ? 0 : Math.round((keyTimes[idx - 1] ?? 0) * 100) + 1;
@@ -405,7 +416,61 @@ const AnimationItem = ({
                     return (
                       <tr key={idx} className="border-b border-border/20 last:border-0 hover:bg-muted/20">
                         <td className="pl-2 py-1 text-muted-foreground">{idx + 1}</td>
-                        {isTwoValue ? (
+                        {isColors ? (
+                          <td className="px-1 py-1">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {((val as any) as GradientColor[]).map((stop, stopIdx) => (
+                                <div key={stopIdx} className="group relative flex items-center gap-0.5">
+                                  <input
+                                    type="color"
+                                    className="w-5 h-5 rounded cursor-pointer border-0 p-0"
+                                    value={stop.color}
+                                    onChange={(e) => {
+                                      const arr = [...values] as any[];
+                                      const stops = [...(arr[idx] as GradientColor[])];
+                                      stops[stopIdx] = { ...stops[stopIdx], color: e.target.value };
+                                      arr[idx] = stops;
+                                      updateAnimation({ values: arr });
+                                    }}
+                                    disabled={!enabled}
+                                  />
+                                  {enabled && ((val as any) as GradientColor[]).length > 2 && (
+                                    <button
+                                      type="button"
+                                      className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-background border border-border rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                      onClick={() => {
+                                        const arr = [...values] as any[];
+                                        const stops = [...(arr[idx] as GradientColor[])];
+                                        stops.splice(stopIdx, 1);
+                                        arr[idx] = stops;
+                                        updateAnimation({ values: arr });
+                                      }}
+                                    >
+                                      <X className="w-2.5 h-2.5 text-muted-foreground" />
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                              {enabled && ((val as any) as GradientColor[]).length < 3 && (
+                                <button
+                                  type="button"
+                                  className="w-5 h-5 rounded border border-dashed border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
+                                  onClick={() => {
+                                    const arr = [...values] as any[];
+                                    const stops = [...(arr[idx] as GradientColor[])];
+                                    const lastColor = stops.length > 0 ? stops[stops.length - 1] : { color: '#ffffff', opacity: 1 };
+                                    stops.push({ ...lastColor });
+                                    arr[idx] = stops;
+                                    updateAnimation({ values: arr });
+                                  }}
+                                  title="Add color stop"
+                                >
+                                  +
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        ) : isTwoValue ? (
                           <>
                             <td className="px-1 py-1">
                               <Input
@@ -485,8 +550,8 @@ const AnimationItem = ({
                                   type="button"
                                   disabled={!enabled || idx === 0}
                                   className={`px-1.5 py-0.5 text-[10px] font-mono rounded transition-colors ${idx === 0
-                                      ? 'bg-muted text-muted-foreground cursor-default'
-                                      : 'bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer'
+                                    ? 'bg-muted text-muted-foreground cursor-default'
+                                    : 'bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer'
                                     }`}
                                 >
                                   {displayTime}%
@@ -585,10 +650,12 @@ const AnimationItem = ({
                 const textValues = values.map(val => {
                   if (typeof val === 'number') {
                     return keyPath === 'opacity' ? Math.round(val * 100).toString() : Math.round(val).toString();
-                  } else if ('x' in val) {
-                    return `${Math.round(val.x)}, ${Math.round(val.y)}`;
-                  } else if ('w' in val) {
-                    return `${Math.round(val.w)}, ${Math.round(val.h)}`;
+                  } else if (typeof val === 'string' || Array.isArray(val)) {
+                    return '';
+                  } else if ('x' in (val as object)) {
+                    return `${Math.round((val as Vec2).x)}, ${Math.round((val as Vec2).y)}`;
+                  } else if ('w' in (val as object)) {
+                    return `${Math.round((val as Size).w)}, ${Math.round((val as Size).h)}`;
                   }
                   return '';
                 }).join('\n');

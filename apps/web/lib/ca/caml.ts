@@ -1,5 +1,5 @@
 import { CAEmitterCell } from '@/components/editor/emitter/emitter';
-import { AnyLayer, TextLayer, VideoLayer, CAStateOverrides, CAStateTransitions, GyroParallaxDictionary, KeyPath, Animations, EmitterLayer, LayerBase, ReplicatorLayer, LiquidGlassLayer, TimingFunction, CalculationMode } from './types';
+import { AnyLayer, TextLayer, VideoLayer, CAStateOverrides, CAStateTransitions, GyroParallaxDictionary, KeyPath, Animations, EmitterLayer, LayerBase, ReplicatorLayer, LiquidGlassLayer, TimingFunction, CalculationMode, ColorsKeyframeValue } from './types';
 import { blendModes } from '../blending';
 import { Filter, SupportedFilterTypes } from '../filters';
 import { CAML_NS } from './serialize/serializeCAML';
@@ -292,7 +292,7 @@ function parseLayerBase(el: Element): LayerBase {
     if (rotations.x !== undefined) base.rotationX = base.rotationX || rotations.x;
     if (rotations.y !== undefined) base.rotationY = base.rotationY || rotations.y;
   }
-  
+
   if (transformAttr && /scale\(/i.test(transformAttr)) {
     const scales = parseTransformScales(transformAttr);
     // We use the x value to set the scale for simplicity, most of the wallpapers use the same scale for x and y
@@ -787,7 +787,7 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
     for (const animNode of [...animFirst, ...animNodes]) {
       const kp = (animNode.getAttribute('keyPath') || 'position') as KeyPath;
       const valuesNode = animNode.getElementsByTagNameNS(CAML_NS, 'values')[0];
-      const vals: Array<{ x: number; y: number } | { w: number; h: number } | number> = [];
+      const vals: Array<{ x: number; y: number } | { w: number; h: number } | number | string | ColorsKeyframeValue> = [];
       if (valuesNode) {
         if (kp === 'position') {
           const pts = Array.from(valuesNode.getElementsByTagNameNS(CAML_NS, 'CGPoint'));
@@ -826,6 +826,25 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
             const h = Math.round(Number.isFinite(parts[3]) ? parts[3] : 0);
             vals.push({ w, h });
           }
+        } else if (kp === 'colors') {
+          const arrays = Array.from(valuesNode.getElementsByTagNameNS(CAML_NS, 'NSArray'));
+          for (const arr of arrays) {
+            const cgColors = Array.from(arr.getElementsByTagNameNS(CAML_NS, 'CGColor'));
+            const stops = cgColors.map((cgc) => {
+              const value = cgc.getAttribute('value') || '';
+              const opacity = cgc.getAttribute('opacity');
+              const colorHex = floatsToHexColor(value) || '#000000';
+              return { color: colorHex, opacity: opacity ? Number(opacity) : 1 };
+            });
+            vals.push(stops);
+          }
+        } else if (kp === 'backgroundColor') {
+          const cgColors = Array.from(valuesNode.getElementsByTagNameNS(CAML_NS, 'CGColor'));
+          for (const cgc of cgColors) {
+            const value = cgc.getAttribute('value') || '';
+            const colorHex = floatsToHexColor(value) || '#000000';
+            vals.push(colorHex);
+          }
         }
       }
       const keyTimesNode = animNode.getElementsByTagNameNS(CAML_NS, 'keyTimes')[0];
@@ -849,8 +868,8 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
       const timingAttr = animNode.getAttribute('timingFunction');
       const validCalculationModes: CalculationMode[] = ['linear', 'discrete'];
       const validTimingFunctions: TimingFunction[] = ['linear', 'easeIn', 'easeOut', 'easeInEaseOut'];
-      const calculationMode: CalculationMode = validCalculationModes.includes(calcModeAttr as CalculationMode) 
-        ? (calcModeAttr as CalculationMode) 
+      const calculationMode: CalculationMode = validCalculationModes.includes(calcModeAttr as CalculationMode)
+        ? (calcModeAttr as CalculationMode)
         : 'linear';
       const timingFunction: TimingFunction = validTimingFunctions.includes(timingAttr as TimingFunction)
         ? (timingAttr as TimingFunction)
