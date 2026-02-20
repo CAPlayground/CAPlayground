@@ -25,6 +25,7 @@ const supportedAnimations = [
   "transform.rotation.z",
   "opacity",
   "bounds",
+  "backgroundColor",
 ]
 
 export function AnimationsTab({
@@ -340,6 +341,8 @@ const AnimationItem = ({
                     newValues.push(Number(selected?.opacity ?? 1));
                   } else if (keyPath === 'bounds') {
                     newValues.push({ w: selected.size?.w ?? 0, h: selected.size?.h ?? 0 });
+                  } else if (keyPath === 'backgroundColor') {
+                    newValues.push(selected.backgroundColor ?? '#ffffff');
                   }
                   if (useCustomKeyTimes) {
                     const newKeyTimes = [...(animation.keyTimes || [])];
@@ -355,12 +358,14 @@ const AnimationItem = ({
               >
                 + Add
               </Button>
-              <BulkAnimationInput
-                keyPath={keyPath as KeyPath}
-                currentValues={values}
-                onValuesChange={(values) => updateAnimation({ values })}
-                disabled={!enabled}
-              />
+              {keyPath !== 'backgroundColor' && (
+                <BulkAnimationInput
+                  keyPath={keyPath as KeyPath}
+                  currentValues={values as Array<Vec2 | Size | number>}
+                  onValuesChange={(values) => updateAnimation({ values })}
+                  disabled={!enabled}
+                />
+              )}
             </div>
           </div>
 
@@ -374,6 +379,7 @@ const AnimationItem = ({
                       const isTwoValue = keyPath === 'position' || keyPath === 'bounds';
                       const isPosition = keyPath === 'position';
                       const isOpacity = keyPath === 'opacity';
+                      const isBackgroundColor = keyPath === 'backgroundColor';
                       if (isTwoValue) {
                         return (
                           <>
@@ -384,7 +390,7 @@ const AnimationItem = ({
                       }
                       return (
                         <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">
-                          {keyPath === 'position.x' ? 'X' : keyPath === 'position.y' ? 'Y' : isOpacity ? 'Opacity' : 'Deg'}
+                          {keyPath === 'position.x' ? 'X' : keyPath === 'position.y' ? 'Y' : isOpacity ? 'Opacity' : isBackgroundColor ? 'Color' : 'Deg'}
                         </th>
                       );
                     })()}
@@ -397,6 +403,7 @@ const AnimationItem = ({
                     const isTwoValue = keyPath === 'position' || keyPath === 'bounds';
                     const isPosition = keyPath === 'position';
                     const isOpacity = keyPath === 'opacity';
+                    const isBackgroundColor = keyPath === 'backgroundColor';
                     const currentKeyTime = keyTimes[idx] ?? (values.length > 1 ? idx / (values.length - 1) : 0);
                     const displayTime = idx === 0 ? 0 : Math.round(currentKeyTime * 100);
                     const minTime = idx === 0 ? 0 : Math.round((keyTimes[idx - 1] ?? 0) * 100) + 1;
@@ -450,6 +457,20 @@ const AnimationItem = ({
                               />
                             </td>
                           </>
+                        ) : isBackgroundColor ? (
+                          <td className="px-1 py-1">
+                            <Input
+                              type="color"
+                              className="h-6 w-full cursor-pointer"
+                              value={typeof val === 'string' ? val : '#ffffff'}
+                              onChange={(e) => {
+                                const arr = [...values];
+                                arr[idx] = e.target.value;
+                                updateAnimation({ values: arr });
+                              }}
+                              disabled={!enabled}
+                            />
+                          </td>
                         ) : (
                           <td className="px-1 py-1">
                             <div className="flex items-center gap-1">
@@ -485,8 +506,8 @@ const AnimationItem = ({
                                   type="button"
                                   disabled={!enabled || idx === 0}
                                   className={`px-1.5 py-0.5 text-[10px] font-mono rounded transition-colors ${idx === 0
-                                      ? 'bg-muted text-muted-foreground cursor-default'
-                                      : 'bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer'
+                                    ? 'bg-muted text-muted-foreground cursor-default'
+                                    : 'bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer'
                                     }`}
                                 >
                                   {displayTime}%
@@ -583,11 +604,13 @@ const AnimationItem = ({
               variant="outline"
               onClick={() => {
                 const textValues = values.map(val => {
-                  if (typeof val === 'number') {
+                  if (typeof val === 'string') {
+                    return val;
+                  } else if (typeof val === 'number') {
                     return keyPath === 'opacity' ? Math.round(val * 100).toString() : Math.round(val).toString();
-                  } else if ('x' in val) {
+                  } else if (typeof val === 'object' && val && 'x' in val) {
                     return `${Math.round(val.x)}, ${Math.round(val.y)}`;
-                  } else if ('w' in val) {
+                  } else if (typeof val === 'object' && val && 'w' in val) {
                     return `${Math.round(val.w)}, ${Math.round(val.h)}`;
                   }
                   return '';

@@ -1,5 +1,6 @@
 import { AnyLayer, CAProject, GyroParallaxDictionary } from "../types";
 import { serializeLayer } from "./serializeLayer";
+import { hexToForegroundColor } from "@/lib/utils";
 
 export const CAML_NS = 'http://www.apple.com/CoreAnimation/1.0';
 
@@ -120,6 +121,9 @@ export function serializeCAML(
           case "zPosition":
             defaultVal = layerIndex[override.targetId]?.zPosition;
             break;
+          case "backgroundColor":
+            defaultVal = layerIndex[override.targetId]?.backgroundColor ?? '#ffffff';
+            break;
         }
         stateNames.forEach((checkState) => {
           let checkOverrides = (stateOverridesInput || {})[checkState] || [];
@@ -149,7 +153,11 @@ export function serializeCAML(
       el.setAttribute('targetId', ov.targetId);
       el.setAttribute('keyPath', ov.keyPath);
       const vEl = doc.createElementNS(CAML_NS, 'value');
-      if (typeof ov.value === 'number') {
+      if (ov.keyPath === 'backgroundColor' && typeof ov.value === 'string') {
+        const floatTriplet = hexToForegroundColor(ov.value);
+        vEl.setAttribute('type', 'CGColor');
+        vEl.setAttribute('value', floatTriplet ?? '1 1 1');
+      } else if (typeof ov.value === 'number') {
         let outVal = ov.value;
         if (ov.keyPath === 'transform.rotation.z') {
           outVal = Number((ov.value * Math.PI / 180).toFixed(5));
@@ -174,6 +182,7 @@ export function serializeCAML(
   });
 
   const stateTransitions = doc.createElementNS(CAML_NS, 'stateTransitions');
+
   const transitionsToWrite = (stateTransitionsInput && stateTransitionsInput.length
     ? stateTransitionsInput
     : [

@@ -94,6 +94,7 @@ export function LayerRenderer({
   const width = animationOverrides['bounds.size.width'] ?? layer.size.w;
   const height = animationOverrides['bounds.size.height'] ?? layer.size.h;
   const opacity = animationOverrides['opacity'] ?? layer.opacity;
+  const backgroundColor = animationOverrides['backgroundColor'] ?? layer.backgroundColor;
   const scale = layer.scale;
 
   const isSelected = layer.id === current?.selectedId;
@@ -201,14 +202,18 @@ export function LayerRenderer({
 
   let style: React.CSSProperties = {
     ...common,
-    ...bgStyleFor(layer),
+    ...bgStyleFor({
+      ...layer,
+      backgroundColor,
+    }),
   };
+
   if (layer.type === "shape") {
     const s = layer as ShapeLayer;
     const corner = layer.cornerRadius as number | undefined;
     const legacy = s.radius;
     const borderRadius = s.shape === "circle" ? 9999 : ((corner ?? legacy ?? 0));
-    style = layer.backgroundColor
+    style = backgroundColor
       ? { ...style, borderRadius }
       : { ...style, background: s.fill, borderRadius };
   }

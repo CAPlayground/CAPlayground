@@ -613,6 +613,16 @@ export function serializeLayer(
             p.setAttribute('value', `0 0 ${w} ${h}`);
             valuesEl.appendChild(p);
           }
+        } else if (keyPath === 'backgroundColor') {
+          for (const v of anim.values as Array<any>) {
+            const hexColor = typeof v === 'string' ? v : '#ffffff';
+            const floatTriplet = hexToForegroundColor(hexColor);
+            const cgColor = doc.createElementNS(CAML_NS, 'CGColor');
+            if (floatTriplet) {
+              cgColor.setAttribute('value', floatTriplet);
+            }
+            valuesEl.appendChild(cgColor);
+          }
         }
         a.appendChild(valuesEl);
         animationsEl.appendChild(a);

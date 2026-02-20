@@ -95,6 +95,7 @@ export function Inspector() {
       else if (kp === 'transform.rotation.y' && typeof v === 'number') eff.rotationY = v as number;
       else if (kp === 'opacity' && typeof v === 'number') eff.opacity = v as number;
       else if (kp === 'cornerradius' && typeof v === 'number') eff.cornerRadius = v as number;
+      else if (kp === 'backgroundcolor' && typeof v === 'string') eff.backgroundColor = v;
     }
     return eff;
   })();
