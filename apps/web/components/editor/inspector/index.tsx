@@ -508,6 +508,7 @@ export function Inspector() {
             <EmitterTab
               {...tabProps}
               addEmitterCellImage={addEmitterCellImage}
+              activeState={current?.activeState}
             />
           )}
 
