@@ -30,7 +30,6 @@ type CADoc = {
   appearanceMode?: 'light' | 'dark';
   wallpaperParallaxGroups?: GyroParallaxDictionary[];
   camlHeaderComments?: string;
-  rootAnimations?: import('@/lib/ca/types').Animations;
 };
 
 export type ProjectDocument = {
@@ -83,7 +82,6 @@ export type EditorContextValue = {
   setActiveState: (state: 'Base State' | 'Locked' | 'Unlock' | 'Sleep' | 'Locked Light' | 'Unlock Light' | 'Sleep Light' | 'Locked Dark' | 'Unlock Dark' | 'Sleep Dark') => void;
   updateStateOverride: (targetId: string, keyPath: 'position.x' | 'position.y' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'opacity' | 'cornerRadius', value: number) => void;
   updateStateOverrideTransient: (targetId: string, keyPath: 'position.x' | 'position.y' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'opacity' | 'cornerRadius', value: number) => void;
-  updateStateOverrideColor: (targetId: string, value: string) => void;
   updateBatchSpecificStateOverride: (
     targetIds: string[],
     keyPath: 'position.x' | 'position.y' | 'zPosition' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'opacity' | 'cornerRadius',
@@ -91,7 +89,6 @@ export type EditorContextValue = {
       [state in 'Base State' | 'Locked' | 'Unlock' | 'Sleep' | 'Locked Light' | 'Unlock Light' | 'Sleep Light' | 'Locked Dark' | 'Unlock Dark' | 'Sleep Dark']: number[];
     }>,
   ) => void;
-  updateRootAnimations: (animations: import('@/lib/ca/types').Animations) => void;
   animatedLayers: AnyLayer[];
   setAnimatedLayers: React.Dispatch<React.SetStateAction<AnyLayer[]>>;
   hiddenLayerIds: Set<string>;
@@ -488,8 +485,8 @@ export function EditorProvider({
         };
 
         const root = key === 'floating'
-          ? { ...rootBase, animations: caDoc.rootAnimations || [] }
-          : { ...rootBase, backgroundColor: snapshot.meta.background, animations: caDoc.rootAnimations || [] };
+          ? rootBase
+          : { ...rootBase, backgroundColor: snapshot.meta.background };
 
         const mapVariantToBaseOverrides = (docPart: CADoc): Record<string, Array<{ targetId: string; keyPath: string; value: string | number }>> => {
           const baseStates = ["Locked", "Unlock", "Sleep"] as const;
@@ -514,7 +511,7 @@ export function EditorProvider({
         const buildTransitions = (stateNames: string[], overrides: Record<string, Array<{ targetId: string; keyPath: string; value: string | number }>> | undefined) => {
           const result: Array<{ fromState: string; toState: string; elements: Array<{ targetId: string; keyPath: string; animation?: any }> }> = [];
           if (!overrides) return result;
-          const allowed = new Set(['opacity', 'cornerRadius', 'zPosition', 'backgroundColor']);
+          const allowed = new Set(['opacity', 'cornerRadius', 'zPosition']);
           const names = (stateNames || []).filter((n) => n && n !== 'Base State');
           for (const st of names) {
             const ovs = (overrides[st] || []).filter((o) => allowed.has(o.keyPath));
@@ -1701,25 +1698,6 @@ export function EditorProvider({
     });
   }, []);
 
-  const updateStateOverrideColor = useCallback((targetId: string, value: string) => {
-    setDoc((prev) => {
-      if (!prev) return prev;
-      const key = prev.activeCA;
-      const cur = prev.docs[key];
-      const state = cur.activeState && cur.activeState !== 'Base State' ? cur.activeState : null;
-      if (!state) return prev;
-      const next = { ...(cur.stateOverrides || {}) } as Record<string, Array<{ targetId: string; keyPath: string; value: number | string }>>;
-      const list = [...(next[state] || [])];
-      const idx = list.findIndex((o) => o.targetId === targetId && o.keyPath === 'backgroundColor');
-      if (idx >= 0) list[idx] = { ...list[idx], value };
-      else list.push({ targetId, keyPath: 'backgroundColor', value });
-      next[state] = list;
-      pushHistory(prev);
-      const nextCur = { ...cur, stateOverrides: next } as CADoc;
-      return { ...prev, docs: { ...prev.docs, [key]: nextCur } } as ProjectDocument;
-    });
-  }, [pushHistory]);
-
   const updateBatchSpecificStateOverride = useCallback((
     targetIds: string[],
     keyPath: 'position.x' | 'position.y' | 'zPosition' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'opacity' | 'cornerRadius',
@@ -1754,17 +1732,6 @@ export function EditorProvider({
       }
       pushHistory(prev);
       const nextCur = { ...cur, stateOverrides: next } as CADoc;
-      return { ...prev, docs: { ...prev.docs, [key]: nextCur } } as ProjectDocument;
-    });
-  }, [pushHistory]);
-
-  const updateRootAnimations = useCallback((animations: import('@/lib/ca/types').Animations) => {
-    setDoc((prev) => {
-      if (!prev) return prev;
-      const key = prev.activeCA;
-      const cur = prev.docs[key];
-      pushHistory(prev);
-      const nextCur = { ...cur, rootAnimations: animations } as CADoc;
       return { ...prev, docs: { ...prev.docs, [key]: nextCur } } as ProjectDocument;
     });
   }, [pushHistory]);
@@ -1821,9 +1788,7 @@ export function EditorProvider({
     setActiveState,
     updateStateOverride,
     updateStateOverrideTransient,
-    updateStateOverrideColor,
     updateBatchSpecificStateOverride,
-    updateRootAnimations,
     animatedLayers,
     setAnimatedLayers,
     hiddenLayerIds,
@@ -1865,9 +1830,7 @@ export function EditorProvider({
     setActiveState,
     updateStateOverride,
     updateStateOverrideTransient,
-    updateStateOverrideColor,
     updateBatchSpecificStateOverride,
-    updateRootAnimations,
     animatedLayers,
     setAnimatedLayers,
     hiddenLayerIds,
