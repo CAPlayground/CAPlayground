@@ -51,6 +51,8 @@ export function SettingsPanel({
   const [pinchZoomSensitivity, setPinchZoomSensitivity] = useLocalStorage<number>("caplay_settings_pinch_zoom_sensitivity", 1);
   const [showGeometryResize, setShowGeometryResize] = useLocalStorage<boolean>("caplay_settings_show_geometry_resize", false);
   const [showAlignButtons, setShowAlignButtons] = useLocalStorage<boolean>("caplay_settings_show_align_buttons", false);
+  const [uiDensity, setUiDensity] = useLocalStorage<'default' | 'compact'>("caplay_settings_ui_density", 'default');
+  const [dragSensitivity, setDragSensitivity] = useLocalStorage<number>("caplay_settings_drag_sensitivity", 3);
 
   useEffect(() => setMounted(true), []);
 
@@ -126,6 +128,69 @@ export function SettingsPanel({
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
+          {/* Interface Density */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Interface Density</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div
+                className={cn(
+                  "group cursor-pointer space-y-2",
+                  "transition-all duration-200"
+                )}
+                onClick={() => setUiDensity('default')}
+              >
+                <div className={cn(
+                  "aspect-[4/3] rounded-lg border-2 bg-muted/50 p-2 overflow-hidden flex flex-col gap-1.5",
+                  uiDensity === 'default' ? "border-primary ring-2 ring-primary/20" : "border-transparent group-hover:border-muted-foreground/25"
+                )}>
+                  <div className="h-2 w-1/2 bg-muted-foreground/20 rounded-full mb-1" />
+                  <div className="flex gap-1.5 flex-1 min-h-0">
+                    <div className="w-1/3 flex flex-col gap-1.5">
+                      <div className="h-3 w-full bg-muted-foreground/10 rounded-sm" />
+                      <div className="h-3 w-full bg-muted-foreground/10 rounded-sm" />
+                      <div className="h-3 w-full bg-muted-foreground/10 rounded-sm" />
+                    </div>
+                    <div className="flex-1 bg-muted-foreground/5 rounded-md" />
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs font-medium">Default</div>
+                  <div className="text-[10px] text-muted-foreground">Standard spacing and sizes</div>
+                </div>
+              </div>
+
+              <div
+                className={cn(
+                  "group cursor-pointer space-y-2",
+                  "transition-all duration-200"
+                )}
+                onClick={() => setUiDensity('compact')}
+              >
+                <div className={cn(
+                  "aspect-[4/3] rounded-lg border-2 bg-muted/50 p-1.5 overflow-hidden flex flex-col gap-1",
+                  uiDensity === 'compact' ? "border-primary ring-2 ring-primary/20" : "border-transparent group-hover:border-muted-foreground/25"
+                )}>
+                  <div className="h-1.5 w-1/3 bg-muted-foreground/20 rounded-full mb-0.5" />
+                  <div className="flex gap-1 flex-1 min-h-0">
+                    <div className="w-1/4 flex flex-col gap-1">
+                      <div className="h-2 w-full bg-muted-foreground/10 rounded-[1px]" />
+                      <div className="h-2 w-full bg-muted-foreground/10 rounded-[1px]" />
+                      <div className="h-2 w-full bg-muted-foreground/10 rounded-[1px]" />
+                      <div className="h-2 w-full bg-muted-foreground/10 rounded-[1px]" />
+                    </div>
+                    <div className="flex-1 bg-muted-foreground/5 rounded-sm" />
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs font-medium">Compact</div>
+                  <div className="text-[10px] text-muted-foreground">Maximizes screen real estate</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Snapping */}
+
           {/* Snapping */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Snapping</h3>
@@ -168,6 +233,14 @@ export function SettingsPanel({
                 <Label htmlFor="show-align-buttons" className="text-sm">Show align buttons</Label>
                 <Switch id="show-align-buttons" checked={!!showAlignButtons} onCheckedChange={(c) => setShowAlignButtons(!!c)} />
               </div>
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="drag-sensitivity" className="text-sm">Drag-to-change sensitivity</Label>
+                  <Button variant="outline" size="sm" onClick={() => { setDragSensitivity(3) }}>Reset</Button>
+                </div>
+                <Slider id="drag-sensitivity" value={[dragSensitivity]} min={0.5} max={10} step={0.5} onValueChange={([c]) => setDragSensitivity(c)} />
+                <p className="text-[11px] text-muted-foreground">Adjusts how fast values change when dragging numeric fields in the inspector.</p>
+              </div>
             </div>
           </div>
 
@@ -207,6 +280,8 @@ export function SettingsPanel({
               <div className="flex items-center justify-between"><span>Bring to Front</span><span className="font-mono text-muted-foreground text-xs">{typeof navigator !== 'undefined' && navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} + Shift + ]</span></div>
               <div className="flex items-center justify-between"><span>Send to Back</span><span className="font-mono text-muted-foreground text-xs">{typeof navigator !== 'undefined' && navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} + Shift + [</span></div>
               <div className="flex items-center justify-between"><span>Delete Layer</span><span className="font-mono text-muted-foreground text-xs">Delete</span></div>
+              <div className="flex items-center justify-between"><span>Resize from Center</span><span className="font-mono text-muted-foreground text-xs">Alt + Drag Handle</span></div>
+              <div className="flex items-center justify-between"><span>Maintain Aspect Ratio</span><span className="font-mono text-muted-foreground text-xs">Shift + Drag Handle</span></div>
             </div>
           </div>
 

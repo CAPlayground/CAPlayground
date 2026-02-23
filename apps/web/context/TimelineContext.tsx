@@ -71,9 +71,8 @@ export const TimelineProvider: React.FC<Props> = ({
   }, [isPlaying, duration]);
 
   const play = useCallback(() => {
-    if (isPlaying) return;
     setIsPlaying(true);
-  }, [isPlaying]);
+  }, []);
 
   const pause = useCallback(() => {
     setIsPlaying(false);

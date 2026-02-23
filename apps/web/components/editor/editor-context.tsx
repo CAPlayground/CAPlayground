@@ -58,6 +58,7 @@ export type EditorContextValue = {
   addImageLayerFromBlob: (blob: Blob, filename?: string) => Promise<void>;
   replaceImageForLayer: (layerId: string, file: File) => Promise<void>;
   addEmitterCellImage: (layerId: string, file: File) => Promise<void>;
+  replaceEmitterCellImage: (layerId: string, cellIndex: number, file: File) => Promise<void>;
   addShapeLayer: (shape?: ShapeLayer["shape"]) => void;
   addGradientLayer: () => void;
   addVideoLayerFromFile: (file: File) => Promise<void>;
@@ -598,6 +599,7 @@ export function EditorProvider({
       cornerRadius: 0,
       opacity: 1,
       visible: true,
+      speed: 1,
     };
   }, [doc]);
 
@@ -783,6 +785,54 @@ export function EditorProvider({
           }
           return l;
         });
+      const next = { ...cur, layers: updateRec(cur.layers) };
+      return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
+    });
+
+  }, [doc]);
+
+  const replaceEmitterCellImage = useCallback(async (layerId: string, cellIndex: number, file: File) => {
+    if (/image\/gif/i.test(file.type || '') || /\.gif$/i.test(file.name || '')) {
+      throw new Error('Cannot replace emitter cell image with a GIF. Please use Video Layer to import GIFs.');
+    }
+
+    const { file: fileToUpload, filename } = await convertSvgToPngIfNeeded(file);
+    const safe = sanitizeFilename(filename) || `image-${Date.now()}.png`;
+
+    try {
+      const caFolder = (currentKey === 'floating') ? 'Floating.ca' : (currentKey === 'wallpaper') ? 'Wallpaper.ca' : 'Background.ca';
+      const projName = doc?.meta.name || initialMeta.name;
+      const folder = `${projName}.ca`;
+      await putBlobFile(projectId, `${folder}/${caFolder}/assets/${safe}`, fileToUpload);
+    } catch { }
+
+    setDoc((prev) => {
+      if (!prev) return prev;
+      pushHistory(prev);
+      const key = prev.activeCA;
+      const cur = prev.docs[key];
+      const updateRec = (layers: AnyLayer[]): AnyLayer[] =>
+        layers.map((l) => {
+          if (l.id === layerId) {
+            const cells = [...((l as any).emitterCells || [])];
+            if (cells[cellIndex]) {
+              cells[cellIndex] = { ...cells[cellIndex], src: `assets/${safe}` };
+              assetCache.set(cells[cellIndex].id, '');
+            }
+            return {
+              ...l,
+              emitterCells: cells,
+            } as EmitterLayer;
+          }
+          if (l.children?.length) {
+            return {
+              ...l,
+              children: updateRec(l.children),
+            };
+          }
+          return l;
+        });
+        
       const next = { ...cur, layers: updateRec(cur.layers) };
       return { ...prev, docs: { ...prev.docs, [key]: next } } as ProjectDocument;
     });
@@ -1381,6 +1431,7 @@ export function EditorProvider({
       const shouldOnlyAffectState =
         !!cur.activeState &&
         cur.activeState !== 'Base State' &&
+        !('name' in patch) &&
         !('syncStateFrameMode' in patch) &&
         !('syncWWithState' in patch) &&
         !('blendMode' in patch) &&
@@ -1391,7 +1442,7 @@ export function EditorProvider({
         const p: any = patch;
         const nextState = { ...(cur.stateOverrides || {}) } as Record<string, Array<{ targetId: string; keyPath: string; value: number | string }>>;
         const list = [...(nextState[cur.activeState!] || [])];
-        const upd = (keyPath: 'position.x' | 'position.y' | 'zPosition' | 'opacity' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'cornerRadius', value: number) => {
+        const upd = (keyPath: 'position.x' | 'position.y' | 'zPosition' | 'opacity' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'cornerRadius' | 'transform.scale.xy' | 'backgroundColor', value: number | string) => {
           const idx = list.findIndex((o) => o.targetId === id && o.keyPath === keyPath);
           if (idx >= 0) list[idx] = { ...list[idx], value };
           else list.push({ targetId: id, keyPath, value });
@@ -1401,11 +1452,13 @@ export function EditorProvider({
         if (p.zPosition && typeof p.zPosition === 'number') upd('zPosition', p.zPosition);
         if (p.size && typeof p.size.w === 'number') upd('bounds.size.width', p.size.w);
         if (p.size && typeof p.size.h === 'number') upd('bounds.size.height', p.size.h);
+        if (p.scale && typeof p.scale === 'number') upd('transform.scale.xy', p.scale);
         if (typeof p.rotation === 'number') upd('transform.rotation.z', p.rotation as number);
         if (typeof (p as any).rotationX === 'number') upd('transform.rotation.x', (p as any).rotationX as number);
         if (typeof (p as any).rotationY === 'number') upd('transform.rotation.y', (p as any).rotationY as number);
         if (typeof p.opacity === 'number') upd('opacity', p.opacity as number);
         if (typeof (p as any).cornerRadius === 'number') upd('cornerRadius', (p as any).cornerRadius as number);
+        if (typeof p.backgroundColor === 'string') upd('backgroundColor', p.backgroundColor);
         nextState[cur.activeState!] = list;
         pushHistory(prev);
         const nextCur = { ...cur, stateOverrides: nextState } as CADoc;
@@ -1428,7 +1481,7 @@ export function EditorProvider({
         const p: any = patch;
         const nextState = { ...(cur.stateOverrides || {}) } as Record<string, Array<{ targetId: string; keyPath: string; value: number | string }>>;
         const list = [...(nextState[cur.activeState] || [])];
-        const upd = (keyPath: 'position.x' | 'position.y' | 'zPosition' | 'opacity' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'cornerRadius', value: number) => {
+        const upd = (keyPath: 'position.x' | 'position.y' | 'zPosition' | 'opacity' | 'bounds.size.width' | 'bounds.size.height' | 'transform.rotation.z' | 'transform.rotation.x' | 'transform.rotation.y' | 'cornerRadius' | 'transform.scale.xy', value: number) => {
           const idx = list.findIndex((o) => o.targetId === id && o.keyPath === keyPath);
           if (idx >= 0) list[idx] = { ...list[idx], value };
           else list.push({ targetId: id, keyPath, value });
@@ -1438,6 +1491,7 @@ export function EditorProvider({
         if (p.zPosition && typeof p.zPosition === 'number') upd('zPosition', p.zPosition);
         if (p.size && typeof p.size.w === 'number') upd('bounds.size.width', p.size.w);
         if (p.size && typeof p.size.h === 'number') upd('bounds.size.height', p.size.h);
+        if (p.scale && typeof p.scale === 'number') upd('transform.scale.xy', p.scale);
         if (typeof p.rotation === 'number') upd('transform.rotation.z', p.rotation as number);
         if (typeof (p as any).rotationX === 'number') upd('transform.rotation.x', (p as any).rotationX as number);
         if (typeof (p as any).rotationY === 'number') upd('transform.rotation.y', (p as any).rotationY as number);
@@ -1709,6 +1763,7 @@ export function EditorProvider({
     addImageLayerFromFile,
     addImageLayerFromBlob,
     replaceImageForLayer,
+    replaceEmitterCellImage,
     addEmitterCellImage,
     removeEmitterCell,
     addShapeLayer,

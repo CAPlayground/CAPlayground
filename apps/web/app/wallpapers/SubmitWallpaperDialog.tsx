@@ -298,12 +298,13 @@ export function SubmitWallpaperDialog({ open, onOpenChange, username = "Anonymou
       })
 
       setSubmissionStatus({ message: "Creating Pull Request..." })
-      const tendiesUrl = `https://raw.githubusercontent.com/${upstreamOwner}/${upstreamRepo}/${branchName}/${tendiesPath}`
+      const tendiesUrl = `https://raw.githubusercontent.com/${upstreamOwner}/${upstreamRepo}/${encodeURIComponent(branchName)}/${tendiesPath}`
+      const importUrl = `https://caplayground.vercel.app/projects?importUrl=${encodeURIComponent(tendiesUrl)}&name=${encodeURIComponent(name)}&creator=${encodeURIComponent(username)}`
       const { data: pr } = await octokit.rest.pulls.create({
         owner: upstreamOwner,
         repo: upstreamRepo,
         title: `Submission: ${name}`,
-        body: `Wallpaper submission from ${username}\n\nDescription: ${description}\nID: ${idString}\n[Download .tendies file](${tendiesUrl})`,
+        body: `Wallpaper submission from ${username}\n\nDescription: ${description}\nID: ${idString}\n[Download .tendies file](${tendiesUrl})\n[Open in CAPlayground](${importUrl})`,
         head: branchName,
         base: "dev",
       })

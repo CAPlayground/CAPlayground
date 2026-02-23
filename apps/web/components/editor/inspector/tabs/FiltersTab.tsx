@@ -16,6 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { AnyLayer } from '@/lib/ca/types';
 import { SupportedFilterTypes, Filter } from '@/lib/filters';
 import { supportedFilters } from '@/lib/filters';
+import { RotationKnob } from '@/components/ui/rotation-knob';
 
 export function FiltersTab({
   selected
@@ -74,12 +75,21 @@ const FilterItem = ({ filter, selected }: { filter: Filter; selected: AnyLayer }
       { filters: currentFilters.filter(f => f.name !== filter.name) }
     );
   };
+
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     updateLayer(
       selected.id,
       { filters: currentFilters.map(f => f.name === filter.name ? { ...f, value: Number(e.target.value) } : f) }
     )
   };
+
+  const updateValue = (val: number) => {
+    updateLayer(
+      selected.id,
+      { filters: currentFilters.map(f => f.name === filter.name ? { ...f, value: val } : f) }
+    )
+  }
+
   return (
     <div className="space-y-2">
       <Separator className="my-4" />
@@ -104,12 +114,32 @@ const FilterItem = ({ filter, selected }: { filter: Filter; selected: AnyLayer }
         </Button>
       </div>
       {(() => {
-        const def = supportedFilters[(filter as any).type as SupportedFilterTypes];
+        const def = supportedFilters[filter.type as SupportedFilterTypes];
         if (!def || !def.valueLabel) return null;
+
+        if (filter.type === 'colorHueRotate') {
+          return (
+            <div className="space-y-1 flex justify-start py-2">
+              <RotationKnob
+                label={def.valueLabel}
+                value={filter.value}
+                onChange={updateValue}
+                onChangeEnd={updateValue}
+                unit="°"
+              />
+            </div>
+          );
+        }
+
         return (
           <div className="space-y-1">
             <Label>{def.valueLabel}</Label>
-            <Input type="number" value={filter.value} onChange={onChange} />
+            <Input
+              type="number"
+              value={filter.value}
+              onChange={onChange}
+              step={filter.type === 'colorContrast' || filter.type === 'colorSaturate' ? 0.1 : filter.type === 'colorInvert' || filter.type === 'CISepiaTone' ? 0.01 : 1}
+            />
           </div>
         );
       })()}

@@ -5,41 +5,47 @@ import { CAEmitterCell } from "@/components/editor/emitter/emitter";
 
 class AssetCache {
   private cache = new Map<string, string | ImageBitmap>();
+  private cacheTint = new Map<string, HTMLCanvasElement>();
   private accessOrder: string[] = [];
 
-  get(id: string): string | ImageBitmap | null {
-    const data = this.cache.get(id);
+  get(id: string): string | HTMLCanvasElement | ImageBitmap | null {
+    const data = this.cache.get(id) || this.cacheTint.get(id);
     if (data) {
       this.accessOrder = this.accessOrder.filter((k) => k !== id);
       this.accessOrder.push(id);
     }
     return data || null;
   }
-
-  set(id: string, url: string | ImageBitmap) {
-    this.cache.set(id, url);
+  
+  set(id: string, value: string | HTMLCanvasElement | ImageBitmap) {
+    if (value instanceof HTMLCanvasElement) {
+      this.cacheTint.set(id, value);
+    } else {
+      this.cache.set(id, value);
+    }
     this.accessOrder = this.accessOrder.filter((k) => k !== id);
     this.accessOrder.push(id);
   }
 
   has(id: string): boolean {
-    return this.cache.has(id);
+    return this.cache.has(id) || this.cacheTint.has(id);
   }
 
   clear() {
     this.cache.forEach((url) => typeof url === 'string' && URL.revokeObjectURL(url));
     this.cache.clear();
+    this.cacheTint.clear();
     this.accessOrder = [];
   }
 }
 
 export const assetCache = new AssetCache();
 
-function buildAssetPaths(projectName: string, assetSrc: string): string[] {
+function buildAssetPaths(projectName: string, name: string): string[] {
   return [
-    `${projectName}.ca/Floating.ca/${assetSrc}`,
-    `${projectName}.ca/Background.ca/${assetSrc}`,
-    `${projectName}.ca/Wallpaper.ca/${assetSrc}`,
+    `${projectName}.ca/Floating.ca/assets/${name}`,
+    `${projectName}.ca/Background.ca/assets/${name}`,
+    `${projectName}.ca/Wallpaper.ca/assets/${name}`,
   ];
 }
 
@@ -63,7 +69,7 @@ export function useAssetUrl({
   const { doc } = useEditor();
   const projectId = doc?.meta.id ?? "";
   const projectName = doc?.meta.name ?? "";
-  const [src, setSrc] = useState<string | null>(() => assetCache.get(cacheKey) as string);
+  const [src, setSrc] = useState<string | null>(() => assetCache.get(cacheKey) as string | null);
   const [loading, setLoading] = useState(!assetCache.has(cacheKey) && !skip);
   const [error, setError] = useState<Error | null>(null);
 
@@ -75,7 +81,7 @@ export function useAssetUrl({
 
     const cached = assetCache.get(cacheKey) as string;
     if (cached) {
-      setSrc(cached);
+      setSrc(cached as string);
       setLoading(false);
       return;
     }
@@ -87,7 +93,9 @@ export function useAssetUrl({
       setError(null);
 
       try {
-        const paths = buildAssetPaths(projectName, assetSrc!);
+        const name = assetSrc?.split("/").pop() || "";
+        const nameNorm = decodeURIComponent(name);
+        const paths = buildAssetPaths(projectName, nameNorm);
         let buf: ArrayBuffer | undefined;
         for (const path of paths) {
           const file = await getFile(projectId, path);
@@ -156,8 +164,8 @@ export function useVideoFrames({
   const [frames, setFrames] = useState<Map<number, string>>(() => {
     const cached = new Map<number, string>();
     for (let i = 0; i < frameCount; i++) {
-      const url = assetCache.get(`${videoId}_frame_${i}`) as string;
-      if (url) cached.set(i, url);
+      const url = assetCache.get(`${videoId}_frame_${i}`);
+      if (url) cached.set(i, url as string);
     }
     return cached;
   });
@@ -183,7 +191,7 @@ export function useVideoFrames({
 
         const cached = assetCache.get(frameAssetId) as string;
         if (cached) {
-          loadedFrames.set(i, cached);
+          loadedFrames.set(i, cached as string);
           continue;
         }
 
@@ -270,13 +278,18 @@ export function useEmitterCellImages({
 
         const cached = assetCache.get(cell.id) as unknown as ImageBitmap;
         if (cached) {
-          loadedImages.set(cell.id, cached);
+          try {
+            loadedImages.set(cell.id, cached);
+          } catch (err) {
+            console.error(`Failed to load cached image for cell ${cell.id}:`, err);
+          }
           continue;
         }
 
         if (cell.src) {
           try {
-            const paths = buildAssetPaths(projectName, cell.src);
+            const name = cell.src.split("/").pop() || "";
+            const paths = buildAssetPaths(projectName, name);
 
             let buf: ArrayBuffer | undefined;
             for (const path of paths) {
@@ -323,3 +336,34 @@ export function useEmitterCellImages({
   return { cellImages, loading };
 }
 
+export function getTintedSprite(
+  img: HTMLImageElement,
+  tint: { r: number; g: number; b: number }
+) {
+  if (tint.r === 1 && tint.g === 1 && tint.b === 1) return img;
+  const qr = Math.round(tint.r * 20) / 20;
+  const qg = Math.round(tint.g * 20) / 20;
+  const qb = Math.round(tint.b * 20) / 20;
+  const key = `${img.src}|${qr},${qg},${qb}`;
+  
+  if (assetCache.has(key)) return assetCache.get(key);
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth || img.width || 1;
+  canvas.height = img.naturalHeight || img.height || 1;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0);
+
+  ctx.globalCompositeOperation = "multiply";
+  ctx.fillStyle = `rgb(${Math.floor(qr * 255)},${Math.floor(qg * 255)},${Math.floor(qb * 255)})`;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.globalCompositeOperation = "destination-in";
+  ctx.drawImage(img, 0, 0);
+
+  assetCache.set(key, canvas);
+  
+  return canvas;
+}

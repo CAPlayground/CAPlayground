@@ -26,8 +26,8 @@ const touchToMouseLike = (t: any) => ({
   clientX: t.clientX,
   clientY: t.clientY,
   button: 0,
-  preventDefault() {},
-  stopPropagation() {},
+  preventDefault() { },
+  stopPropagation() { },
 }) as any;
 
 export default function SelectionOverlay({
@@ -102,6 +102,8 @@ export default function SelectionOverlay({
       fixUY: number;
       fixX: number;
       fixY: number;
+      centerX: number;
+      centerY: number;
     }
     | null
   >(null);
@@ -259,6 +261,14 @@ export default function SelectionOverlay({
     const worldDY0 = s * dx0 + c * dy0;
     const fixX = anchorAbsX0 + worldDX0;
     const fixY = anchorAbsY0 + worldDY0;
+
+    const dxCenter = (0.5 - a.x) * l.size.w;
+    const dyCenter = (0.5 - a.y) * l.size.h;
+    const worldDXCenter = c * dxCenter - s * dyCenter;
+    const worldDYCenter = s * dxCenter + c * dyCenter;
+    const centerX = anchorAbsX0 + worldDXCenter;
+    const centerY = anchorAbsY0 + worldDYCenter;
+
     resizeDragRef.current = {
       id: l.id,
       handle,
@@ -295,6 +305,8 @@ export default function SelectionOverlay({
       fixUY: opp.uy,
       fixX,
       fixY,
+      centerX,
+      centerY,
     };
     const onMove = (ev: MouseEvent) => {
       const d = resizeDragRef.current;
@@ -308,12 +320,18 @@ export default function SelectionOverlay({
         pan,
         scale
       );
-      const dvx = mouseWorld.x - d.fixX;
-      const dvy = mouseWorld.y - d.fixY;
+      const isAlt = ev.altKey;
+      const curFixX = isAlt ? d.centerX : d.fixX;
+      const curFixY = isAlt ? d.centerY : d.fixY;
+      const curFixUX = isAlt ? 0.5 : d.fixUX;
+      const curFixUY = isAlt ? 0.5 : d.fixUY;
+
+      const dvx = mouseWorld.x - curFixX;
+      const dvy = mouseWorld.y - curFixY;
       const lx = dvx * d.cos + dvy * d.sin;
       const ly = -dvx * d.sin + dvy * d.cos;
-      const dxH = d.hX - d.fixUX;
-      const dyH = d.hY - d.fixUY;
+      const dxH = d.hX - curFixUX;
+      const dyH = d.hY - curFixUY;
       let w = d.startW;
       let h = d.startH;
       const eps = 1e-6;
@@ -333,26 +351,34 @@ export default function SelectionOverlay({
         const th = SNAP_THRESHOLD;
         const affectsW = ["e", "w", "ne", "se", "sw", "nw"].includes(d.handle);
         const affectsH = ["n", "s", "ne", "se", "sw", "nw"].includes(d.handle);
-        let testLeft = d.startLeft;
-        let testTop = d.startTop;
-        switch (d.handle) {
-          case "w":
-          case "nw":
-          case "sw":
-            testLeft = d.startLeft + d.startW - w;
-            break;
+        let testLeftAbs, testTopAbs, testRightAbs, testBottomAbs;
+        if (isAlt) {
+          testLeftAbs = d.centerX - w / 2;
+          testRightAbs = d.centerX + w / 2;
+          testTopAbs = d.centerY - h / 2;
+          testBottomAbs = d.centerY + h / 2;
+        } else {
+          let testLeft = d.startLeft;
+          let testTop = d.startTop;
+          switch (d.handle) {
+            case "w":
+            case "nw":
+            case "sw":
+              testLeft = d.startLeft + d.startW - w;
+              break;
+          }
+          switch (d.handle) {
+            case "n":
+            case "ne":
+            case "nw":
+              testTop = d.startTop + d.startH - h;
+              break;
+          }
+          testLeftAbs = testLeft + d.parentAbsLeft;
+          testTopAbs = testTop + d.parentAbsTop;
+          testRightAbs = testLeftAbs + w;
+          testBottomAbs = testTopAbs + h;
         }
-        switch (d.handle) {
-          case "n":
-          case "ne":
-          case "nw":
-            testTop = d.startTop + d.startH - h;
-            break;
-        }
-        const testLeftAbs = testLeft + d.parentAbsLeft;
-        const testTopAbs = testTop + d.parentAbsTop;
-        const testRightAbs = testLeftAbs + w;
-        const testBottomAbs = testTopAbs + h;
         const xTargets: number[] = [];
         const yTargets: number[] = [];
         if (snapEdgesEnabled) {
@@ -389,8 +415,12 @@ export default function SelectionOverlay({
               if (dist <= th && dist < bestDist) { bestDist = dist; bestTarget = target; }
             }
             if (bestTarget !== null) {
-              const startRightAbs = d.startAbsLeft + d.startW;
-              w = startRightAbs - bestTarget;
+              if (isAlt) {
+                w = Math.abs(bestTarget - d.centerX) * 2;
+              } else {
+                const startRightAbs = d.startAbsLeft + d.startW;
+                w = startRightAbs - bestTarget;
+              }
             }
           }
           if (snapRight) {
@@ -401,7 +431,8 @@ export default function SelectionOverlay({
               if (dist <= th && dist < bestDist) { bestDist = dist; bestTarget = target; }
             }
             if (bestTarget !== null) {
-              w = bestTarget - testLeftAbs;
+              if (isAlt) w = Math.abs(bestTarget - d.centerX) * 2;
+              else w = bestTarget - testLeftAbs;
             }
           }
         }
@@ -416,8 +447,12 @@ export default function SelectionOverlay({
               if (dist <= th && dist < bestDist) { bestDist = dist; bestTarget = target; }
             }
             if (bestTarget !== null) {
-              const startBottomAbs = d.startAbsTop + d.startH;
-              h = startBottomAbs - bestTarget;
+              if (isAlt) {
+                h = Math.abs(bestTarget - d.centerY) * 2;
+              } else {
+                const startBottomAbs = d.startAbsTop + d.startH;
+                h = startBottomAbs - bestTarget;
+              }
             }
           }
           if (snapBottom) {
@@ -428,7 +463,8 @@ export default function SelectionOverlay({
               if (dist <= th && dist < bestDist) { bestDist = dist; bestTarget = target; }
             }
             if (bestTarget !== null) {
-              h = bestTarget - testTopAbs;
+              if (isAlt) h = Math.abs(bestTarget - d.centerY) * 2;
+              else h = bestTarget - testTopAbs;
             }
           }
         }
@@ -450,12 +486,12 @@ export default function SelectionOverlay({
           else w = Math.max(1, h * aspect);
         }
       }
-      const dxn = (d.fixUX - d.aX) * w;
-      const dyn = (d.fixUY - d.aY) * h;
+      const dxn = (curFixUX - d.aX) * w;
+      const dyn = (curFixUY - d.aY) * h;
       const worldDXn = d.cos * dxn - d.sin * dyn;
       const worldDYn = d.sin * dxn + d.cos * dyn;
-      const anchorX = d.fixX - worldDXn;
-      const anchorY = d.fixY - worldDYn;
+      const anchorX = curFixX - worldDXn;
+      const anchorY = curFixY - worldDYn;
       const localLeft = (anchorX - d.aX * w) - d.parentAbsLeft;
       const localTop = (anchorY - (d.parentYUp ? (1 - d.aY) * h : d.aY * h)) - d.parentAbsTop;
       const x = localLeft + d.aX * w;
@@ -469,7 +505,7 @@ export default function SelectionOverlay({
       const t = tev.touches[0];
       if (!t) return;
       // Map to MouseEvent-like
-      onMove({ clientX: t.clientX, clientY: t.clientY, shiftKey: false } as any as MouseEvent);
+      onMove({ clientX: t.clientX, clientY: t.clientY, shiftKey: tev.shiftKey, altKey: tev.altKey } as any as MouseEvent);
       tev.preventDefault();
     };
     const onUp = () => {

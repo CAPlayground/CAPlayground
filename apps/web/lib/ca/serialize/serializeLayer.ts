@@ -147,6 +147,9 @@ export function serializeLayer(
   parts.push(`rotate(${rotZ || 0}deg)`);
   parts.push(`rotate(${rotY || 0}deg, 0, 1, 0)`);
   parts.push(`rotate(${rotX || 0}deg, 1, 0, 0)`);
+  if (layer.scale && layer.scale !== 1) {
+    parts.push(`scale(${layer.scale}, ${layer.scale}, 1)`);
+  }
   setAttr(el, 'transform', parts.join(' '));
   const explicitBgHex = (layer as any).backgroundColor as string | undefined;
   const shapeFillHex = (layer as any).fill as string | undefined;
@@ -172,6 +175,10 @@ export function serializeLayer(
   setAttr(el, 'allowsGroupOpacity', '1');
   setAttr(el, 'contentsFormat', 'RGBA8');
   setAttr(el, 'cornerCurve', 'circular');
+  
+  if (layer.speed && layer.speed !== 1) {
+    setAttr(el, 'speed', String(layer.speed));
+  }
 
   if (layer.type === 'liquidGlass') {
     serializeLiquidGlassLayer(doc, el, layer);
@@ -288,9 +295,24 @@ export function serializeLayer(
       const cg = doc.createElementNS(CAML_NS, 'CGImage');
       setAttr(cg, 'src', cell.src);
       contents.appendChild(cg);
+      const alpha = cell.alpha;
+      if (cell.color) {
+        const floatTriplet = hexToForegroundColor(cell.color);
+        const op = typeof alpha === 'number' ? Math.max(0, Math.min(1, alpha)) : undefined;
+        if (typeof op === 'number' && op < 1) {
+          const color = doc.createElementNS(CAML_NS, 'color');
+          if (floatTriplet) color.setAttribute('value', floatTriplet);
+          const op2 = Math.round(op * 100) / 100;
+          color.setAttribute('opacity', String(op2));
+          emitterCell.appendChild(color);
+        } else {
+          if (floatTriplet) setAttr(emitterCell, 'color', floatTriplet);
+        }
+      }
       emitterCell.appendChild(contents);
       emitterCell.setAttribute('id', cell.id);
       emitterCell.setAttribute('name', `Cell ${index + 1}`);
+      emitterCell.setAttribute('contentsScale', num(cell.contentsScale));
       emitterCell.setAttribute('birthRate', num(cell.birthRate));
       emitterCell.setAttribute('lifetime', num(cell.lifetime));
       emitterCell.setAttribute('velocity', num(cell.velocity));
@@ -306,6 +328,12 @@ export function serializeLayer(
       emitterCell.setAttribute('spinRange', num(rad(cell.spinRange)));
       emitterCell.setAttribute('xAcceleration', num(cell.xAcceleration));
       emitterCell.setAttribute('yAcceleration', num(cell.yAcceleration));
+      emitterCell.setAttribute('redRange', num(cell.redRange));
+      emitterCell.setAttribute('greenRange', num(cell.greenRange));
+      emitterCell.setAttribute('blueRange', num(cell.blueRange));
+      emitterCell.setAttribute('redSpeed', num(cell.redSpeed));
+      emitterCell.setAttribute('greenSpeed', num(cell.greenSpeed));
+      emitterCell.setAttribute('blueSpeed', num(cell.blueSpeed));
       emitterCells.appendChild(emitterCell);
     });
     el.appendChild(emitterCells);
@@ -373,6 +401,9 @@ export function serializeLayer(
       setAttr(el, 'instanceTransform', parts.join(' '));
     }
     setAttr(el, 'preservesDepth', '1');
+  }
+  if ((layer.type === 'transform' || layer.type === 'replicator') && layer.perspective) {
+    setAttr(el, 'sublayerTransform', `perspective(${layer.perspective})`)
   }
   if (wallpaperParallaxGroupsInput) {
     const style = doc.createElementNS(CAML_NS, 'style');
@@ -606,6 +637,16 @@ export function serializeLayer(
             const h = Math.round(Number(pt?.h ?? 0));
             p.setAttribute('value', `0 0 ${w} ${h}`);
             valuesEl.appendChild(p);
+          }
+        } else if (keyPath === 'backgroundColor') {
+          for (const v of anim.values as Array<any>) {
+            const hexColor = typeof v === 'string' ? v : '#ffffff';
+            const floatTriplet = hexToForegroundColor(hexColor);
+            const cgColor = doc.createElementNS(CAML_NS, 'CGColor');
+            if (floatTriplet) {
+              cgColor.setAttribute('value', floatTriplet);
+            }
+            valuesEl.appendChild(cgColor);
           }
         }
         a.appendChild(valuesEl);

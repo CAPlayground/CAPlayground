@@ -174,6 +174,8 @@ export function parseStateOverrides(xml: string): CAStateOverrides {
               if (/^(integer|float|real|number)$/i.test(type)) {
                 const n = Number(vAttr);
                 val = Number.isFinite(n) ? n : vAttr;
+              } else if (type === 'CGColor') {
+                val = floatsToHexColor(vAttr) ?? '#ffffff';
               } else {
                 val = vAttr;
               }
@@ -205,7 +207,7 @@ function parseNumberList(input?: string): number[] {
     .map((s) => Number(s));
 }
 
-function floatsToHexColor(rgb: string | undefined): string | undefined {
+export function floatsToHexColor(rgb: string | undefined): string | undefined {
   if (!rgb) return undefined;
   const parts = rgb.split(/[\s]+/).map((s) => Number(s));
   if (parts.length < 3) return undefined;
@@ -264,6 +266,8 @@ function parseLayerBase(el: Element): LayerBase {
   const rotationZ = parseNumericAttr(el, 'transform.rotation.z');
   const rotationX = parseNumericAttr(el, 'transform.rotation.x');
   const rotationY = parseNumericAttr(el, 'transform.rotation.y');
+  
+  const speed = parseNumericAttr(el, 'speed') ?? 1;
 
   const base: LayerBase = {
     id,
@@ -281,6 +285,8 @@ function parseLayerBase(el: Element): LayerBase {
       : undefined,
     geometryFlipped: parseBooleanAttr(el, 'geometryFlipped') || 0,
     masksToBounds: parseBooleanAttr(el, 'masksToBounds') || 0,
+    scale: 1,
+    speed,
   };
 
   // Parse transform attribute for additional rotation values
@@ -290,6 +296,12 @@ function parseLayerBase(el: Element): LayerBase {
     if (rotations.z !== undefined) base.rotation = base.rotation || rotations.z;
     if (rotations.x !== undefined) base.rotationX = base.rotationX || rotations.x;
     if (rotations.y !== undefined) base.rotationY = base.rotationY || rotations.y;
+  }
+
+  if (transformAttr && /scale\(/i.test(transformAttr)) {
+    const scales = parseTransformScales(transformAttr);
+    // We use the x value to set the scale for simplicity, most of the wallpapers use the same scale for x and y
+    base.scale = scales.x;
   }
 
   const compositingFilter = directChildByTagNS(el, 'compositingFilter');
@@ -371,6 +383,22 @@ function parseTransformRotations(transformAttr: string): { x?: number; y?: numbe
   } catch { }
 
   return rotations;
+}
+
+function parseTransformScales(transformAttr: string) {
+  const scales = { x: 1, y: 1, z: 1 };
+  const match = transformAttr.match(/scale\(([^)]+)\)/);
+
+  if (match) {
+    const values = match[1].split(',').map(v => parseFloat(v.trim()));
+    [scales.x, scales.y, scales.z] = [
+      values[0] ?? 1,
+      values[1] ?? 1,
+      values[2] ?? 1
+    ];
+  }
+
+  return scales;
 }
 
 function parseCAVideoLayer(el: Element): VideoLayer {
@@ -574,21 +602,54 @@ function parseCAEmitterLayer(el: Element): AnyLayer {
       const newCell = new CAEmitterCell();
       newCell.id = String(attr(c, 'id') || crypto.randomUUID());
       newCell.src = imageSrc;
-      newCell.birthRate = Number(attr(c, 'birthRate'));
-      newCell.lifetime = Number(attr(c, 'lifetime'));
-      newCell.velocity = Number(attr(c, 'velocity'));
-      newCell.scale = Number(attr(c, 'scale'));
-      newCell.scaleRange = Number(attr(c, 'scaleRange'));
-      newCell.scaleSpeed = Number(attr(c, 'scaleSpeed'));
-      newCell.alphaRange = Number(attr(c, 'alphaRange'));
-      newCell.alphaSpeed = Number(attr(c, 'alphaSpeed'));
-      newCell.emissionRange = radToDeg(Number(attr(c, 'emissionRange')) || 0);
-      newCell.emissionLongitude = radToDeg(Number(attr(c, 'emissionLongitude')) || 0);
-      newCell.emissionLatitude = radToDeg(Number(attr(c, 'emissionLatitude')) || 0);
-      newCell.spin = radToDeg(Number(attr(c, 'spin')) || 0);
-      newCell.spinRange = radToDeg(Number(attr(c, 'spinRange')) || 0);
-      newCell.xAcceleration = Number(attr(c, 'xAcceleration'));
-      newCell.yAcceleration = Number(attr(c, 'yAcceleration'));
+      const defaultCell = new CAEmitterCell();
+      const parseNum = (key: keyof CAEmitterCell) => {
+        const val = attr(c, key);
+        const num = Number(val);
+        return Number.isFinite(num) ? num : defaultCell[key];
+      };
+      
+      const parseDeg = (key: keyof CAEmitterCell) => {
+        return radToDeg(parseNum(key));
+      };
+      let color: string | undefined = undefined;
+      let alpha: number | undefined = undefined;
+      const colorAttr = attr(c, 'color');
+      if (colorAttr) color = floatsToHexColor(colorAttr) || colorAttr || undefined;
+      const colorChild = c.getElementsByTagNameNS(CAML_NS, 'color')[0];
+      if (colorChild) {
+        const v = colorChild.getAttribute('value') || undefined;
+        const op = colorChild.getAttribute('opacity');
+        const hex = floatsToHexColor(v || '');
+        if (hex) color = hex;
+        const opNum = typeof op === 'string' ? Number(op) : NaN;
+        if (Number.isFinite(opNum)) alpha = opNum;
+      }
+      if (color) newCell.color = color;
+      if (alpha !== undefined) newCell.alpha = alpha;
+      newCell.contentsScale = parseNum('contentsScale');
+      newCell.birthRate = parseNum('birthRate');
+      newCell.lifetime = parseNum('lifetime');
+      newCell.velocity = parseNum('velocity');
+      newCell.scale = parseNum('scale');
+      newCell.scaleRange = parseNum('scaleRange');
+      newCell.scaleSpeed = parseNum('scaleSpeed');
+      newCell.alphaRange = parseNum('alphaRange');
+      newCell.alphaSpeed = parseNum('alphaSpeed');
+      newCell.emissionRange = parseDeg('emissionRange');
+      newCell.emissionLongitude = parseDeg('emissionLongitude');
+      newCell.emissionLatitude = parseDeg('emissionLatitude');
+      newCell.spin = parseDeg('spin');
+      newCell.spinRange = parseDeg('spinRange');
+      newCell.xAcceleration = parseNum('xAcceleration');
+      newCell.yAcceleration = parseNum('yAcceleration');
+      newCell.redRange = parseNum('redRange');
+      newCell.greenRange = parseNum('greenRange');
+      newCell.blueRange = parseNum('blueRange');
+      newCell.redSpeed = parseNum('redSpeed');
+      newCell.greenSpeed = parseNum('greenSpeed');
+      newCell.blueSpeed = parseNum('blueSpeed');
+      
       return newCell;
     })
     : [];
@@ -609,11 +670,14 @@ function parseCATransformLayer(el: Element): AnyLayer {
   const base = parseLayerBase(el);
   const children = parseSublayers(el);
   const parsedAnimations = parseCALayerAnimations(el);
-
+  const sublayerTransform = attr(el, 'sublayerTransform')
+  const perspectiveMatch = sublayerTransform?.match(/perspective\(([^)]+)\)/);
+  const perspective = perspectiveMatch ? Number(perspectiveMatch[1]) : null;
   return {
     ...base,
     type: 'transform',
     children,
+    perspective,
     ...(parsedAnimations ? { animations: parsedAnimations } : {} as any),
   } as AnyLayer;
 }
@@ -648,6 +712,9 @@ function parseCAReplicatorLayer(el: Element): AnyLayer {
       instanceRotation = Number(rotateMatch[1]) || 0;
     }
   }
+  const sublayerTransform = attr(el, 'sublayerTransform')
+  const perspectiveMatch = sublayerTransform?.match(/perspective\(([^)]+)\)/);
+  const perspective = perspectiveMatch ? Number(perspectiveMatch[1]) : null;
 
   return {
     ...base,
@@ -657,6 +724,7 @@ function parseCAReplicatorLayer(el: Element): AnyLayer {
     instanceRotation,
     instanceDelay,
     children,
+    perspective,
     ...(parsedAnimations ? { animations: parsedAnimations } : {} as any),
   } as AnyLayer;
 }
@@ -748,7 +816,6 @@ function parseCALayer(el: Element): AnyLayer {
 }
 
 function parseCALayerAnimations(el: Element): Animations | undefined {
-  // Parse per-layer keyframe animations
   let parsedAnimations: Animations = [];
   try {
     const animationsEl = directChildByTagNS(el, 'animations');
@@ -757,9 +824,22 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
     for (const animNode of [...animFirst, ...animNodes]) {
       const kp = (animNode.getAttribute('keyPath') || 'position') as KeyPath;
       const valuesNode = animNode.getElementsByTagNameNS(CAML_NS, 'values')[0];
-      const vals: Array<{ x: number; y: number } | { w: number; h: number } | number> = [];
+      const vals: Array<{ x: number; y: number } | { w: number; h: number } | number | string> = [];
       if (valuesNode) {
-        if (kp === 'position') {
+        if (kp === 'backgroundColor') {
+          const colors = Array.from(valuesNode.getElementsByTagNameNS(CAML_NS, 'CGColor'));
+          for (const c of colors) {
+            const v = c.getAttribute('value') || '';
+            const parts = v.trim().split(/\s+/).map(Number);
+            if (parts.length >= 3 && parts.every(Number.isFinite)) {
+              const r = Math.round(parts[0] * 255);
+              const g = Math.round(parts[1] * 255);
+              const b = Math.round(parts[2] * 255);
+              const hex = '#' + [r, g, b].map(n => n.toString(16).padStart(2, '0')).join('');
+              vals.push(hex);
+            }
+          }
+        } else if (kp === 'position') {
           const pts = Array.from(valuesNode.getElementsByTagNameNS(CAML_NS, 'CGPoint'));
           for (const p of pts) {
             const v = p.getAttribute('value') || '';
@@ -819,8 +899,8 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
       const timingAttr = animNode.getAttribute('timingFunction');
       const validCalculationModes: CalculationMode[] = ['linear', 'discrete'];
       const validTimingFunctions: TimingFunction[] = ['linear', 'easeIn', 'easeOut', 'easeInEaseOut'];
-      const calculationMode: CalculationMode = validCalculationModes.includes(calcModeAttr as CalculationMode) 
-        ? (calcModeAttr as CalculationMode) 
+      const calculationMode: CalculationMode = validCalculationModes.includes(calcModeAttr as CalculationMode)
+        ? (calcModeAttr as CalculationMode)
         : 'linear';
       const timingFunction: TimingFunction = validTimingFunctions.includes(timingAttr as TimingFunction)
         ? (timingAttr as TimingFunction)
