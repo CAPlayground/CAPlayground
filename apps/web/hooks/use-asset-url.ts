@@ -4,11 +4,11 @@ import { useEditor } from "@/components/editor/editor-context";
 import { CAEmitterCell } from "@/components/editor/emitter/emitter";
 
 class AssetCache {
-  private cache = new Map<string, string | ImageBitmap>();
+  private cache = new Map<string, string | ImageBitmap | HTMLImageElement>();
   private cacheTint = new Map<string, HTMLCanvasElement>();
   private accessOrder: string[] = [];
 
-  get(id: string): string | HTMLCanvasElement | ImageBitmap | null {
+  get(id: string): string | HTMLCanvasElement | ImageBitmap | HTMLImageElement | null {
     const data = this.cache.get(id) || this.cacheTint.get(id);
     if (data) {
       this.accessOrder = this.accessOrder.filter((k) => k !== id);
@@ -17,7 +17,7 @@ class AssetCache {
     return data || null;
   }
   
-  set(id: string, value: string | HTMLCanvasElement | ImageBitmap) {
+  set(id: string, value: string | HTMLCanvasElement | ImageBitmap | HTMLImageElement) {
     if (value instanceof HTMLCanvasElement) {
       this.cacheTint.set(id, value);
     } else {
@@ -244,9 +244,11 @@ interface UseEmitterCellImagesOptions {
 }
 
 interface UseEmitterCellImagesResult {
-  cellImages: Map<string, ImageBitmap>;
+  cellImages: Map<string, CellImage>;
   loading: boolean;
 }
+
+export type CellImage = ImageBitmap | HTMLImageElement;
 
 export function useEmitterCellImages({
   cells,
@@ -255,8 +257,8 @@ export function useEmitterCellImages({
   const { doc } = useEditor();
   const projectId = doc?.meta.id ?? "";
   const projectName = doc?.meta.name ?? "";
-  const bitmapsRef = useRef<Map<string, ImageBitmap>>(new Map());
-  const [cellImages, setCellImages] = useState<Map<string, ImageBitmap>>(
+  const bitmapsRef = useRef<Map<string, CellImage>>(new Map());
+  const [cellImages, setCellImages] = useState<Map<string, CellImage>>(
     () => new Map()
   );
   const [loading, setLoading] = useState(!skip && cells.length > 0);
@@ -271,7 +273,7 @@ export function useEmitterCellImages({
 
     async function loadAllCellImages() {
       setLoading(true);
-      const loadedImages = new Map<string, ImageBitmap>();
+      const loadedImages = new Map<string, CellImage>();
 
       for (const cell of cells) {
         if (cancelled) return;
@@ -288,28 +290,65 @@ export function useEmitterCellImages({
 
         if (cell.src) {
           try {
-            const name = cell.src.split("/").pop() || "";
-            const paths = buildAssetPaths(projectName, name);
+            let bitmap: CellImage;
+            
+            if (cell.src.startsWith('data:')) {
+              // Load base64 data URL directly
+              const img = new Image();
+              await new Promise<void>((resolve, reject) => {
+                img.onload = () => resolve();
+                img.onerror = reject;
+                img.src = cell.src!;
+              });
+              bitmap = img;
+            } else {
+              // Load from file path
+              const name = cell.src.split("/").pop() || "";
+              const paths = buildAssetPaths(projectName, name);
 
-            let buf: ArrayBuffer | undefined;
-            for (const path of paths) {
-              try {
-                const file = await getFile(projectId, path);
-                if (file?.data && file.data instanceof ArrayBuffer) {
-                  buf = file.data;
-                  break;
+              let buf: ArrayBuffer | undefined;
+              for (const path of paths) {
+                try {
+                  const file = await getFile(projectId, path);
+                  if (file?.data && file.data instanceof ArrayBuffer) {
+                    buf = file.data;
+                    break;
+                  }
+                } catch {
+                  continue;
                 }
-              } catch {
-                continue;
+              }
+
+              if (buf) {
+                // Convert to base64 data URL
+                const blob = new Blob([buf]);
+                const dataURL = await new Promise<string>((resolve) => {
+                  const r = new FileReader();
+                  r.onload = () => {
+                    let result = String(r.result);
+                    // Assume PNG for emitter cells, can be adjusted based on filename if needed
+                    if (result.startsWith('data:application/octet-stream')) {
+                      result = result.replace(/^data:application\/octet-stream/, 'data:image/png');
+                    }
+                    resolve(result);
+                  };
+                  r.readAsDataURL(blob);
+                });
+                
+                const img = new Image();
+                await new Promise<void>((resolve, reject) => {
+                  img.onload = () => resolve();
+                  img.onerror = reject;
+                  img.src = dataURL;
+                });
+                bitmap = img;
+              } else {
+                throw new Error('Failed to load file');
               }
             }
-
-            if (buf) {
-              const blob = new Blob([buf]);
-              const bitmap = await createImageBitmap(blob);
-              assetCache.set(cell.id, bitmap);
-              loadedImages.set(cell.id, bitmap);
-            }
+            
+            assetCache.set(cell.id, bitmap);
+            loadedImages.set(cell.id, bitmap);
           } catch (err) {
             console.error(`Failed to load cell image ${cell.id}:`, err);
           }
@@ -320,7 +359,9 @@ export function useEmitterCellImages({
         setCellImages(loadedImages);
         setLoading(false);
       } else {
-        loadedImages.forEach((b) => b.close());
+        loadedImages.forEach((b) => {
+          if ('close' in b) b.close();
+        });
       }
     }
 
@@ -328,7 +369,9 @@ export function useEmitterCellImages({
 
     return () => {
       cancelled = true;
-      bitmapsRef.current.forEach((b) => b.close());
+      bitmapsRef.current.forEach((b) => {
+        if ('close' in b) b.close();
+      });
       bitmapsRef.current = new Map();
     };
   }, [JSON.stringify(cells.map((c) => ({ id: c.id, src: c.src }))), projectId, projectName, skip]);
