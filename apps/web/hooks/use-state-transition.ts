@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnyLayer } from "@/lib/ca/types";
 import { useEditor } from "@/components/editor/editor-context";
-import { lerp } from "@/lib/editor/layer-utils";
+import { lerp, lerpColor } from "@/lib/editor/layer-utils";
 
 interface TransitionValue {
   position: { x: number; y: number };
@@ -13,6 +13,7 @@ interface TransitionValue {
   cornerRadius: number;
   opacity: number;
   size: { w: number; h: number };
+  backgroundColor?: string;
 }
 
 const TRANSITION_DURATION = 800;
@@ -34,6 +35,7 @@ export default function useStateTransition(layer: AnyLayer): TransitionValue {
   const layerRotationY = layer.rotationY ?? 0;
   const layerCornerRadius = layer.cornerRadius ?? 0;
   const layerOpacity = layer.opacity ?? 1;
+  const layerBgColor = layer.backgroundColor ?? "";
 
   const [value, setValue] = useState<TransitionValue>(() => ({
     position: { x: layerX, y: layerY },
@@ -45,6 +47,7 @@ export default function useStateTransition(layer: AnyLayer): TransitionValue {
     cornerRadius: layerCornerRadius,
     opacity: layerOpacity,
     size: { w: layerW, h: layerH },
+    backgroundColor: layerBgColor,
   }));
 
   const isTransitioningRef = useRef(false);
@@ -63,6 +66,7 @@ export default function useStateTransition(layer: AnyLayer): TransitionValue {
     cornerRadius: layerCornerRadius,
     opacity: layerOpacity,
     size: { w: layerW, h: layerH },
+    backgroundColor: layerBgColor,
   }), [
     layerX,
     layerY,
@@ -74,7 +78,8 @@ export default function useStateTransition(layer: AnyLayer): TransitionValue {
     layerCornerRadius,
     layerOpacity,
     layerW,
-    layerH
+    layerH,
+    layerBgColor,
   ]);
 
   useEffect(() => {
@@ -88,6 +93,13 @@ export default function useStateTransition(layer: AnyLayer): TransitionValue {
         const elapsed = now - startTimeRef.current;
         const progress = Math.min(elapsed / TRANSITION_DURATION, 1);
         const start = startValueRef.current;
+
+        const startBg = start.backgroundColor;
+        const targetBg = target.backgroundColor;
+        let interpolatedBg = targetBg;
+        if (startBg && targetBg && startBg !== targetBg) {
+          interpolatedBg = lerpColor(startBg, targetBg, progress);
+        }
 
         setValue({
           position: {
@@ -105,6 +117,7 @@ export default function useStateTransition(layer: AnyLayer): TransitionValue {
             w: lerp(start.size.w, target.size.w, progress),
             h: lerp(start.size.h, target.size.h, progress),
           },
+          backgroundColor: interpolatedBg,
         });
 
         if (progress < 1) {

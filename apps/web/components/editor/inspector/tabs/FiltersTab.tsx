@@ -114,11 +114,10 @@ const FilterItem = ({ filter, selected }: { filter: Filter; selected: AnyLayer }
         </Button>
       </div>
       {(() => {
-        const def = supportedFilters[(filter as any).type as SupportedFilterTypes];
+        const def = supportedFilters[filter.type as SupportedFilterTypes];
         if (!def || !def.valueLabel) return null;
 
-        // Use RotationKnob only for Hue Rotate
-        if ((filter as any).type === 'colorHueRotate') {
+        if (filter.type === 'colorHueRotate') {
           return (
             <div className="space-y-1 flex justify-start py-2">
               <RotationKnob
@@ -127,14 +126,11 @@ const FilterItem = ({ filter, selected }: { filter: Filter; selected: AnyLayer }
                 onChange={updateValue}
                 onChangeEnd={updateValue}
                 unit="°"
-                step={1}
-                snapToOrthogonal={true}
               />
             </div>
           );
         }
 
-        // Use regular Input for other filters
         return (
           <div className="space-y-1">
             <Label>{def.valueLabel}</Label>
@@ -142,7 +138,7 @@ const FilterItem = ({ filter, selected }: { filter: Filter; selected: AnyLayer }
               type="number"
               value={filter.value}
               onChange={onChange}
-              step={(filter as any).type === 'colorContrast' || (filter as any).type === 'colorSaturate' ? 0.1 : (filter as any).type === 'colorInvert' || (filter as any).type === 'CISepiaTone' ? 0.01 : 1}
+              step={filter.type === 'colorContrast' || filter.type === 'colorSaturate' ? 0.1 : filter.type === 'colorInvert' || filter.type === 'CISepiaTone' ? 0.01 : 1}
             />
           </div>
         );

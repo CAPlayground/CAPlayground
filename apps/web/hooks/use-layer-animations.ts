@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useTimeline } from "@/context/TimelineContext";
 import { Animation, Vec2, Size, CalculationMode, TimingFunction } from "@/lib/ca/types";
+import { lerpColor } from "@/lib/editor/layer-utils";
 
 type KeyframeValue = number | Vec2 | Size | string;
 
@@ -72,8 +73,6 @@ function buildKeyTimes(count: number, customKeyTimes?: number[], discrete: boole
     return customKeyTimes;
   }
   if (discrete) {
-    // For discrete mode, each keyframe should have equal display time
-    // So keyTimes are [0, 1/N, 2/N, ...] not [0, ..., 1]
     return Array.from({ length: count }, (_, i) => i / count);
   }
   return Array.from({ length: count }, (_, i) => i / (count - 1));
@@ -175,7 +174,9 @@ function interpolateKeyframe(
   const u = Math.max(0, Math.min(1, segProgress));
 
   if (typeof a === "string" || typeof b === "string") {
-    // For string values (like backgroundColor), use discrete interpolation
+    if (typeof a === "string" && typeof b === "string") {
+      return lerpColor(a, b, u);
+    }
     return u < 0.5 ? a : b;
   } else if (typeof a === "number" && typeof b === "number") {
     return a + (b - a) * u;
@@ -203,7 +204,7 @@ export default function useLayerAnimations(
   const { currentTime } = useTimeline();
 
   const animationOverrides = useMemo(() => {
-    const overrides: Record<string, any> = {};
+    const overrides: Record<string, number | string> = {};
 
     if (!animations || animations.length === 0) {
       return overrides;
@@ -239,9 +240,7 @@ export default function useLayerAnimations(
         overrides['bounds.size.width'] = (animation as Size).w;
         overrides['bounds.size.height'] = (animation as Size).h;
       } else if (anim.keyPath === 'backgroundColor') {
-        // backgroundColor animations return string values (hex colors)
-        // Store as a special key that the layer application logic can handle
-        overrides['backgroundColor'] = animation as any;
+        overrides['backgroundColor'] = animation as string;
       } else {
         overrides[anim.keyPath] = animation as number;
       }
