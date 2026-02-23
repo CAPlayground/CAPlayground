@@ -25,7 +25,6 @@ export function EmitterCanvas({
 
   const docHeight = doc?.meta.height ?? 0;
   const docWidth = doc?.meta.width ?? 0;
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const { cellImages } = useEmitterCellImages({
     cells: emitterLayer.emitterCells || [],
@@ -87,7 +86,7 @@ export function EmitterCanvas({
         newCell.name = cell.id;
         newCell.contents = img;
         newCell.contentsScale = cell.contentsScale;
-        newCell.birthRate = reduceMotion ? 0 : cell.birthRate;
+        newCell.birthRate = cell.birthRate;
         newCell.lifetime = cell.lifetime;
         newCell.velocity = cell.velocity;
         newCell.emissionRange = Math.PI * cell.emissionRange / 180;
