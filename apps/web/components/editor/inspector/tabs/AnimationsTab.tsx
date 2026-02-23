@@ -434,40 +434,8 @@ const AnimationItem = ({
                                     }}
                                     disabled={!enabled}
                                   />
-                                  {enabled && ((val as any) as GradientColor[]).length > 2 && (
-                                    <button
-                                      type="button"
-                                      className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-background border border-border rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                      onClick={() => {
-                                        const arr = [...values] as any[];
-                                        const stops = [...(arr[idx] as GradientColor[])];
-                                        stops.splice(stopIdx, 1);
-                                        arr[idx] = stops;
-                                        updateAnimation({ values: arr });
-                                      }}
-                                    >
-                                      <X className="w-2.5 h-2.5 text-muted-foreground" />
-                                    </button>
-                                  )}
                                 </div>
                               ))}
-                              {enabled && ((val as any) as GradientColor[]).length < 3 && (
-                                <button
-                                  type="button"
-                                  className="w-5 h-5 rounded border border-dashed border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
-                                  onClick={() => {
-                                    const arr = [...values] as any[];
-                                    const stops = [...(arr[idx] as GradientColor[])];
-                                    const lastColor = stops.length > 0 ? stops[stops.length - 1] : { color: '#ffffff', opacity: 1 };
-                                    stops.push({ ...lastColor });
-                                    arr[idx] = stops;
-                                    updateAnimation({ values: arr });
-                                  }}
-                                  title="Add color stop"
-                                >
-                                  +
-                                </button>
-                              )}
                             </div>
                           </td>
                         ) : isTwoValue ? (

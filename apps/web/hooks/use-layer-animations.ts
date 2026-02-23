@@ -72,8 +72,6 @@ function buildKeyTimes(count: number, customKeyTimes?: number[], discrete: boole
     return customKeyTimes;
   }
   if (discrete) {
-    // For discrete mode, each keyframe should have equal display time
-    // So keyTimes are [0, 1/N, 2/N, ...] not [0, ..., 1]
     return Array.from({ length: count }, (_, i) => i / count);
   }
   return Array.from({ length: count }, (_, i) => i / (count - 1));

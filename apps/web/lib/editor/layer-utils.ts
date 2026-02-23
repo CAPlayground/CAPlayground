@@ -46,15 +46,15 @@ const insertLayerInTree = (layers: AnyLayer[], selId: string | null, node: AnyLa
 
 export function cloneLayerDeep(layer: AnyLayer, existingLayers?: AnyLayer[]): AnyLayer {
   const createdLayers: AnyLayer[] = [];
-  
+
   const cloneRecursive = (node: AnyLayer): AnyLayer => {
     const newId = genId();
-    
+
     const allExisting = existingLayers ? [...existingLayers, ...createdLayers] : [];
-    const newName = existingLayers 
+    const newName = existingLayers
       ? getNextLayerName(allExisting, node.name)
       : `${node.name} copy`;
-    
+
     if (node.children?.length) {
       const cloned = {
         ...JSON.parse(JSON.stringify({ ...node, id: newId })),
@@ -66,7 +66,7 @@ export function cloneLayerDeep(layer: AnyLayer, existingLayers?: AnyLayer[]): An
       createdLayers.push(cloned);
       return cloned;
     }
-    
+
     const base = JSON.parse(JSON.stringify({ ...node })) as AnyLayer;
     base.id = newId;
     base.name = newName;
@@ -74,7 +74,7 @@ export function cloneLayerDeep(layer: AnyLayer, existingLayers?: AnyLayer[]): An
     createdLayers.push(base);
     return base;
   };
-  
+
   return cloneRecursive(layer);
 }
 
@@ -97,7 +97,36 @@ export function updateInTree(layers: AnyLayer[], id: string, patch: Partial<AnyL
           return { ...l, ...patch, children: newChildren } as AnyLayer;
         }
       }
-      return { ...l, ...patch } as AnyLayer;
+      let finalPatch = { ...patch };
+
+      const patchAsGrad = patch as Partial<import('@/lib/ca/types').GradientLayer>;
+      if (l.type === 'gradient' && patchAsGrad.colors) {
+        const newColorCount = patchAsGrad.colors.length;
+        const currentAnimations = patch.animations || l.animations;
+        if (currentAnimations && currentAnimations.length > 0) {
+          const updatedAnimations = currentAnimations.map((anim) => {
+            if (anim.keyPath === 'colors' && anim.values) {
+              const newValues = anim.values.map((v) => {
+                const stops = Array.isArray(v) ? [...v] : [];
+                while (stops.length < newColorCount) {
+                  const baseCorresponding = patchAsGrad.colors![stops.length];
+                  const last = baseCorresponding || stops[stops.length - 1] || { color: '#ffffff', opacity: 1 };
+                  stops.push({ ...last });
+                }
+                if (stops.length > newColorCount) {
+                  stops.length = newColorCount;
+                }
+                return stops;
+              });
+              return { ...anim, values: newValues };
+            }
+            return anim;
+          });
+          finalPatch.animations = updatedAnimations;
+        }
+      }
+
+      return { ...l, ...finalPatch } as AnyLayer;
     }
     if (l.children?.length) {
       return { ...l, children: updateInTree(l.children, id, patch) } as AnyLayer;

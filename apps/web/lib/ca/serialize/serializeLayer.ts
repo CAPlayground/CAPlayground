@@ -614,8 +614,17 @@ export function serializeLayer(
             valuesEl.appendChild(p);
           }
         } else if (keyPath === 'colors') {
+          const expectedLength = layer.type === 'gradient' ? (layer as any).colors?.length ?? 0 : 0;
           for (const stopsRaw of anim.values as Array<any>) {
-            const stops = Array.isArray(stopsRaw) ? stopsRaw : [];
+            let stops = Array.isArray(stopsRaw) ? [...stopsRaw] : [];
+            if (expectedLength > 0) {
+              while (stops.length < expectedLength) {
+                stops.push(stops[stops.length - 1] || { color: '#ffffff', opacity: 1 });
+              }
+              if (stops.length > expectedLength) {
+                stops.length = expectedLength;
+              }
+            }
             const nsArray = doc.createElementNS(CAML_NS, 'NSArray');
             for (const stop of stops) {
               const cgColor = doc.createElementNS(CAML_NS, 'CGColor');

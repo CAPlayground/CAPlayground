@@ -778,7 +778,6 @@ function parseCALayer(el: Element): AnyLayer {
 }
 
 function parseCALayerAnimations(el: Element): Animations | undefined {
-  // Parse per-layer keyframe animations
   let parsedAnimations: Animations = [];
   try {
     const animationsEl = directChildByTagNS(el, 'animations');
