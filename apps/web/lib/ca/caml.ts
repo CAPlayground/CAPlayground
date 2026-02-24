@@ -1,5 +1,5 @@
 import { CAEmitterCell } from '@/components/editor/emitter/emitter';
-import { AnyLayer, TextLayer, VideoLayer, CAStateOverrides, CAStateTransitions, GyroParallaxDictionary, KeyPath, Animations, EmitterLayer, LayerBase, ReplicatorLayer, LiquidGlassLayer, TimingFunction, CalculationMode } from './types';
+import { AnyLayer, TextLayer, VideoLayer, CAStateOverrides, CAStateTransitions, GyroParallaxDictionary, KeyPath, Animations, EmitterLayer, LayerBase, ReplicatorLayer, LiquidGlassLayer, TimingFunction, CalculationMode, ColorsKeyframeValue } from './types';
 import { blendModes } from '../blending';
 import { Filter, SupportedFilterTypes } from '../filters';
 import { CAML_NS } from './serialize/serializeCAML';
@@ -824,7 +824,7 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
     for (const animNode of [...animFirst, ...animNodes]) {
       const kp = (animNode.getAttribute('keyPath') || 'position') as KeyPath;
       const valuesNode = animNode.getElementsByTagNameNS(CAML_NS, 'values')[0];
-      const vals: Array<{ x: number; y: number } | { w: number; h: number } | number | string> = [];
+      const vals: Array<{ x: number; y: number } | { w: number; h: number } | number | string | ColorsKeyframeValue> = [];
       if (valuesNode) {
         if (kp === 'backgroundColor') {
           const colors = Array.from(valuesNode.getElementsByTagNameNS(CAML_NS, 'CGColor'));
@@ -875,6 +875,18 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
             const w = Math.round(Number.isFinite(parts[2]) ? parts[2] : 0);
             const h = Math.round(Number.isFinite(parts[3]) ? parts[3] : 0);
             vals.push({ w, h });
+          }
+        } else if (kp === 'colors') {
+          const arrays = Array.from(valuesNode.getElementsByTagNameNS(CAML_NS, 'NSArray'));
+          for (const arr of arrays) {
+            const cgColors = Array.from(arr.getElementsByTagNameNS(CAML_NS, 'CGColor'));
+            const stops = cgColors.map((cgc) => {
+              const value = cgc.getAttribute('value') || '';
+              const opacity = cgc.getAttribute('opacity');
+              const colorHex = floatsToHexColor(value) || '#000000';
+              return { color: colorHex, opacity: opacity ? Number(opacity) : 1 };
+            });
+            vals.push(stops);
           }
         }
       }

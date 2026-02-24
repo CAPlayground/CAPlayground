@@ -638,6 +638,29 @@ export function serializeLayer(
             p.setAttribute('value', `0 0 ${w} ${h}`);
             valuesEl.appendChild(p);
           }
+        } else if (keyPath === 'colors') {
+          const expectedLength = layer.type === 'gradient' ? (layer as any).colors?.length ?? 0 : 0;
+          for (const stopsRaw of anim.values as Array<any>) {
+            let stops = Array.isArray(stopsRaw) ? [...stopsRaw] : [];
+            if (expectedLength > 0) {
+              while (stops.length < expectedLength) {
+                stops.push(stops[stops.length - 1] || { color: '#ffffff', opacity: 1 });
+              }
+              if (stops.length > expectedLength) {
+                stops.length = expectedLength;
+              }
+            }
+            const nsArray = doc.createElementNS(CAML_NS, 'NSArray');
+            for (const stop of stops) {
+              const cgColor = doc.createElementNS(CAML_NS, 'CGColor');
+              const colorValue = hexToForegroundColor(stop.color);
+              if (colorValue) cgColor.setAttribute('value', colorValue);
+              const op = stop.opacity ?? 1;
+              if (op < 1) cgColor.setAttribute('opacity', String(Math.round(op * 100) / 100));
+              nsArray.appendChild(cgColor);
+            }
+            valuesEl.appendChild(nsArray);
+          }
         } else if (keyPath === 'backgroundColor') {
           for (const v of anim.values as Array<any>) {
             const hexColor = typeof v === 'string' ? v : '#ffffff';

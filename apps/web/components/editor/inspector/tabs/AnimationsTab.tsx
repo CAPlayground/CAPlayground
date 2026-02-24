@@ -10,7 +10,7 @@ import { Slider } from "@/components/ui/slider";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ChevronDown, ChevronRight, Download, X } from "lucide-react";
 import type { InspectorTabProps } from "../types";
-import type { Animation, AnyLayer, KeyPath, Size, Vec2, CalculationMode, TimingFunction } from "@/lib/ca/types";
+import type { Animation, AnyLayer, GradientColor, GradientLayer, KeyPath, Size, Vec2, CalculationMode, TimingFunction } from "@/lib/ca/types";
 import { BulkAnimationInput } from "./BulkAnimationInput";
 import { useEditor } from "../../editor-context";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -26,6 +26,10 @@ const supportedAnimations = [
   "opacity",
   "bounds",
   "backgroundColor",
+]
+
+const gradientOnlyAnimations = [
+  "colors",
 ]
 
 export function AnimationsTab({
@@ -64,7 +68,7 @@ export function AnimationsTab({
           <SelectValue placeholder="Add animation" />
         </SelectTrigger>
         <SelectContent>
-          {supportedAnimations
+          {[...supportedAnimations, ...(selected?.type === 'gradient' ? gradientOnlyAnimations : [])]
             .filter((kp) => !selectedBase?.animations?.some((a) => a.keyPath === kp))
             .map((kp) => (
               <SelectItem key={kp} value={kp}>
@@ -341,6 +345,9 @@ const AnimationItem = ({
                     newValues.push(Number(selected?.opacity ?? 1));
                   } else if (keyPath === 'bounds') {
                     newValues.push({ w: selected.size?.w ?? 0, h: selected.size?.h ?? 0 });
+                  } else if (keyPath === 'colors') {
+                    const stops = ((selected as GradientLayer).colors || []).map((c: GradientColor) => ({ ...c }));
+                    newValues.push(stops.length > 0 ? stops : [{ color: '#ffffff', opacity: 1 }]);
                   } else if (keyPath === 'backgroundColor') {
                     newValues.push(selected.backgroundColor ?? '#ffffff');
                   }
@@ -376,6 +383,9 @@ const AnimationItem = ({
                   <tr className="bg-muted/30 border-b border-border/40">
                     <th className="pl-2 py-1.5 text-left font-medium text-muted-foreground w-6">#</th>
                     {(() => {
+                      if (keyPath === 'colors') {
+                        return <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">Color Stops</th>;
+                      }
                       const isTwoValue = keyPath === 'position' || keyPath === 'bounds';
                       const isPosition = keyPath === 'position';
                       const isOpacity = keyPath === 'opacity';
@@ -403,6 +413,7 @@ const AnimationItem = ({
                     const isTwoValue = keyPath === 'position' || keyPath === 'bounds';
                     const isPosition = keyPath === 'position';
                     const isOpacity = keyPath === 'opacity';
+                    const isColors = keyPath === 'colors';
                     const isBackgroundColor = keyPath === 'backgroundColor';
                     const currentKeyTime = keyTimes[idx] ?? (values.length > 1 ? idx / (values.length - 1) : 0);
                     const displayTime = idx === 0 ? 0 : Math.round(currentKeyTime * 100);
@@ -412,7 +423,29 @@ const AnimationItem = ({
                     return (
                       <tr key={idx} className="border-b border-border/20 last:border-0 hover:bg-muted/20">
                         <td className="pl-2 py-1 text-muted-foreground">{idx + 1}</td>
-                        {isTwoValue ? (
+                        {isColors ? (
+                          <td className="px-1 py-1">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {((val as any) as GradientColor[]).map((stop, stopIdx) => (
+                                <div key={stopIdx} className="group relative flex items-center gap-0.5">
+                                  <input
+                                    type="color"
+                                    className="w-5 h-5 rounded cursor-pointer border-0 p-0"
+                                    value={stop.color}
+                                    onChange={(e) => {
+                                      const arr = [...values] as any[];
+                                      const stops = [...(arr[idx] as GradientColor[])];
+                                      stops[stopIdx] = { ...stops[stopIdx], color: e.target.value };
+                                      arr[idx] = stops;
+                                      updateAnimation({ values: arr });
+                                    }}
+                                    disabled={!enabled}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                        ) : isTwoValue ? (
                           <>
                             <td className="px-1 py-1">
                               <Input
@@ -608,6 +641,8 @@ const AnimationItem = ({
                     return val;
                   } else if (typeof val === 'number') {
                     return keyPath === 'opacity' ? Math.round(val * 100).toString() : Math.round(val).toString();
+                  } else if (typeof val === 'string' || Array.isArray(val)) {
+                    return '';
                   } else if (typeof val === 'object' && val && 'x' in val) {
                     return `${Math.round(val.x)}, ${Math.round(val.y)}`;
                   } else if (typeof val === 'object' && val && 'w' in val) {

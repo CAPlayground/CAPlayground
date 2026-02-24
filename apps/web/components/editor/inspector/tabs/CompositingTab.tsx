@@ -59,12 +59,12 @@ export function CompositingTab({
             step={1}
             onValueChange={([p]) => {
               const clamped = Math.max(0, Math.min(100, Math.round(Number(p))));
-              const val = Math.round((clamped / 100) * 100) / 100; // 2 d.p.
+              const val = Math.round((clamped / 100) * 100) / 100;
               updateLayerTransient(selected.id, { opacity: val as any } as any);
             }}
             onValueCommit={([p]) => {
               const clamped = Math.max(0, Math.min(100, Math.round(Number(p))));
-              const val = Math.round((clamped / 100) * 100) / 100; // 2 d.p.
+              const val = Math.round((clamped / 100) * 100) / 100;
               updateLayer(selected.id, { opacity: val as any } as any);
             }}
           />

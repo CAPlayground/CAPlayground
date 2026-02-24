@@ -1,4 +1,4 @@
-import type { AnyLayer } from "@/lib/ca/types";
+import type { AnyLayer, GradientLayer } from "@/lib/ca/types";
 import { clamp } from "../utils";
 
 export const genId = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -98,7 +98,36 @@ export function updateInTree(layers: AnyLayer[], id: string, patch: Partial<AnyL
           return { ...l, ...patch, children: newChildren } as AnyLayer;
         }
       }
-      return { ...l, ...patch } as AnyLayer;
+      let finalPatch = { ...patch };
+
+      const patchAsGrad = patch as Partial<GradientLayer>;
+      if (l.type === 'gradient' && patchAsGrad.colors) {
+        const newColorCount = patchAsGrad.colors.length;
+        const currentAnimations = patch.animations || l.animations;
+        if (currentAnimations && currentAnimations.length > 0) {
+          const updatedAnimations = currentAnimations.map((anim) => {
+            if (anim.keyPath === 'colors' && anim.values) {
+              const newValues = anim.values.map((v) => {
+                const stops = Array.isArray(v) ? [...v] : [];
+                while (stops.length < newColorCount) {
+                  const baseCorresponding = patchAsGrad.colors![stops.length];
+                  const last = baseCorresponding || stops[stops.length - 1] || { color: '#ffffff', opacity: 1 };
+                  stops.push({ ...last });
+                }
+                if (stops.length > newColorCount) {
+                  stops.length = newColorCount;
+                }
+                return stops;
+              });
+              return { ...anim, values: newValues };
+            }
+            return anim;
+          });
+          finalPatch.animations = updatedAnimations;
+        }
+      }
+
+      return { ...l, ...finalPatch } as AnyLayer;
     }
     if (l.children?.length) {
       return { ...l, children: updateInTree(l.children, id, patch) } as AnyLayer;

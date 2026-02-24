@@ -223,6 +223,7 @@ export type KeyPath =
   | 'bounds'
   | 'anchorPoint.x'
   | 'anchorPoint.y'
+  | 'colors'
   | 'backgroundColor';
 
 export type Animations = Array<Animation>;
@@ -230,11 +231,13 @@ export type Animations = Array<Animation>;
 export type CalculationMode = 'linear' | 'discrete';
 export type TimingFunction = 'linear' | 'easeIn' | 'easeOut' | 'easeInEaseOut';
 
+export type ColorsKeyframeValue = GradientColor[];
+
 export type Animation = {
   enabled?: boolean;
   keyPath: KeyPath;
   autoreverses?: 0 | 1;
-  values?: Array<Vec2 | Size | number | string>;
+  values?: Array<Vec2 | Size | number | string | ColorsKeyframeValue>;
   keyTimes?: number[];
   durationSeconds?: number;
   infinite?: 0 | 1;

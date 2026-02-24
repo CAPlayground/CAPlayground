@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { useTimeline } from "@/context/TimelineContext";
-import { Animation, Vec2, Size, CalculationMode, TimingFunction } from "@/lib/ca/types";
+import { Animation, Vec2, Size, CalculationMode, TimingFunction, GradientColor } from "@/lib/ca/types";
 import { lerpColor } from "@/lib/editor/layer-utils";
 
-type KeyframeValue = number | Vec2 | Size | string;
+type KeyframeValue = number | Vec2 | Size | string | GradientColor[];
 
 function cubicBezier(p1x: number, p1y: number, p2x: number, p2y: number): (t: number) => number {
   const NEWTON_ITERATIONS = 4;
@@ -92,7 +92,7 @@ function interpolateKeyframe(
   keyTimes?: number[]
 ): KeyframeValue | null {
   if (!keyframes || keyframes.length < 2) {
-    return keyframes[0] ?? 0;
+    return (keyframes[0] as KeyframeValue) ?? 0;
   }
 
   const isDiscrete = calculationMode === 'discrete';
@@ -173,7 +173,18 @@ function interpolateKeyframe(
 
   const u = Math.max(0, Math.min(1, segProgress));
 
-  if (typeof a === "string" || typeof b === "string") {
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if ((calculationMode as string) === 'discrete') return u < 0.5 ? a : b;
+    const stopsA = a as GradientColor[];
+    const stopsB = b as GradientColor[];
+    const count = Math.min(stopsA.length, stopsB.length);
+    return Array.from({ length: count }, (_, i) => {
+      const sa = stopsA[i]; const sb = stopsB[i];
+      const hex = lerpColor(sa.color, sb.color, u);
+      const opacity = sa.opacity + (sb.opacity - sa.opacity) * u;
+      return { color: hex, opacity };
+    }) as GradientColor[];
+  } else if (typeof a === "string" || typeof b === "string") {
     if (typeof a === "string" && typeof b === "string") {
       return lerpColor(a, b, u);
     }
@@ -204,7 +215,7 @@ export default function useLayerAnimations(
   const { currentTime } = useTimeline();
 
   const animationOverrides = useMemo(() => {
-    const overrides: Record<string, number | string> = {};
+    const overrides: Record<string, number | string | GradientColor[]> = {};
 
     if (!animations || animations.length === 0) {
       return overrides;
@@ -239,6 +250,8 @@ export default function useLayerAnimations(
       } else if (anim.keyPath === 'bounds') {
         overrides['bounds.size.width'] = (animation as Size).w;
         overrides['bounds.size.height'] = (animation as Size).h;
+      } else if (anim.keyPath === 'colors') {
+        overrides['colors'] = animation as GradientColor[];
       } else if (anim.keyPath === 'backgroundColor') {
         overrides['backgroundColor'] = animation as string;
       } else {
