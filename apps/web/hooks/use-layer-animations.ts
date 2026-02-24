@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useTimeline } from "@/context/TimelineContext";
 import { Animation, Vec2, Size, CalculationMode, TimingFunction, GradientColor } from "@/lib/ca/types";
+import { lerpColor } from "@/lib/editor/layer-utils";
 
 type KeyframeValue = number | Vec2 | Size | string | GradientColor[];
 
@@ -177,45 +178,20 @@ function interpolateKeyframe(
     const stopsA = a as GradientColor[];
     const stopsB = b as GradientColor[];
     const count = Math.min(stopsA.length, stopsB.length);
-    const hexToRgb = (hex: string): [number, number, number] => {
-      const m = hex.trim().match(/^#?([0-9a-f]{6}|[0-9a-f]{3})$/i);
-      if (!m) return [0, 0, 0];
-      let h = m[1];
-      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
-      return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
-    };
     return Array.from({ length: count }, (_, i) => {
       const sa = stopsA[i]; const sb = stopsB[i];
-      const [r1, g1, b1] = hexToRgb(sa.color); const [r2, g2, b2] = hexToRgb(sb.color);
-      const r = Math.round(r1 + (r2 - r1) * u);
-      const g = Math.round(g1 + (g2 - g1) * u);
-      const bv = Math.round(b1 + (b2 - b1) * u);
-      const hex = '#' + [r, g, bv].map(n => Math.max(0, Math.min(255, n)).toString(16).padStart(2, '0')).join('');
+      const hex = lerpColor(sa.color, sb.color, u);
       const opacity = sa.opacity + (sb.opacity - sa.opacity) * u;
       return { color: hex, opacity };
     }) as GradientColor[];
-  } else if (typeof a === 'string' || typeof b === 'string') {
-    if ((calculationMode as string) === 'discrete') {
-      return u < 0.5 ? a : b;
-    }
-    const hexToRgb = (hex: string): [number, number, number] => {
-      const m = hex.trim().match(/^#?([0-9a-f]{6}|[0-9a-f]{3})$/i);
-      if (!m) return [0, 0, 0];
-      let h = m[1];
-      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
-      return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
-    };
-    if (typeof a === 'string' && typeof b === 'string') {
-      const [r1, g1, b1] = hexToRgb(a); const [r2, g2, b2] = hexToRgb(b);
-      const r = Math.round(r1 + (r2 - r1) * u);
-      const g = Math.round(g1 + (g2 - g1) * u);
-      const bv = Math.round(b1 + (b2 - b1) * u);
-      return '#' + [r, g, bv].map(n => Math.max(0, Math.min(255, n)).toString(16).padStart(2, '0')).join('');
+  } else if (typeof a === "string" || typeof b === "string") {
+    if (typeof a === "string" && typeof b === "string") {
+      return lerpColor(a, b, u);
     }
     return u < 0.5 ? a : b;
-  } else if (typeof a === 'number' && typeof b === 'number') {
+  } else if (typeof a === "number" && typeof b === "number") {
     return a + (b - a) * u;
-  } else if ('x' in (a as any) && 'x' in (b as any)) {
+  } else if (typeof a === "object" && a && typeof b === "object" && b && "x" in a && "x" in b) {
     const va = a as Vec2;
     const vb = b as Vec2;
     return {
@@ -239,7 +215,7 @@ export default function useLayerAnimations(
   const { currentTime } = useTimeline();
 
   const animationOverrides = useMemo(() => {
-    const overrides: Record<string, any> = {};
+    const overrides: Record<string, number | string | GradientColor[]> = {};
 
     if (!animations || animations.length === 0) {
       return overrides;

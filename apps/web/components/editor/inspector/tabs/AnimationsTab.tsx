@@ -25,6 +25,7 @@ const supportedAnimations = [
   "transform.rotation.z",
   "opacity",
   "bounds",
+  "backgroundColor",
 ]
 
 const gradientOnlyAnimations = [
@@ -347,6 +348,8 @@ const AnimationItem = ({
                   } else if (keyPath === 'colors') {
                     const stops = ((selected as GradientLayer).colors || []).map((c: GradientColor) => ({ ...c }));
                     newValues.push(stops.length > 0 ? stops : [{ color: '#ffffff', opacity: 1 }]);
+                  } else if (keyPath === 'backgroundColor') {
+                    newValues.push(selected.backgroundColor ?? '#ffffff');
                   }
                   if (useCustomKeyTimes) {
                     const newKeyTimes = [...(animation.keyTimes || [])];
@@ -362,12 +365,14 @@ const AnimationItem = ({
               >
                 + Add
               </Button>
-              <BulkAnimationInput
-                keyPath={keyPath as KeyPath}
-                currentValues={values as any}
-                onValuesChange={(values) => updateAnimation({ values })}
-                disabled={!enabled}
-              />
+              {keyPath !== 'backgroundColor' && (
+                <BulkAnimationInput
+                  keyPath={keyPath as KeyPath}
+                  currentValues={values as Array<Vec2 | Size | number>}
+                  onValuesChange={(values) => updateAnimation({ values })}
+                  disabled={!enabled}
+                />
+              )}
             </div>
           </div>
 
@@ -384,6 +389,7 @@ const AnimationItem = ({
                       const isTwoValue = keyPath === 'position' || keyPath === 'bounds';
                       const isPosition = keyPath === 'position';
                       const isOpacity = keyPath === 'opacity';
+                      const isBackgroundColor = keyPath === 'backgroundColor';
                       if (isTwoValue) {
                         return (
                           <>
@@ -394,7 +400,7 @@ const AnimationItem = ({
                       }
                       return (
                         <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">
-                          {keyPath === 'position.x' ? 'X' : keyPath === 'position.y' ? 'Y' : isOpacity ? 'Opacity' : 'Deg'}
+                          {keyPath === 'position.x' ? 'X' : keyPath === 'position.y' ? 'Y' : isOpacity ? 'Opacity' : isBackgroundColor ? 'Color' : 'Deg'}
                         </th>
                       );
                     })()}
@@ -408,6 +414,7 @@ const AnimationItem = ({
                     const isPosition = keyPath === 'position';
                     const isOpacity = keyPath === 'opacity';
                     const isColors = keyPath === 'colors';
+                    const isBackgroundColor = keyPath === 'backgroundColor';
                     const currentKeyTime = keyTimes[idx] ?? (values.length > 1 ? idx / (values.length - 1) : 0);
                     const displayTime = idx === 0 ? 0 : Math.round(currentKeyTime * 100);
                     const minTime = idx === 0 ? 0 : Math.round((keyTimes[idx - 1] ?? 0) * 100) + 1;
@@ -483,6 +490,20 @@ const AnimationItem = ({
                               />
                             </td>
                           </>
+                        ) : isBackgroundColor ? (
+                          <td className="px-1 py-1">
+                            <Input
+                              type="color"
+                              className="h-6 w-full cursor-pointer"
+                              value={typeof val === 'string' ? val : '#ffffff'}
+                              onChange={(e) => {
+                                const arr = [...values];
+                                arr[idx] = e.target.value;
+                                updateAnimation({ values: arr });
+                              }}
+                              disabled={!enabled}
+                            />
+                          </td>
                         ) : (
                           <td className="px-1 py-1">
                             <div className="flex items-center gap-1">
@@ -616,14 +637,16 @@ const AnimationItem = ({
               variant="outline"
               onClick={() => {
                 const textValues = values.map(val => {
-                  if (typeof val === 'number') {
+                  if (typeof val === 'string') {
+                    return val;
+                  } else if (typeof val === 'number') {
                     return keyPath === 'opacity' ? Math.round(val * 100).toString() : Math.round(val).toString();
                   } else if (typeof val === 'string' || Array.isArray(val)) {
                     return '';
-                  } else if ('x' in (val as object)) {
-                    return `${Math.round((val as Vec2).x)}, ${Math.round((val as Vec2).y)}`;
-                  } else if ('w' in (val as object)) {
-                    return `${Math.round((val as Size).w)}, ${Math.round((val as Size).h)}`;
+                  } else if (typeof val === 'object' && val && 'x' in val) {
+                    return `${Math.round(val.x)}, ${Math.round(val.y)}`;
+                  } else if (typeof val === 'object' && val && 'w' in val) {
+                    return `${Math.round(val.w)}, ${Math.round(val.h)}`;
                   }
                   return '';
                 }).join('\n');

@@ -1,4 +1,5 @@
-import type { AnyLayer } from "@/lib/ca/types";
+import type { AnyLayer, GradientLayer } from "@/lib/ca/types";
+import { clamp } from "../utils";
 
 export const genId = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 
@@ -99,7 +100,7 @@ export function updateInTree(layers: AnyLayer[], id: string, patch: Partial<AnyL
       }
       let finalPatch = { ...patch };
 
-      const patchAsGrad = patch as Partial<import('@/lib/ca/types').GradientLayer>;
+      const patchAsGrad = patch as Partial<GradientLayer>;
       if (l.type === 'gradient' && patchAsGrad.colors) {
         const newColorCount = patchAsGrad.colors.length;
         const currentAnimations = patch.animations || l.animations;
@@ -227,11 +228,39 @@ export function lerp(start: number, end: number, t: number): number {
   return start + (end - start) * t;
 }
 
+export function hexToRgb(hex: string): [number, number, number] {
+  const m = hex.trim().match(/^#?([0-9a-f]{6}|[0-9a-f]{3})$/i);
+  if (!m) return [0, 0, 0];
+  let h = m[1];
+  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  return [
+    parseInt(h.slice(0, 2), 16),
+    parseInt(h.slice(2, 4), 16),
+    parseInt(h.slice(4, 6), 16)
+  ];
+}
+
+export function lerpColor(a: string, b: string, t: number): string {
+  const [r1, g1, b1] = hexToRgb(a);
+  const [r2, g2, b2] = hexToRgb(b);
+  const r = Math.round(lerp(r1, r2, t));
+  const g = Math.round(lerp(g1, g2, t));
+  const bv = Math.round(lerp(b1, b2, t));
+  return '#' + [r, g, bv].map(n => clamp(n, 0, 255).toString(16).padStart(2, '0')).join('');
+}
+
 export function interpolateLayers(baseLayers: AnyLayer[], targetLayers: AnyLayer[], progress: number): AnyLayer[] {
   const interpolate = (base: AnyLayer[], target: AnyLayer[], prog: number): AnyLayer[] => {
     return base.map((baseLayer, index) => {
       const targetLayer = target[index];
       if (!targetLayer) return baseLayer;
+
+      const baseBg = baseLayer.backgroundColor;
+      const targetBg = targetLayer.backgroundColor;
+      const interpolatedBg =
+        baseBg && targetBg && baseBg !== targetBg
+          ? lerpColor(baseBg, targetBg, prog)
+          : prog >= 1 ? targetBg : baseBg;
 
       return {
         ...baseLayer,
@@ -248,6 +277,7 @@ export function interpolateLayers(baseLayers: AnyLayer[], targetLayers: AnyLayer
         rotationY: lerp(baseLayer.rotationY ?? 0, targetLayer.rotationY ?? 0, prog),
         opacity: lerp(baseLayer.opacity ?? 1, targetLayer.opacity ?? 1, prog),
         zPosition: lerp(baseLayer.zPosition ?? 0, targetLayer.zPosition ?? 0, prog),
+        ...(interpolatedBg !== undefined ? { backgroundColor: interpolatedBg } : {}),
         children: baseLayer.children && targetLayer.children
           ? interpolate(baseLayer.children, targetLayer.children, prog)
           : baseLayer.children,
