@@ -19,6 +19,7 @@ import {
 import { sanitizeFilename, dataURLToBlob, normalize, uploadFrameAssets, cleanupOrphanedAssets, collectReferencedAssets, copyAssetsBetweenViews, type CAView, convertSvgToPngIfNeeded } from "@/lib/editor/file-utils";
 import { CAEmitterCell } from "./emitter/emitter";
 import { assetCache } from "@/hooks/use-asset-url";
+import { findPathTo } from "./canvas-preview/utils/layerTree";
 
 type CADoc = {
   layers: AnyLayer[];
@@ -1322,6 +1323,85 @@ export function EditorProvider({
       if (!prev) return prev;
       const key = prev.activeCA;
       const cur = prev.docs[key];
+      const docH = prev.meta.height || 844;
+      const rootFlip = (prev.meta as any).geometryFlipped ?? 0;
+
+      const getAbsoluteCenter = (
+        layers: AnyLayer[],
+        layerId: string,
+      ): { x: number; y: number } => {
+        const path = findPathTo(layers, layerId);
+        if (!path || path.length === 0) return { x: 0, y: 0 };
+        let absX = 0;
+        let absYFromTop = 0;
+        let useYUp = rootFlip === 0;
+        let containerH = docH;
+        for (let i = 0; i < path.length; i++) {
+          const node = path[i];
+          const ax = node.anchorPoint?.x ?? 0.5;
+          const px = node.position?.x ?? 0;
+          const py = node.position?.y ?? 0;
+          const w = node.size?.w ?? 0;
+          const h = node.size?.h ?? 0;
+          const cssLeft = px - ax * w;
+          const cssCenterX = cssLeft + w / 2;
+          absX += cssCenterX;
+          if (useYUp) {
+            const cssTop = containerH - py - (1 - (node.anchorPoint?.y ?? 0.5)) * h;
+            const cssCenterY = cssTop + h / 2;
+            absYFromTop += cssCenterY;
+          } else {
+            const cssTop = py - (node.anchorPoint?.y ?? 0.5) * h;
+            const cssCenterY = cssTop + h / 2;
+            absYFromTop += cssCenterY;
+          }
+          if (i < path.length - 1) {
+            absX -= w / 2;
+            absYFromTop -= h / 2;
+            if (typeof node.geometryFlipped === 'number') {
+              useYUp = node.geometryFlipped === 0;
+            }
+            containerH = h;
+          }
+        }
+        return { x: absX, y: absYFromTop };
+      };
+
+      const getParentContext = (
+        layers: AnyLayer[],
+        layerId: string,
+      ): { originX: number; originYFromTop: number; containerH: number; useYUp: boolean } => {
+        const path = findPathTo(layers, layerId);
+        let useYUp = rootFlip === 0;
+        let containerH = docH;
+        if (!path || path.length < 2) return { originX: 0, originYFromTop: 0, containerH, useYUp };
+        let originX = 0;
+        let originYFromTop = 0;
+        for (let i = 0; i < path.length - 1; i++) {
+          const node = path[i];
+          const ax = node.anchorPoint?.x ?? 0.5;
+          const ay = node.anchorPoint?.y ?? 0.5;
+          const px = node.position?.x ?? 0;
+          const py = node.position?.y ?? 0;
+          const w = node.size?.w ?? 0;
+          const h = node.size?.h ?? 0;
+          if (useYUp) {
+            originX += px - ax * w;
+            originYFromTop += containerH - py - (1 - ay) * h;
+          } else {
+            originX += px - ax * w;
+            originYFromTop += py - ay * h;
+          }
+          if (typeof node.geometryFlipped === 'number') {
+            useYUp = node.geometryFlipped === 0;
+          }
+          containerH = h;
+        }
+        return { originX, originYFromTop, containerH, useYUp };
+      };
+
+      const absCenter = getAbsoluteCenter(cur.layers, sourceId);
+
       const removedRes = removeFromTree(cur.layers, sourceId);
       const node = removedRes.removed;
       if (!node) return prev;
@@ -1339,6 +1419,21 @@ export function EditorProvider({
       } else {
         nextLayers = [...nextLayers, node];
       }
+
+      const newCtx = getParentContext(nextLayers, sourceId);
+      const localCssCenterX = absCenter.x - newCtx.originX;
+      const localCssCenterY = absCenter.y - newCtx.originYFromTop;
+      const newPosX = localCssCenterX;
+      const newPosY = newCtx.useYUp
+        ? newCtx.containerH - localCssCenterY
+        : localCssCenterY;
+
+      if (newPosX !== node.position?.x || newPosY !== node.position?.y) {
+        nextLayers = updateInTree(nextLayers, sourceId, {
+          position: { x: newPosX, y: newPosY },
+        });
+      }
+
       pushHistory(prev);
       const nextCur = { ...cur, layers: nextLayers } as CADoc;
       return { ...prev, docs: { ...prev.docs, [key]: nextCur } } as ProjectDocument;
