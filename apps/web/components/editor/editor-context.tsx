@@ -19,6 +19,7 @@ import {
 import { sanitizeFilename, dataURLToBlob, normalize, uploadFrameAssets, cleanupOrphanedAssets, collectReferencedAssets, copyAssetsBetweenViews, type CAView, convertSvgToPngIfNeeded } from "@/lib/editor/file-utils";
 import { CAEmitterCell } from "./emitter/emitter";
 import { assetCache } from "@/hooks/use-asset-url";
+import { computeAbsoluteLTFor, getParentAbsContextFor, cssToPosition } from "./canvas-preview/utils/coordinates";
 
 type CADoc = {
   layers: AnyLayer[];
@@ -1322,6 +1323,16 @@ export function EditorProvider({
       if (!prev) return prev;
       const key = prev.activeCA;
       const cur = prev.docs[key];
+      const docH = prev.meta.height || 844;
+      const rootFlip = (prev.meta as any).geometryFlipped ?? 0;
+
+      const absLT = computeAbsoluteLTFor(sourceId, cur.layers, docH, rootFlip);
+      const nodeForSize = findById(cur.layers, sourceId);
+      const nodeW = nodeForSize?.size?.w ?? 0;
+      const nodeH = nodeForSize?.size?.h ?? 0;
+      const absCenterX = absLT.left + nodeW / 2;
+      const absCenterY = absLT.top + nodeH / 2;
+
       const removedRes = removeFromTree(cur.layers, sourceId);
       const node = removedRes.removed;
       if (!node) return prev;
@@ -1339,6 +1350,16 @@ export function EditorProvider({
       } else {
         nextLayers = [...nextLayers, node];
       }
+
+      const parentCtx = getParentAbsContextFor(sourceId, nextLayers, docH, rootFlip);
+      const localCssLeft = absCenterX - parentCtx.left - nodeW / 2;
+      const localCssTop = absCenterY - parentCtx.top - nodeH / 2;
+      const newPos = cssToPosition(localCssLeft, localCssTop, node, parentCtx.containerH, parentCtx.useYUp, docH);
+
+      if (newPos.x !== node.position?.x || newPos.y !== node.position?.y) {
+        nextLayers = updateInTree(nextLayers, sourceId, { position: newPos });
+      }
+
       pushHistory(prev);
       const nextCur = { ...cur, layers: nextLayers } as CADoc;
       return { ...prev, docs: { ...prev.docs, [key]: nextCur } } as ProjectDocument;
