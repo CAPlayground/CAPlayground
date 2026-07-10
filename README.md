@@ -12,7 +12,7 @@
 
 ## Overview
 
-CAPlayground is a web-based Core Animation editor for making stunning wallpapers for your iPhone and iPad. Check out the [roadmap](https://caplayground.vercel.app/roadmap) to see progress.
+CAPlayground is a web-based Core Animation editor for making stunning wallpapers for your iOS Devices. Check out the [roadmap](https://caplayground.vercel.app/roadmap) to see progress.
 
 ## Getting Started
 
