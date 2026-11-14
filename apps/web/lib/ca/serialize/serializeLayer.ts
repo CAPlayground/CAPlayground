@@ -1,6 +1,6 @@
 import { degToRad, hexToForegroundColor } from "@/lib/utils";
 import { Animations, AnyLayer, CAProject, EmitterLayer, GyroParallaxDictionary, KeyPath, ReplicatorLayer, TextLayer, VideoLayer } from "../types";
-import { CAML_NS } from "./serializeCAML";
+import { CAML_NS, baseValueForKeyPath } from "./serializeCAML";
 import { findById } from "@/lib/editor/layer-utils";
 import { findPathTo, findPathToByName } from "@/components/editor/canvas-preview/utils/layerTree";
 
@@ -94,7 +94,7 @@ export function serializeLayer(
       setAttr(el, 'anchorPoint', `${ax} ${ay}`);
     }
   }
-  if (layer.blendMode && layer.blendMode !== 'normal') {
+  if (layer.blendMode && layer.blendMode !== 'normal' && layer.blendMode !== 'normalBlendMode') {
     const compositingFilter = doc.createElementNS(CAML_NS, 'compositingFilter');
     compositingFilter.setAttribute('type', "CAFilter");
     compositingFilter.setAttribute('filter', layer.blendMode);
@@ -110,7 +110,7 @@ export function serializeLayer(
         : doc.createElementNS(CAML_NS, 'CAFilter');
       filterEl.setAttribute('filter', filter.type);
       filterEl.setAttribute('name', filter.name);
-      filterEl.setAttribute('enabled', String(filter.enabled));
+      filterEl.setAttribute('enabled', filter.enabled === false ? '0' : '1');
       if (filter.type === "gaussianBlur") {
         filterEl.setAttribute('inputRadius', String(filter.value));
       }
@@ -169,7 +169,7 @@ export function serializeLayer(
     }
   }
   setAttr(el, 'cornerRadius', Math.min(layer.cornerRadius || 0, layer.size.w / 2, layer.size.h / 2));
-  setAttr(el, 'borderColor', layer.borderColor);
+  setAttr(el, 'borderColor', hexToForegroundColor(layer.borderColor) ?? layer.borderColor);
   setAttr(el, 'borderWidth', layer.borderWidth);
   setAttr(el, 'allowsEdgeAntialiasing', '1');
   setAttr(el, 'allowsGroupOpacity', '1');
@@ -315,7 +315,9 @@ export function serializeLayer(
       emitterCell.setAttribute('contentsScale', num(cell.contentsScale));
       emitterCell.setAttribute('birthRate', num(cell.birthRate));
       emitterCell.setAttribute('lifetime', num(cell.lifetime));
+      if (cell.lifetimeRange) emitterCell.setAttribute('lifetimeRange', num(cell.lifetimeRange));
       emitterCell.setAttribute('velocity', num(cell.velocity));
+      if (cell.velocityRange) emitterCell.setAttribute('velocityRange', num(cell.velocityRange));
       emitterCell.setAttribute('emissionRange', num(rad(cell.emissionRange)));
       emitterCell.setAttribute('emissionLongitude', num(rad(cell.emissionLongitude)));
       emitterCell.setAttribute('emissionLatitude', num(rad(cell.emissionLatitude)));
@@ -478,6 +480,15 @@ export function serializeLayer(
       const path = findPathTo(layer.children || [], dict.targetId);
       const view = path?.some((l) => l.name === 'BACKGROUND') ? 'Background' : 'Floating';
       if (!currentLayer) continue;
+
+      const valueIn = (state: 'Unlock' | 'Sleep') =>
+        stateOverridesInput?.[state]?.find((d) => d.keyPath === dict.keyPath && d.targetId === dict.targetId)?.value
+        ?? baseValueForKeyPath(currentLayer, dict.keyPath);
+      let HomeValue = valueIn('Unlock');
+      let SleepValue = valueIn('Sleep');
+      let LockedValue: string | number | undefined = dict.value ?? baseValueForKeyPath(currentLayer, dict.keyPath);
+      if (HomeValue === undefined || SleepValue === undefined || LockedValue === undefined) continue;
+
       const nsDict = doc.createElementNS(CAML_NS, 'NSDictionary');
       const image = doc.createElementNS(CAML_NS, 'image');
       image.setAttribute('type', 'null');
@@ -492,10 +503,6 @@ export function serializeLayer(
       nsDict.appendChild(layerName);
 
       const isRotation = dict.keyPath === 'transform.rotation.z' || dict.keyPath === 'transform.rotation.x' || dict.keyPath === 'transform.rotation.y';
-
-      let HomeValue = stateOverridesInput?.Unlock.find((d) => d.keyPath === dict.keyPath && d.targetId === dict.targetId)?.value;
-      let SleepValue = stateOverridesInput?.Sleep.find((d) => d.keyPath === dict.keyPath && d.targetId === dict.targetId)?.value;
-      let LockedValue = dict.value;
 
       if (isRotation) {
         if (typeof HomeValue === 'number') HomeValue = degToRad(HomeValue).toFixed(5);

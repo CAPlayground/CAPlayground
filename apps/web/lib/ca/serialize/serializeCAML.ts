@@ -30,6 +30,69 @@ function formatXML(xml: string): string {
   }).join('\n');
 }
 
+type StateOverride = { targetId: string; keyPath: string; value: string | number };
+type StateOverrideMap = Record<string, StateOverride[]>;
+
+const ROTATION_KEYPATHS = new Set(['transform.rotation.x', 'transform.rotation.y', 'transform.rotation.z']);
+const COLOR_KEYPATHS = new Set(['backgroundColor', 'borderColor']);
+
+export function baseValueForKeyPath(layer: AnyLayer | undefined, keyPath: string): string | number | undefined {
+  if (!layer) return undefined;
+  switch (keyPath) {
+    case 'position.x': return layer.position?.x;
+    case 'position.y': return layer.position?.y;
+    case 'bounds.size.width': return layer.size?.w;
+    case 'bounds.size.height': return layer.size?.h;
+    case 'transform.scale.xy': return layer.scale ?? 1;
+    case 'transform.rotation.z': return layer.rotation ?? 0;
+    case 'transform.rotation.x': return layer.rotationX ?? 0;
+    case 'transform.rotation.y': return layer.rotationY ?? 0;
+    case 'opacity': return layer.opacity ?? 1;
+    case 'cornerRadius': return layer.cornerRadius ?? 0;
+    case 'zPosition': return layer.zPosition ?? 0;
+    case 'borderWidth': return layer.borderWidth ?? 0;
+    case 'backgroundColor': return layer.backgroundColor ?? '#ffffff';
+    case 'borderColor': return layer.borderColor ?? '#000000';
+    case 'fontSize': return (layer as any).fontSize;
+    default: return undefined;
+  }
+}
+
+function prepareStateOverrides(
+  stateNames: string[],
+  layerIndex: Record<string, AnyLayer>,
+  input?: StateOverrideMap,
+): StateOverrideMap {
+  const out: StateOverrideMap = {};
+  for (const [name, list] of Object.entries(input || {})) {
+    out[name] = (list || []).map((o) => ({ ...o }));
+  }
+  for (const name of stateNames) {
+    if (!out[name]) out[name] = [];
+  }
+
+  for (const stateName of stateNames) {
+    for (const override of [...out[stateName]]) {
+      const defaultVal = baseValueForKeyPath(layerIndex[override.targetId], override.keyPath);
+      if (defaultVal === undefined) continue;
+      for (const checkState of stateNames) {
+        const exists = out[checkState].some(
+          (o) => o.targetId === override.targetId && o.keyPath === override.keyPath
+        );
+        if (!exists) {
+          out[checkState].push({ targetId: override.targetId, keyPath: override.keyPath, value: defaultVal });
+        }
+      }
+    }
+  }
+
+  for (const stateName of stateNames) {
+    serializeLiquidGlassTransitions(stateName, layerIndex, out);
+    fixCornerRadiusTransitions(stateName, layerIndex, out);
+  }
+  return out;
+}
+
 export function serializeCAML(
   root: AnyLayer,
   project?: CAProject,
@@ -42,23 +105,15 @@ export function serializeCAML(
   const caml = doc.documentElement;
   const isWallpaperCA = root.children?.some((c) => c.name === 'BACKGROUND' || c.name === 'FLOATING');
   const capRootLayer: AnyLayer = {
-    ...root,
     id: '__capRootLayer__',
     name: 'CAPlayground Root Layer',
+    type: 'basic',
+    position: root.position,
+    size: root.size,
     geometryFlipped: 0,
     children: [root],
   }
 
-  const rootEl = serializeLayer(
-    doc,
-    isWallpaperCA ? root : capRootLayer,
-    project,
-    isWallpaperCA ? (wallpaperParallaxGroupsInput || []) : undefined,
-    isWallpaperCA ? stateOverridesInput : undefined,
-  );
-
-  const scriptComponents = doc.createElementNS(CAML_NS, 'scriptComponents');
-  const statesEl = doc.createElementNS(CAML_NS, 'states');
   const layerIndex: Record<string, AnyLayer> = {};
   const indexWalk = (l: AnyLayer) => {
     layerIndex[l.id] = l;
@@ -74,92 +129,37 @@ export function serializeCAML(
 
   const filtered = (stateNamesInput || []).filter((n) => !/^base(\s*state)?$/i.test(n.trim()));
   const stateNames = (filtered.length ? filtered : ['Locked', 'Unlock', 'Sleep']);
+  const stateOverrides = prepareStateOverrides(stateNames, layerIndex, stateOverridesInput);
+
+  const rootEl = serializeLayer(
+    doc,
+    isWallpaperCA ? root : capRootLayer,
+    project,
+    isWallpaperCA ? (wallpaperParallaxGroupsInput || []) : undefined,
+    isWallpaperCA ? stateOverrides : undefined,
+  );
+
+  const statesEl = doc.createElementNS(CAML_NS, 'states');
   stateNames.forEach(stateName => {
     const state = doc.createElementNS(CAML_NS, 'LKState');
     state.setAttribute('name', stateName);
     const elements = doc.createElementNS(CAML_NS, 'elements');
 
-    // state animations wont work unless every state overrides exists in every state. its really stupid and this next section of code should fix that problem when exporting from caplayground
-    // - retronbv
-
-    stateNames.forEach((stateName) => {
-      let ovs = (stateOverridesInput || {})[stateName] || [];
-      for (let override of ovs) {
-        if (!layerIndex[override.targetId]) continue;
-        let defaultVal: any;
-        switch (override.keyPath) {
-          case "position.x":
-            defaultVal = layerIndex[override.targetId].position.x;
-            break;
-          case "position.y":
-            defaultVal = layerIndex[override.targetId].position.y;
-            break;
-          case "bounds.size.width":
-            defaultVal = layerIndex[override.targetId].size.w;
-            break;
-          case "bounds.size.height":
-            defaultVal = layerIndex[override.targetId].size.h;
-            break;
-          case "transform.scale.xy":
-            defaultVal = layerIndex[override.targetId].scale;
-            break;
-          case "transform.rotation.z":
-            defaultVal = layerIndex[override.targetId].rotation;
-            break;
-          case "transform.rotation.x":
-            defaultVal = layerIndex[override.targetId]?.rotationX;
-            break;
-          case "transform.rotation.y":
-            defaultVal = layerIndex[override.targetId]?.rotationY;
-            break;
-          case "opacity":
-            defaultVal = layerIndex[override.targetId].opacity;
-            break;
-          case "cornerRadius":
-            defaultVal = layerIndex[override.targetId]?.cornerRadius;
-            break;
-          case "zPosition":
-            defaultVal = layerIndex[override.targetId]?.zPosition;
-            break;
-          case "backgroundColor":
-            defaultVal = layerIndex[override.targetId]?.backgroundColor ?? '#ffffff';
-            break;
-        }
-        stateNames.forEach((checkState) => {
-          let checkOverrides = (stateOverridesInput || {})[checkState] || [];
-          let filtered = checkOverrides.filter(
-            (o) =>
-              o.targetId == override.targetId && o.keyPath == override.keyPath
-          );
-          if (filtered.length == 0) {
-            checkOverrides.push({
-              targetId: override.targetId,
-              keyPath: override.keyPath,
-              value: defaultVal,
-            });
-          }
-          (stateOverridesInput || {})[checkState] = checkOverrides;
-        });
-      }
-    });
-
-    serializeLiquidGlassTransitions(stateName, layerIndex, stateOverridesInput);
-
-    fixCornerRadiusTransitions(stateName, layerIndex, stateOverridesInput || {});
-
-    const ovs = ((stateOverridesInput || {})[stateName] || []).filter((ov) => !!layerIndex[ov.targetId]);
+    const ovs = (stateOverrides[stateName] || []).filter(
+      (ov) => !!layerIndex[ov.targetId] && ov.value !== undefined && ov.value !== null
+    );
     for (const ov of ovs) {
       const el = doc.createElementNS(CAML_NS, 'LKStateSetValue');
       el.setAttribute('targetId', ov.targetId);
       el.setAttribute('keyPath', ov.keyPath);
       const vEl = doc.createElementNS(CAML_NS, 'value');
-      if (ov.keyPath === 'backgroundColor' && typeof ov.value === 'string') {
+      if (COLOR_KEYPATHS.has(ov.keyPath) && typeof ov.value === 'string') {
         const floatTriplet = hexToForegroundColor(ov.value);
         vEl.setAttribute('type', 'CGColor');
         vEl.setAttribute('value', floatTriplet ?? '1 1 1');
       } else if (typeof ov.value === 'number') {
         let outVal = ov.value;
-        if (ov.keyPath === 'transform.rotation.z') {
+        if (ROTATION_KEYPATHS.has(ov.keyPath)) {
           outVal = Number((ov.value * Math.PI / 180).toFixed(5));
         }
         if (ov.keyPath === 'position.x' || ov.keyPath === 'position.y') {

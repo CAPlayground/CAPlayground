@@ -19,11 +19,36 @@ function directChildrenByTagNS(el: Element, tag: string): Element[] {
   return kids.filter((c) => (c as any).namespaceURI === CAML_NS && c.localName === tag);
 }
 
+function parseCAMLNumber(value: string | null | undefined): number {
+  if (value === null || value === undefined) return NaN;
+  const s = value.trim();
+  if (!s) return NaN;
+  const deg = s.match(/^(.+?)\s*deg$/i);
+  if (deg) return (Number(deg[1]) * Math.PI) / 180;
+  return Number(s);
+}
+
 function parseNumericAttr(element: Element, attrName: string, fallback?: number): number | undefined {
   const value = attr(element, attrName);
   if (!value) return fallback;
-  const num = Number(value);
+  const num = parseCAMLNumber(value);
   return Number.isFinite(num) ? num : fallback;
+}
+
+function parseColorProperty(el: Element, name: string): { color?: string; opacity?: number } {
+  let color: string | undefined;
+  let opacity: number | undefined;
+  const raw = attr(el, name);
+  if (raw) color = floatsToHexColor(raw) || raw;
+  const child = directChildByTagNS(el, name);
+  if (child) {
+    const hex = floatsToHexColor(child.getAttribute('value') || '');
+    if (hex) color = hex;
+    const op = child.getAttribute('opacity');
+    const opNum = typeof op === 'string' ? Number(op) : NaN;
+    if (Number.isFinite(opNum)) opacity = opNum;
+  }
+  return { color, opacity };
 }
 
 function parseBooleanAttr(element: Element, attrName: string): 0 | 1 | undefined {
@@ -130,25 +155,29 @@ export function parseStateOverrides(xml: string): CAStateOverrides {
     if (!caml) return result;
     const wallpaperPropertyGroups = caml.getElementsByTagNameNS(CAML_NS, 'wallpaperPropertyGroups')[0];
     if (wallpaperPropertyGroups) {
+      result.Locked = [];
+      result.Unlock = [];
+      result.Sleep = [];
       const dictionaries = wallpaperPropertyGroups.getElementsByTagNameNS(CAML_NS, 'NSDictionary');
       for (const dict of dictionaries) {
         const layerName = directChildByTagNS(dict, 'layerName')?.getAttribute('value') || '';
         const layer = doc.querySelector(`[name="${layerName}"]`);
         const targetId = layer?.getAttribute('id') || '';
         const keyPath = directChildByTagNS(dict, 'keyPath')?.getAttribute('value') || '';
-        let lockedValue = directChildByTagNS(dict, 'v_lock')?.getAttribute('value') || '';
-        let homeValue = directChildByTagNS(dict, 'v_home')?.getAttribute('value') || '';
-        let sleepValue = directChildByTagNS(dict, 'v_sleep')?.getAttribute('value') || '';
         const isRotation = keyPath === 'transform.rotation.z' || keyPath === 'transform.rotation.x' || keyPath === 'transform.rotation.y';
 
-        if (isRotation) {
-          homeValue = radToDeg(Number(homeValue)).toFixed(5);
-          sleepValue = radToDeg(Number(sleepValue)).toFixed(5);
-          lockedValue = radToDeg(Number(lockedValue)).toFixed(5);
-        }
-        result.Locked = [...(result.Locked || []), { targetId, keyPath, value: Number(lockedValue) }];
-        result.Unlock = [...(result.Unlock || []), { targetId, keyPath, value: Number(homeValue) }];
-        result.Sleep = [...(result.Sleep || []), { targetId, keyPath, value: Number(sleepValue) }];
+        const addValue = (state: 'Locked' | 'Unlock' | 'Sleep', tag: string) => {
+          const raw = (directChildByTagNS(dict, tag)?.getAttribute('value') || '').trim();
+          if (!raw || raw === 'undefined' || raw === 'NaN') return;
+          const n = Number(raw);
+          const value: string | number = !Number.isFinite(n)
+            ? raw
+            : (isRotation ? Number(radToDeg(n).toFixed(5)) : n);
+          result[state] = [...(result[state] || []), { targetId, keyPath, value }];
+        };
+        addValue('Locked', 'v_lock');
+        addValue('Unlock', 'v_home');
+        addValue('Sleep', 'v_sleep');
       }
     } else {
       const statesEl = caml.getElementsByTagNameNS(CAML_NS, 'states')[0];
@@ -224,10 +253,16 @@ export function parseCAML(xml: string): AnyLayer | null {
   const doc = new DOMParser().parseFromString(xml, 'application/xml');
   const caml = doc.getElementsByTagNameNS(CAML_NS, 'caml')[0] || doc.documentElement;
   if (!caml) return null;
-  let root = caml.getElementsByTagNameNS(CAML_NS, 'CALayer')[0];
-  if (root.id === '__capRootLayer__') root = root.getElementsByTagNameNS(CAML_NS, 'CALayer')[0];
+  const isLayerEl = (c: Element) => (c as any).namespaceURI === CAML_NS && /Layer$/.test(c.localName);
+  let root: Element | undefined = (Array.from(caml.children) as Element[]).find(isLayerEl)
+    || caml.getElementsByTagNameNS(CAML_NS, 'CALayer')[0];
+  if (root && attr(root, 'id') === '__capRootLayer__') {
+    const sublayersEl = directChildByTagNS(root, 'sublayers');
+    root = (sublayersEl ? (Array.from(sublayersEl.children) as Element[]).find(isLayerEl) : undefined)
+      || root.getElementsByTagNameNS(CAML_NS, 'CALayer')[0];
+  }
   if (!root) return null;
-  return parseCALayer(root);
+  return parseAnyLayer(root);
 }
 
 export function parseStates(xml: string): string[] {
@@ -289,6 +324,14 @@ function parseLayerBase(el: Element): LayerBase {
     speed,
   };
 
+  const bg = parseColorProperty(el, 'backgroundColor');
+  if (bg.color) base.backgroundColor = bg.color;
+  if (bg.opacity !== undefined) base.backgroundOpacity = bg.opacity;
+  const border = parseColorProperty(el, 'borderColor');
+  if (border.color) base.borderColor = border.color;
+  const borderWidth = parseNumericAttr(el, 'borderWidth');
+  if (borderWidth !== undefined) base.borderWidth = borderWidth;
+
   // Parse transform attribute for additional rotation values
   const transformAttr = attr(el, 'transform');
   if (transformAttr && /rotate\(/i.test(transformAttr)) {
@@ -322,7 +365,8 @@ function parseLayerBase(el: Element): LayerBase {
       const filterType = attr(caFilter, 'filter');
       if (!filterType) continue;
       const filterName = attr(caFilter, 'name');
-      const enabled = attr(caFilter, 'enabled') !== '0';
+      const enabledAttr = (attr(caFilter, 'enabled') || '').toLowerCase();
+      const enabled = enabledAttr !== '0' && enabledAttr !== 'false';
       let value = 0
       if (filterType === "gaussianBlur") {
         value = parseNumericAttr(caFilter, 'inputRadius') ?? 0;
@@ -498,14 +542,10 @@ function parseCATextLayer(el: Element): AnyLayer {
   const wrappedAttr = attr(el, 'wrapped');
   let fontFamily: string | undefined;
   let textValue: string = '';
-  const fontEl = el.getElementsByTagNameNS(CAML_NS, 'font')[0] as Element | undefined;
-  if (fontEl) {
-    fontFamily = fontEl.getAttribute('value') || undefined;
-  }
-  const stringEl = el.getElementsByTagNameNS(CAML_NS, 'string')[0] as Element | undefined;
-  if (stringEl) {
-    textValue = stringEl.getAttribute('value') || '';
-  }
+  const fontEl = directChildByTagNS(el, 'font');
+  fontFamily = (fontEl ? fontEl.getAttribute('value') : attr(el, 'font')) || undefined;
+  const stringEl = directChildByTagNS(el, 'string');
+  textValue = (stringEl ? stringEl.getAttribute('value') : attr(el, 'string')) || '';
   const colorHex = floatsToHexColor(attr(el, 'foregroundColor'));
 
   const parsedAnimations = parseCALayerAnimations(el);
@@ -537,7 +577,7 @@ function parseCAGradientLayer(el: Element): AnyLayer {
 
   // Parse colors
   const colors: any[] = [];
-  const colorsEl = el.getElementsByTagNameNS(CAML_NS, 'colors')[0] as Element | undefined;
+  const colorsEl = directChildByTagNS(el, 'colors');
   if (colorsEl) {
     const cgColors = directChildrenByTagNS(colorsEl, 'CGColor');
     for (const cgColor of cgColors) {
@@ -553,9 +593,9 @@ function parseCAGradientLayer(el: Element): AnyLayer {
 
   // Parse gradient type
   let gradientType: 'axial' | 'radial' | 'conic' = 'axial';
-  const typeEl = el.getElementsByTagNameNS(CAML_NS, 'type')[0] as Element | undefined;
-  if (typeEl) {
-    const typeValue = typeEl.getAttribute('value');
+  const typeEl = directChildByTagNS(el, 'type');
+  {
+    const typeValue = typeEl ? typeEl.getAttribute('value') : attr(el, 'type');
     if (typeValue === 'radial' || typeValue === 'conic') {
       gradientType = typeValue;
     }
@@ -588,7 +628,7 @@ function parseCAEmitterLayer(el: Element): AnyLayer {
   const emitterCells = emitterCellsEl
     ? Array.from(emitterCellsEl.children).map((c) => {
       let imageSrc: string | undefined;
-      const contents = c.getElementsByTagNameNS(CAML_NS, 'contents')[0];
+      const contents = directChildByTagNS(c, 'contents');
       if (contents) {
         const images = contents.getElementsByTagNameNS(CAML_NS, 'CGImage');
         if (images && images[0]) {
@@ -604,8 +644,7 @@ function parseCAEmitterLayer(el: Element): AnyLayer {
       newCell.src = imageSrc;
       const defaultCell = new CAEmitterCell();
       const parseNum = (key: keyof CAEmitterCell) => {
-        const val = attr(c, key);
-        const num = Number(val);
+        const num = parseCAMLNumber(attr(c, key));
         return Number.isFinite(num) ? num : defaultCell[key];
       };
       
@@ -616,7 +655,7 @@ function parseCAEmitterLayer(el: Element): AnyLayer {
       let alpha: number | undefined = undefined;
       const colorAttr = attr(c, 'color');
       if (colorAttr) color = floatsToHexColor(colorAttr) || colorAttr || undefined;
-      const colorChild = c.getElementsByTagNameNS(CAML_NS, 'color')[0];
+      const colorChild = directChildByTagNS(c, 'color');
       if (colorChild) {
         const v = colorChild.getAttribute('value') || undefined;
         const op = colorChild.getAttribute('opacity');
@@ -630,7 +669,9 @@ function parseCAEmitterLayer(el: Element): AnyLayer {
       newCell.contentsScale = parseNum('contentsScale');
       newCell.birthRate = parseNum('birthRate');
       newCell.lifetime = parseNum('lifetime');
+      newCell.lifetimeRange = parseNum('lifetimeRange');
       newCell.velocity = parseNum('velocity');
+      newCell.velocityRange = parseNum('velocityRange');
       newCell.scale = parseNum('scale');
       newCell.scaleRange = parseNum('scaleRange');
       newCell.scaleSpeed = parseNum('scaleSpeed');
@@ -742,20 +783,27 @@ function parseCALiquidGlassLayer(el: Element): AnyLayer {
 }
 
 function parseSublayers(el: Element): AnyLayer[] {
-  const sublayersEl = directChildByTagNS(el, 'sublayers');
   const children = [];
-  if (sublayersEl) {
+  for (const sublayersEl of directChildrenByTagNS(el, 'sublayers')) {
     for (const n of sublayersEl.children) {
-      if (n.localName === 'CALayer') children.push(parseCALayer(n));
-      else if (n.localName === 'CATextLayer') children.push(parseCATextLayer(n));
-      else if (n.localName === 'CAGradientLayer') children.push(parseCAGradientLayer(n));
-      else if (n.localName === 'CAEmitterLayer') children.push(parseCAEmitterLayer(n));
-      else if (n.localName === 'CATransformLayer') children.push(parseCATransformLayer(n));
-      else if (n.localName === 'CAReplicatorLayer') children.push(parseCAReplicatorLayer(n));
-      else if (n.localName === 'CABackdropLayer' && attr(n, 'caplayKind') === 'liquidGlass') children.push(parseCALiquidGlassLayer(n));
+      if (n.localName === 'CASDFLayer' || n.localName === 'CASDFElementLayer') continue;
+      children.push(parseAnyLayer(n));
     }
   }
   return children;
+}
+
+function parseAnyLayer(n: Element): AnyLayer {
+  if (n.localName === 'CATextLayer') return parseCATextLayer(n);
+  if (n.localName === 'CAGradientLayer') return parseCAGradientLayer(n);
+  if (n.localName === 'CAEmitterLayer') return parseCAEmitterLayer(n);
+  if (n.localName === 'CATransformLayer') return parseCATransformLayer(n);
+  if (n.localName === 'CAReplicatorLayer') return parseCAReplicatorLayer(n);
+  if (n.localName === 'CABackdropLayer' && attr(n, 'caplayKind') === 'liquidGlass') return parseCALiquidGlassLayer(n);
+  if (n.localName !== 'CALayer') {
+    try { console.warn(`[import] Unsupported layer class <${n.localName}> imported as a basic layer`); } catch { }
+  }
+  return parseCALayer(n);
 }
 
 function parseCALayer(el: Element): AnyLayer {
@@ -766,22 +814,6 @@ function parseCALayer(el: Element): AnyLayer {
 
   const layerBase = parseLayerBase(el);
   const children = parseSublayers(el);
-  let backgroundColor: string | undefined = undefined;
-  let backgroundOpacity: number | undefined = undefined;
-  const bgAttr = attr(el, 'backgroundColor');
-  if (bgAttr) backgroundColor = floatsToHexColor(bgAttr) || bgAttr || undefined;
-  const bgChild = el.getElementsByTagNameNS(CAML_NS, 'backgroundColor')[0] as Element | undefined;
-  if (bgChild) {
-    const v = bgChild.getAttribute('value') || undefined;
-    const op = bgChild.getAttribute('opacity');
-    const hex = floatsToHexColor(v || '');
-    if (hex) backgroundColor = hex;
-    const opNum = typeof op === 'string' ? Number(op) : NaN;
-    if (Number.isFinite(opNum)) backgroundOpacity = opNum;
-  }
-  const borderColorRaw = attr(el, 'borderColor');
-  const borderColor = floatsToHexColor(borderColorRaw) || borderColorRaw || undefined;
-  const borderWidth = attr(el, 'borderWidth') ? Number(attr(el, 'borderWidth')) : undefined;
 
   let imageSrc: string | undefined;
   const contents = directChildByTagNS(el, 'contents');
@@ -798,10 +830,6 @@ function parseCALayer(el: Element): AnyLayer {
   let type = imageSrc ? 'image' : attr(el, 'type') || 'shape';
   const base = {
     ...layerBase,
-    backgroundColor,
-    backgroundOpacity,
-    borderColor,
-    borderWidth,
     src: imageSrc,
   } as const;
 
@@ -819,9 +847,8 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
   let parsedAnimations: Animations = [];
   try {
     const animationsEl = directChildByTagNS(el, 'animations');
-    const animFirst = animationsEl?.getElementsByTagNameNS(CAML_NS, 'animation') || [];
-    const animNodes = animationsEl?.getElementsByTagNameNS(CAML_NS, 'p') || [];
-    for (const animNode of [...animFirst, ...animNodes]) {
+    const animNodes = animationsEl ? (Array.from(animationsEl.children) as Element[]) : [];
+    for (const animNode of animNodes) {
       const kp = (animNode.getAttribute('keyPath') || 'position') as KeyPath;
       const valuesNode = animNode.getElementsByTagNameNS(CAML_NS, 'values')[0];
       const vals: Array<{ x: number; y: number } | { w: number; h: number } | number | string | ColorsKeyframeValue> = [];
@@ -857,7 +884,7 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
         } else if (kp === 'transform.rotation.x' || kp === 'transform.rotation.y' || kp === 'transform.rotation.z') {
           const values = Array.from(valuesNode.children);
           for (const r of values) {
-            const rad = Number(r.getAttribute('value') || '');
+            const rad = parseCAMLNumber(r.getAttribute('value'));
             const deg = ((Number.isFinite(rad) ? rad : 0) * 180) / Math.PI;
             vals.push(deg);
           }
@@ -902,7 +929,7 @@ function parseCALayerAnimations(el: Element): Animations | undefined {
       const autoreverses: 0 | 1 = (Number(autorevAttr) || 0) ? 1 : 0;
       const durAttr = animNode.getAttribute('duration');
       const durationSeconds = Number(durAttr);
-      const speed = animNode.getAttribute('speed');
+      const speed = animNode.getAttribute('speed') ?? undefined;
       const repCount = animNode.getAttribute('repeatCount');
       const repDurAttr = animNode.getAttribute('repeatDuration');
       const infinite: 0 | 1 = (repCount === 'inf' || repDurAttr === 'inf') ? 1 : 0;

@@ -1470,10 +1470,10 @@ export function EditorProvider({
         };
         if (p.position && typeof p.position.x === 'number') upd('position.x', p.position.x);
         if (p.position && typeof p.position.y === 'number') upd('position.y', p.position.y);
-        if (p.zPosition && typeof p.zPosition === 'number') upd('zPosition', p.zPosition);
+        if (typeof p.zPosition === 'number') upd('zPosition', p.zPosition);
         if (p.size && typeof p.size.w === 'number') upd('bounds.size.width', p.size.w);
         if (p.size && typeof p.size.h === 'number') upd('bounds.size.height', p.size.h);
-        if (p.scale && typeof p.scale === 'number') upd('transform.scale.xy', p.scale);
+        if (typeof p.scale === 'number') upd('transform.scale.xy', p.scale);
         if (typeof p.rotation === 'number') upd('transform.rotation.z', p.rotation as number);
         if (typeof (p as any).rotationX === 'number') upd('transform.rotation.x', (p as any).rotationX as number);
         if (typeof (p as any).rotationY === 'number') upd('transform.rotation.y', (p as any).rotationY as number);
@@ -1509,10 +1509,10 @@ export function EditorProvider({
         };
         if (p.position && typeof p.position.x === 'number') upd('position.x', p.position.x);
         if (p.position && typeof p.position.y === 'number') upd('position.y', p.position.y);
-        if (p.zPosition && typeof p.zPosition === 'number') upd('zPosition', p.zPosition);
+        if (typeof p.zPosition === 'number') upd('zPosition', p.zPosition);
         if (p.size && typeof p.size.w === 'number') upd('bounds.size.width', p.size.w);
         if (p.size && typeof p.size.h === 'number') upd('bounds.size.height', p.size.h);
-        if (p.scale && typeof p.scale === 'number') upd('transform.scale.xy', p.scale);
+        if (typeof p.scale === 'number') upd('transform.scale.xy', p.scale);
         if (typeof p.rotation === 'number') upd('transform.rotation.z', p.rotation as number);
         if (typeof (p as any).rotationX === 'number') upd('transform.rotation.x', (p as any).rotationX as number);
         if (typeof (p as any).rotationY === 'number') upd('transform.rotation.y', (p as any).rotationY as number);

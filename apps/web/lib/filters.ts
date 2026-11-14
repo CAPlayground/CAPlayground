@@ -39,7 +39,7 @@ export const supportedFilters: Record<SupportedFilterTypes, Filter> = {
   colorSaturate: {
     name: 'Saturate',
     type: 'colorSaturate',
-    value: 0,
+    value: 1,
     valueLabel: 'Amount',
     enabled: true,
   },
